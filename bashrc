@@ -7,6 +7,7 @@ source ~/.git-prompt.sh
 
 # Misc
 export PATH=$PATH:$HOME/.rvm/bin:/usr/local/heroku/bin
+export JAVA_HOME="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home"
 
 MAGENTA="\[\033[0;35m\]"
 YELLOW="\[\033[0;33m\]"
