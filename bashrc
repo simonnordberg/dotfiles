@@ -1,13 +1,16 @@
-# RVM
-[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
-
 # Git
 source ~/.git-completion.bash
 source ~/.git-prompt.sh
 
 # Misc
-export PATH=$PATH:$HOME/.rvm/bin:/usr/local/heroku/bin
-export JAVA_HOME="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home"
+export PATH=/usr/local/bin:/usr/local/sbin:$HOME/.rvm/bin:/usr/local/heroku/bin:$PATH
+export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
+
+# RVM
+[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
+
+export EDITOR='emacsclient -t -a emacs'
+alias ec='emacsclient -t'
 
 MAGENTA="\[\033[0;35m\]"
 YELLOW="\[\033[0;33m\]"
