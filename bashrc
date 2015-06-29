@@ -41,6 +41,10 @@ export LS_OPTIONS='--color=auto'
 export CLICOLOR='Yes'
 export LSCOLORS=gxfxbEaEBxxEhEhBaDaCaD
 
+# Lang
+export LC_ALL=en_US.UTF-8
+export LANG=en_us.UTF-8
+
 export PS1=$LIGHT_GRAY"\u@\h"'$(
     if [[ $(__git_ps1) =~ \*\)$ ]]
     # a file has been modified but not added
@@ -51,3 +55,7 @@ export PS1=$LIGHT_GRAY"\u@\h"'$(
     # the state is clean, changes are commited
     else echo "'$CYAN'"$(__git_ps1 " (%s)")
     fi)'$BLUE" \w"$GREEN": "
+
+# AWS
+export AWS_DEFAULT_PROFILE=eu-central-1
+
