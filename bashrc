@@ -3,11 +3,29 @@ source ~/.git-completion.bash
 source ~/.git-prompt.sh
 
 # Misc
-export PATH=/usr/local/bin:/usr/local/sbin:$HOME/.rvm/bin:/usr/local/heroku/bin:$PATH
+export PATH=~/bin:/usr/local/bin:/usr/local/sbin:$HOME/.rvm/bin:/usr/local/heroku/bin:$PATH
 export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
 
-# RVM
-[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
+# JBoss
+export JBOSS_HOME=/usr/local/opt/wildfly-as/libexec
+export PATH=${PATH}:${JBOSS_HOME}/bin
+
+eval "$(rbenv init -)"
+
+# Python
+export PIP_REQUIRE_VIRTUALENV=true
+export PIP_DOWNLOAD_CACHE=$HOME/.pip/cache
+
+# Functions
+docker_start () {
+  boot2docker init
+  boot2docker start
+  $(boot2docker shellinit)
+}
+
+docker_remove_all() {
+  docker rm `docker ps --no-trunc -aq`
+}
 
 export EDITOR='emacsclient -t -a emacs'
 alias ec='emacsclient -t'
