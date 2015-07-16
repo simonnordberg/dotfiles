@@ -30,12 +30,15 @@ docker_remove_all() {
 export EDITOR='emacsclient -t -a emacs'
 alias ec='emacsclient -t'
 
-MAGENTA="\[\033[0;35m\]"
+# 31-37
+RED="\[\033[0;31m\]"
+GREEN="\[\033[0;32m\]"
 YELLOW="\[\033[0;33m\]"
 BLUE="\[\033[34m\]"
-LIGHT_GRAY="\[\033[0;37m\]"
+MAGENTA="\[\033[0;35m\]"
 CYAN="\[\033[0;36m\]"
-GREEN="\[\033[0;32m\]"
+WHITE="\[\033[0;37m\]"
+
 GIT_PS1_SHOWDIRTYSTATE=true
 export LS_OPTIONS='--color=auto'
 export CLICOLOR='Yes'
@@ -45,7 +48,7 @@ export LSCOLORS=gxfxbEaEBxxEhEhBaDaCaD
 export LC_ALL=en_US.UTF-8
 export LANG=en_us.UTF-8
 
-export PS1=$LIGHT_GRAY"\u@\h"'$(
+export PS1=$WHITE"\u@\h"'$(
     if [[ $(__git_ps1) =~ \*\)$ ]]
     # a file has been modified but not added
     then echo "'$YELLOW'"$(__git_ps1 " (%s)")
@@ -54,7 +57,7 @@ export PS1=$LIGHT_GRAY"\u@\h"'$(
     then echo "'$MAGENTA'"$(__git_ps1 " (%s)")
     # the state is clean, changes are commited
     else echo "'$CYAN'"$(__git_ps1 " (%s)")
-    fi)'$BLUE" \w"$GREEN": "
+    fi)'$RED" \w"$GREEN": "
 
 # AWS
 export AWS_DEFAULT_PROFILE=eu-central-1
