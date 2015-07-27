@@ -16,6 +16,9 @@ eval "$(rbenv init -)"
 export PIP_REQUIRE_VIRTUALENV=true
 export PIP_DOWNLOAD_CACHE=$HOME/.pip/cache
 
+# Docker
+export DOCKER_HOST="tcp://localhost:2375"
+
 # Functions
 docker_start () {
   boot2docker init
