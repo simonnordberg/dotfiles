@@ -27,6 +27,7 @@ docker_remove_all() {
 }
 
 export EDITOR='emacsclient -t'
+export ALTERNATE_EDITOR=vim
 
 # 31-37
 RED="\[\033[0;31m\]"
