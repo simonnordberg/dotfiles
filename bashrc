@@ -6,10 +6,6 @@ source ~/.git-prompt.sh
 export PATH=~/bin:/usr/local/bin:/usr/local/sbin:$HOME/.rvm/bin:/usr/local/heroku/bin:$PATH
 export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
 
-# JBoss
-export JBOSS_HOME=/usr/local/opt/wildfly-as/libexec
-export PATH=${PATH}:${JBOSS_HOME}/bin
-
 eval "$(rbenv init -)"
 
 # Python
@@ -30,8 +26,7 @@ docker_remove_all() {
   docker rm `docker ps --no-trunc -aq`
 }
 
-export EDITOR='emacsclient -t -a emacs'
-alias ec='emacsclient -t'
+export EDITOR='emacsclient -t'
 
 # 31-37
 RED="\[\033[0;31m\]"
@@ -63,5 +58,4 @@ export PS1=$WHITE"\u@\h"'$(
     fi)'$RED" \w"$GREEN": "
 
 # AWS
-export AWS_DEFAULT_PROFILE=eu-central-1
-
+export AWS_DEFAULT_PROFILE=eu-west-1
