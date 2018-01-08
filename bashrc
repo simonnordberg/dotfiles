@@ -2,29 +2,31 @@
 source ~/.git-completion.bash
 source ~/.git-prompt.sh
 
+# Google SDK
+source ~/code/lib/google-cloud-sdk/completion.bash.inc
+source ~/code/lib/google-cloud-sdk/path.bash.inc
+
+# Go
+export GOPATH=$HOME/go
+
 # Misc
-export PATH=~/bin:/usr/local/bin:/usr/local/sbin:$HOME/.rvm/bin:/usr/local/heroku/bin:$PATH
+export PATH=~/bin:$GOPATH/bin:/usr/local/bin:/usr/local/sbin:$HOME/.rvm/bin:/usr/local/heroku/bin:$PATH
 export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
 
 eval "$(rbenv init -)"
 
+# Bash completion
+if [ -f $(brew --prefix)/etc/bash_completion ]; then
+    . $(brew --prefix)/etc/bash_completion
+fi
+
 # Python
 export PIP_REQUIRE_VIRTUALENV=true
 export PIP_DOWNLOAD_CACHE=$HOME/.pip/cache
+export SCRAPY_PYTHON_SHELL=ptpython
 
-# Docker
-export DOCKER_HOST="tcp://localhost:2375"
-
-# Functions
-docker_start () {
-  boot2docker init
-  boot2docker start
-  $(boot2docker shellinit)
-}
-
-docker_remove_all() {
-  docker rm `docker ps --no-trunc -aq`
-}
+# Android
+export ANDROID_HOME=/usr/local/opt/android-sdk
 
 export EDITOR='emacsclient -t'
 export ALTERNATE_EDITOR=vim
@@ -60,3 +62,5 @@ export PS1=$WHITE"\u@\h"'$(
 
 # AWS
 export AWS_DEFAULT_PROFILE=eu-west-1
+
+source ~/.bash.credentials
