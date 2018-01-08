@@ -1,3 +1,5 @@
+SCRIPT_DIR="$(cd "$(dirname $(realpath "${BASH_SOURCE[0]}"))" && pwd -P)"
+
 on_osx_init() {
 	export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
 	export ANDROID_HOME=/usr/local/opt/android-sdk
@@ -13,10 +15,8 @@ on_linux_init() {
 	:		
 }
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-source $DIR/git-completion.bash
-source $DIR/git-prompt.sh
+source $SCRIPT_DIR/git-completion.bash
+source $SCRIPT_DIR/git-prompt.sh
 
 if [ -e ~/.bash.credentials ]; then
 	source ~/.bash.credentials
