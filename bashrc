@@ -1,33 +1,39 @@
-# Git
-source ~/.git-completion.bash
-source ~/.git-prompt.sh
+on_osx_init() {
+	export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
+	export ANDROID_HOME=/usr/local/opt/android-sdk
+	eval "$(rbenv init -)"
 
-# Google SDK
-source ~/code/lib/google-cloud-sdk/completion.bash.inc
-source ~/code/lib/google-cloud-sdk/path.bash.inc
+	# Bash completion
+	if [ -f $(brew --prefix)/etc/bash_completion ]; then
+    	. $(brew --prefix)/etc/bash_completion
+	fi
+}
+
+on_linux_init() {
+	:		
+}
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+source $DIR/git-completion.bash
+source $DIR/git-prompt.sh
+
+if [ -e ~/.bash.credentials ]; then
+	source ~/.bash.credentials
+fi
+
+if [ -e ~/code/lib/google-cloud-sdk ]; then
+    source ~/code/lib/google-cloud-sdk/completion.bash.inc
+    source ~/code/lib/google-cloud-sdk/path.bash.inc
+fi
 
 # Go
 export GOPATH=$HOME/go
-
-# Misc
+export AWS_DEFAULT_PROFILE=eu-west-1
 export PATH=~/bin:$GOPATH/bin:/usr/local/bin:/usr/local/sbin:$HOME/.rvm/bin:/usr/local/heroku/bin:$PATH
-export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
-
-eval "$(rbenv init -)"
-
-# Bash completion
-if [ -f $(brew --prefix)/etc/bash_completion ]; then
-    . $(brew --prefix)/etc/bash_completion
-fi
-
-# Python
 export PIP_REQUIRE_VIRTUALENV=true
 export PIP_DOWNLOAD_CACHE=$HOME/.pip/cache
 export SCRAPY_PYTHON_SHELL=ptpython
-
-# Android
-export ANDROID_HOME=/usr/local/opt/android-sdk
-
 export EDITOR='emacsclient -t'
 export ALTERNATE_EDITOR=vim
 
@@ -40,7 +46,7 @@ MAGENTA="\[\033[0;35m\]"
 CYAN="\[\033[0;36m\]"
 WHITE="\[\033[0;37m\]"
 
-GIT_PS1_SHOWDIRTYSTATE=true
+export GIT_PS1_SHOWDIRTYSTATE=true
 export LS_OPTIONS='--color=auto'
 export CLICOLOR='Yes'
 export LSCOLORS=gxfxbEaEBxxEhEhBaDaCaD
@@ -60,7 +66,8 @@ export PS1=$WHITE"\u@\h"'$(
     else echo "'$CYAN'"$(__git_ps1 " (%s)")
     fi)'$RED" \w"$GREEN": "
 
-# AWS
-export AWS_DEFAULT_PROFILE=eu-west-1
-
-source ~/.bash.credentials
+case "$OSTYPE" in
+  	darwin*)	on_osx_init ;; 
+  	linux*) 	on_linux_init ;;
+  	*) 			;;
+esac
