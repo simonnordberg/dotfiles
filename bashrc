@@ -1,33 +1,40 @@
 SCRIPT_DIR="$(cd "$(dirname $(realpath "${BASH_SOURCE[0]}"))" && pwd -P)"
 
 on_osx_init() {
-	export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
-	export ANDROID_HOME=/usr/local/opt/android-sdk
-	eval "$(rbenv init -)"
+    export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
+    export ANDROID_HOME=/usr/local/opt/android-sdk
+    eval "$(rbenv init -)"
 
-	# Bash completion
-	if [ -f $(brew --prefix)/etc/bash_completion ]; then
+    # Bash completion
+    if [ -f $(brew --prefix)/etc/bash_completion ]; then
     	. $(brew --prefix)/etc/bash_completion
-	fi
+    fi
 }
 
 on_linux_init() {
-	:		
+    export CUDA_HOME=/usr/local/cuda-8.0
+    export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+    export PATH="$HOME/.local/bin/:$PATH"
+    export PATH=/usr/local/cuda-8.0/bin${PATH:+:${PATH}}
 }
 
-source $SCRIPT_DIR/git-completion.bash
-source $SCRIPT_DIR/git-prompt.sh
-
-if [ -e ~/.bash.credentials ]; then
-	source ~/.bash.credentials
+if [ -f $SCRIPT_DIR/git-completion.bash ]; then
+    source $SCRIPT_DIR/git-completion.bash
 fi
 
-if [ -e ~/code/lib/google-cloud-sdk ]; then
+if [ -f $SCRIPT_DIR/git-prompt.sh ]; then
+    source $SCRIPT_DIR/git-prompt.sh
+fi
+
+if [ -f ~/.bash.credentials ]; then
+    source ~/.bash.credentials
+fi
+
+if [ -d ~/code/lib/google-cloud-sdk ]; then
     source ~/code/lib/google-cloud-sdk/completion.bash.inc
     source ~/code/lib/google-cloud-sdk/path.bash.inc
 fi
 
-# Go
 export GOPATH=$HOME/go
 export AWS_DEFAULT_PROFILE=eu-west-1
 export PATH=~/bin:$GOPATH/bin:/usr/local/bin:/usr/local/sbin:$HOME/.rvm/bin:/usr/local/heroku/bin:$PATH
@@ -67,7 +74,21 @@ export PS1=$WHITE"\u@\h"'$(
     fi)'$RED" \w"$GREEN": "
 
 case "$OSTYPE" in
-  	darwin*)	on_osx_init ;; 
-  	linux*) 	on_linux_init ;;
-  	*) 			;;
+    darwin*)  on_osx_init ;;
+    linux*)   on_linux_init ;;
+    *)        ;;
 esac
+
+HISTCONTROL=ignoreboth
+HISTSIZE=10000
+HISTFILESIZE=20000
+shopt -s checkwinsize
+shopt -s histappend
+
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        . /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+        . /etc/bash_completion
+    fi
+fi
