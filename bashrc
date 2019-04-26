@@ -30,6 +30,10 @@ if [ -f ~/.bash.credentials ]; then
     source ~/.bash.credentials
 fi
 
+if [ -f ~/.bash.local ]; then
+    source ~/.bash.local
+fi
+
 if [ -d ~/code/lib/google-cloud-sdk ]; then
     source ~/code/lib/google-cloud-sdk/completion.bash.inc
     source ~/code/lib/google-cloud-sdk/path.bash.inc
@@ -41,7 +45,7 @@ export PATH=~/bin:$GOPATH/bin:/usr/local/bin:/usr/local/sbin:$HOME/.rvm/bin:/usr
 export PIP_REQUIRE_VIRTUALENV=true
 export PIP_DOWNLOAD_CACHE=$HOME/.pip/cache
 export SCRAPY_PYTHON_SHELL=ptpython
-export EDITOR='emacsclient -t'
+export EDITOR='nvim'
 export ALTERNATE_EDITOR=vim
 
 function docker_cleanup!() {
@@ -86,6 +90,11 @@ case "$OSTYPE" in
     *)        ;;
 esac
 
+generate_password() {
+    length=$((${1:-23} + 1))
+    openssl rand -base64 32 | sed 's/[^[:alnum:]]//g' | colrm $length
+}
+
 HISTCONTROL=ignoreboth
 HISTSIZE=10000
 HISTFILESIZE=20000
@@ -99,3 +108,7 @@ if ! shopt -oq posix; then
         . /etc/bash_completion
     fi
 fi
+
+# Start or re-use a gpg-agent.
+gpgconf --launch gpg-agent
+export SSH_AUTH_SOCK=$HOME/.gnupg/S.gpg-agent.ssh
