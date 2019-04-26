@@ -1,6 +1,6 @@
 SCRIPT_DIR="$(cd "$(dirname $(realpath "${BASH_SOURCE[0]}"))" && pwd -P)"
 
-on_osx_init() {
+function on_osx_init() {
     export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
     export ANDROID_HOME=/usr/local/opt/android-sdk
     eval "$(rbenv init -)"
@@ -11,7 +11,7 @@ on_osx_init() {
     fi
 }
 
-on_linux_init() {
+function on_linux_init() {
     export CUDA_HOME=/usr/local/cuda-8.0
     export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
     export PATH="$HOME/.local/bin/:$PATH"
@@ -43,6 +43,13 @@ export PIP_DOWNLOAD_CACHE=$HOME/.pip/cache
 export SCRAPY_PYTHON_SHELL=ptpython
 export EDITOR='emacsclient -t'
 export ALTERNATE_EDITOR=vim
+
+function docker_cleanup!() {
+    docker rm $(docker ps -a -q)
+    docker rmi $(docker images -q)
+    docker volume rm $(docker volume ls | awk '{print $2}')
+    rm -rf ~/Library/Containers/com.docker.docker/Data/*
+}
 
 # 31-37
 RED="\[\033[0;31m\]"
