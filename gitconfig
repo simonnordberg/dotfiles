@@ -5,3 +5,5 @@
 	email = simonn@spotify.com
 [commit]
 	gpgsign = true
+[pager]
+	branch = false
