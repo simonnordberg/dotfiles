@@ -1,0 +1,8 @@
+#!/usr/bin/env zsh
+
+PATH=/opt/homebrew/bin/:$PATH
+
+if command -v trash 1> /dev/null; then
+    find ~/Downloads -depth 1 -mtime +48h -exec trash {} \; 2>&1 
+    find ~/tmp -depth 1 -mtime +48h -exec trash {} \; 2>&1 
+fi
