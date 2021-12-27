@@ -12,7 +12,7 @@ ENABLE_CORRECTION="false"
 
 plugins=(
     git
-    osx
+    macos 
     ruby
     dotenv
 )
