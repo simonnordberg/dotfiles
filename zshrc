@@ -1,6 +1,6 @@
 export PATH=/opt/homebrew/bin:$HOME/bin:/usr/local/bin:$PATH
 export ZSH="$HOME/.oh-my-zsh"
-export EDITOR='vim'
+export EDITOR='emacs -nw'
 
 export PYENV_ROOT="$HOME/.pyenv"
 export GOPATH=$HOME/go
@@ -65,9 +65,11 @@ alias j11='javahome 11'
 alias j17='javahome 17'
 alias j19='javahome 19'
 
+# VERSION={v1,v2,v3} weather <location>
 function weather() {
     [[ "$1" != "" ]] && LOCATION="$1" || LOCATION="Gothenburg"
-    curl --ipv4 "https://v2.wttr.in/${LOCATION}"
+    [[ "$VERSION" == "" ]] && VERSION="v2"
+    curl "https://${VERSION}.wttr.in/${LOCATION}"
 }
 
 autoload -U +X bashcompinit && bashcompinit
