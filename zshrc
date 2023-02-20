@@ -3,7 +3,14 @@ export ZSH="$HOME/.oh-my-zsh"
 export EDITOR='vim'
 
 export PYENV_ROOT="$HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
+export GOPATH=$HOME/go
+export GOROOT="$(brew --prefix golang)/libexec"
+
+export PATH="${GOPATH}/bin:${GOROOT}/bin:${PYENV_ROOT}/bin:$PATH"
+
+export AWS_DEFAULT_PROFILE=legacy-sso
+
+mkdir -p $HOME/go/{bin,src,pkg}
 
 ZSH_THEME="blinks"
 CASE_SENSITIVE="true"
@@ -12,7 +19,7 @@ ENABLE_CORRECTION="false"
 
 plugins=(
     git
-    macos 
+    macos
     ruby
     dotenv
 )
@@ -21,8 +28,8 @@ fpath=(/usr/local/share/zsh-completions $fpath)
 source $ZSH/oh-my-zsh.sh
 
 if [ -f $(brew --prefix)/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/path.zsh.inc ]; then
-    source $(brew --prefix)/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/path.zsh.inc 
-fi 
+    source $(brew --prefix)/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/path.zsh.inc
+fi
 
 if command -v gpgconf 1> /dev/null; then
   export GPG_TTY="$(tty)"
@@ -47,3 +54,21 @@ if command -v rbenv 1>/dev/null 2>&1; then
     eval "$(rbenv init -)"
     export PATH="$HOME/.local/share/gem/ruby/3.0.0/bin:$PATH"
 fi
+
+javahome() {
+    unset JAVA_HOME
+    export JAVA_HOME=$(/usr/libexec/java_home -v "$1");
+    java -version
+}
+
+alias j11='javahome 11'
+alias j17='javahome 17'
+alias j19='javahome 19'
+
+function weather() {
+    [[ "$1" != "" ]] && LOCATION="$1" || LOCATION="Gothenburg"
+    curl --ipv4 "https://v2.wttr.in/${LOCATION}"
+}
+
+autoload -U +X bashcompinit && bashcompinit
+complete -o nospace -C /opt/homebrew/bin/terraform terraform
