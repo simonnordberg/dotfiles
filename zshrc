@@ -74,3 +74,10 @@ function weather() {
 
 autoload -U +X bashcompinit && bashcompinit
 complete -o nospace -C /opt/homebrew/bin/terraform terraform
+
+function awsdi() {
+    aws ec2 describe-instances \
+        --filter "Name=instance-state-name,Values=running" \
+        --query "Reservations[*].Instances[*].[Tags[?Key=='Name'].Value|[0], PublicIpAddress, State.Name]" \
+        --output text
+}
