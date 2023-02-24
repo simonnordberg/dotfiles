@@ -1,9 +1,7 @@
 [user]
 	name = Simon Nordberg
-	useConfigOnly = true
-	signingkey = 2FAD9B5DADC41C0770ECF02E975F71A20A755B15
-	email = simonn@spotify.com
-[commit]
-	gpgsign = true
+	email = simon@simonnordberg.com
 [pager]
 	branch = false
+[alias]
+        tree = log --all --graph --decorate --pretty=oneline --abbrev-commit
