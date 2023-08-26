@@ -1,10 +1,9 @@
-export PATH=/opt/homebrew/bin:$HOME/bin:/usr/local/bin:$PATH
+export PATH=/opt/homebrew/bin:$HOME/bin:/usr/local/bin:/usr/local/go/bin:$PATH
 export ZSH="$HOME/.oh-my-zsh"
 export EDITOR='emacs -nw'
 
 export PYENV_ROOT="$HOME/.pyenv"
 export GOPATH=$HOME/go
-export GOROOT="$(brew --prefix golang)/libexec"
 
 export PATH="${GOPATH}/bin:${GOROOT}/bin:${PYENV_ROOT}/bin:$PATH"
 
@@ -27,18 +26,19 @@ plugins=(
 fpath=(/usr/local/share/zsh-completions $fpath)
 source $ZSH/oh-my-zsh.sh
 
-if [ -f $(brew --prefix)/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/path.zsh.inc ]; then
+if command -v brew 1> /dev/null; then
+  if [ -f $(brew --prefix)/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/path.zsh.inc ]; then
     source $(brew --prefix)/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/path.zsh.inc
+  fi
+
+  eval $(brew shellenv)
+  export GOROOT="$(brew --prefix golang)/libexec"
 fi
 
 if command -v gpgconf 1> /dev/null; then
   export GPG_TTY="$(tty)"
   export SSH_AUTH_SOCK="$(gpgconf --list-dirs agent-ssh-socket)"
   gpgconf --launch gpg-agent
-fi
-
-if command -v brew 1> /dev/null; then
-    eval $(brew shellenv)
 fi
 
 if command -v jenv 1> /dev/null; then
@@ -80,4 +80,26 @@ function awsdi() {
         --filter "Name=instance-state-name,Values=running" \
         --query "Reservations[*].Instances[*].[Tags[?Key=='Name'].Value|[0], PublicIpAddress, State.Name]" \
         --output text
+}
+
+# fp auto-completion
+() {
+  # A list of each flatpak app name in lowercase.
+  # (First word of the name to be exact, so "Brave Browser" will be "brave").
+  local FLATPAK_APPS=$(flatpak list --app | cut -f1 | awk '{print tolower($1)}')
+  complete -W $FLATPAK_APPS fp
+}
+
+# Run Flatpak apps from CLI, e.g.: "fp okular"
+function fp() {
+  app=$(flatpak list --app | cut -f2 | awk -v app="$1" '(tolower($NF) ~ tolower(app))')
+
+  # Abort if the app name was not entered
+  test -z $1 && printf "Enter an app to fp.\n\$ fp <app>\n\nINSTALLED APPS\n$app\n" && return;
+
+  # Remove app name from "$@" array
+  shift 1;
+
+  # Run the flatpak app asynchronous and don't show any stdout and stderr
+  ( flatpak run "$app" "$@" &> /dev/null & )
 }
