@@ -1,6 +1,6 @@
 export PATH=/opt/homebrew/bin:$HOME/bin:/usr/local/bin:/usr/local/go/bin:$PATH
 export ZSH="$HOME/.oh-my-zsh"
-export EDITOR='emacs -nw'
+export EDITOR='vim'
 
 export PYENV_ROOT="$HOME/.pyenv"
 export GOPATH=$HOME/go
