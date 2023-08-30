@@ -121,4 +121,8 @@ bindswitch --reload --locked lid:off output $laptop enable
 
 exec_always /home/simon/.config/sway/lidctl.sh
 
+# https://github.com/swaywm/sway/wiki/GTK-3-settings-on-Wayland
+exec_always /home/simon/.config/sway/themectl.sh night
+bindsym $mod+m exec /home/simon/.config/sway/themectl.sh toggle
+
 include /etc/sway/config.d/*
