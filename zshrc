@@ -6,8 +6,8 @@ export PYENV_ROOT="$HOME/.pyenv"
 export GOPATH=$HOME/go
 
 export PATH="${GOPATH}/bin:${GOROOT}/bin:${PYENV_ROOT}/bin:$PATH"
-
 export AWS_DEFAULT_PROFILE=legacy-sso
+export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
 
 mkdir -p $HOME/go/{bin,src,pkg}
 
@@ -21,6 +21,7 @@ plugins=(
     macos
     ruby
     dotenv
+    fzf
 )
 
 fpath=(/usr/local/share/zsh-completions $fpath)
@@ -48,6 +49,10 @@ fi
 if command -v pyenv 1>/dev/null 2>&1; then
     eval "$(pyenv init -)"
     eval "$(pyenv virtualenv-init -)"
+fi
+
+if [ -f ~/.rbenv/bin/rbenv ]; then
+    eval "$(~/.rbenv/bin/rbenv init - zsh)"
 fi
 
 if command -v rbenv 1>/dev/null 2>&1; then
@@ -90,16 +95,3 @@ function awsdi() {
   complete -W $FLATPAK_APPS fp
 }
 
-# Run Flatpak apps from CLI, e.g.: "fp okular"
-function fp() {
-  app=$(flatpak list --app | cut -f2 | awk -v app="$1" '(tolower($NF) ~ tolower(app))')
-
-  # Abort if the app name was not entered
-  test -z $1 && printf "Enter an app to fp.\n\$ fp <app>\n\nINSTALLED APPS\n$app\n" && return;
-
-  # Remove app name from "$@" array
-  shift 1;
-
-  # Run the flatpak app asynchronous and don't show any stdout and stderr
-  ( flatpak run "$app" "$@" &> /dev/null & )
-}
