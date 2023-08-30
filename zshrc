@@ -95,3 +95,21 @@ function awsdi() {
   complete -W $FLATPAK_APPS fp
 }
 
+
+function togglescheme() {
+  if command -v theme.sh 1>/dev/null 2>&1; then
+      local scheme=$(/home/simon/.config/sway/themectl.sh query)
+
+      if [ "$scheme" = "night" ];then
+          theme.sh gruvbox-dark
+      elif [ "$scheme" = "day" ]; then
+          theme.sh gruvbox-light-soft
+      fi
+  fi
+}
+
+togglescheme
+
+TRAPUSR1() {
+    togglescheme
+}
