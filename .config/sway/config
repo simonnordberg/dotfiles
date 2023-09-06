@@ -98,8 +98,7 @@ input "type:keyboard" {
     xkb_layout se,us
     repeat_delay 250
     repeat_rate 45
-    xkb_options ctrl:nocaps
-#,grp:alt_shift_toggle
+    xkb_options ctrl:nocaps,grp:rctrl_toggle
 }
 
 input "type:touchpad" {
