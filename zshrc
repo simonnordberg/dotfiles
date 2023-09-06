@@ -57,7 +57,6 @@ fi
 
 if command -v rbenv 1>/dev/null 2>&1; then
     eval "$(rbenv init -)"
-    export PATH="$HOME/.local/share/gem/ruby/3.0.0/bin:$PATH"
 fi
 
 javahome() {
@@ -94,7 +93,6 @@ function awsdi() {
   local FLATPAK_APPS=$(flatpak list --app | cut -f1 | awk '{print tolower($1)}')
   complete -W $FLATPAK_APPS fp
 }
-
 
 function togglescheme() {
   if command -v theme.sh 1>/dev/null 2>&1; then
