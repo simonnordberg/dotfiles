@@ -5,7 +5,8 @@ battery_info=$(upower --show-info $(upower --enumerate | grep 'BAT') | egrep "st
 audio_info=$(pactl get-sink-volume @DEFAULT_SINK@ | awk '{print $5}')
 
 # Keyboard layout
-layout=$(swaymsg -t get_inputs | jq -r '.[0].xkb_active_layout_name')
+layout=$(swaymsg -t get_inputs | jq -r 'map(select(.xkb_active_layout_name != null)) | .[0].xkb_active_layout_name')
+
 case $layout in
     Swedish)
         layout_icon="🇸🇪"
