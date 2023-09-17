@@ -7,6 +7,8 @@ audio_info=$(pactl get-sink-volume @DEFAULT_SINK@ | awk '{print $5}')
 # Keyboard layout
 layout=$(swaymsg -t get_inputs | jq -r 'map(select(.xkb_active_layout_name != null)) | .[0].xkb_active_layout_name')
 
+wifi="$( (iwgetid | grep -o '"[^"]\+"' && echo 📡) | xargs)"
+
 case $layout in
     Swedish)
         layout_icon="🇸🇪"
@@ -19,4 +21,4 @@ case $layout in
         ;;
 esac
 
-echo $audio_info 🔉 $battery_info 🔋 $date_formatted $layout_icon
+echo $wifi $audio_info 🔉 $battery_info 🔋 $date_formatted $layout_icon
