@@ -1,24 +1,21 @@
 #!/bin/sh
 
-date_formatted=$(date +'%Y-%m-%d %H:%M')
-battery_info=$(upower --show-info $(upower --enumerate | grep 'BAT') | egrep "state|percentage" | awk '{print $2}')
-audio_info=$(pactl get-sink-volume @DEFAULT_SINK@ | awk '{print $5}')
+date="📅 $(date +'%Y-%m-%d %H:%M')"
+battery="🔋 $(upower --show-info $(upower --enumerate | grep 'BAT') | egrep "state|percentage" | awk '{print $2}' | xargs)"
+audio="🔉 $(pactl get-sink-volume @DEFAULT_SINK@ | awk '{print $5}')"
+wifi="📡 $( (iwgetid | grep -o '"[^"]\+"') | xargs)"
+keyboard=$(swaymsg -t get_inputs | jq -r 'map(select(.xkb_active_layout_name != null)) | .[0].xkb_active_layout_name')
 
-# Keyboard layout
-layout=$(swaymsg -t get_inputs | jq -r 'map(select(.xkb_active_layout_name != null)) | .[0].xkb_active_layout_name')
-
-wifi="$( (iwgetid | grep -o '"[^"]\+"' && echo 📡) | xargs)"
-
-case $layout in
+case $keyboard in
     Swedish)
-        layout_icon="🇸🇪"
+        keyboard="🇸🇪"
         ;;
     English*)
-        layout_icon="🇺🇸"
+        keyboard="🇺🇸"
         ;;
     *)
-        layout_icon="❓"
+        keyboard="❓"
         ;;
 esac
 
-echo $wifi $audio_info 🔉 $battery_info 🔋 $date_formatted $layout_icon
+echo "$wifi\t$audio\t$battery\t$date\t$keyboard"
