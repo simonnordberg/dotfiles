@@ -18,4 +18,4 @@ case $keyboard in
         ;;
 esac
 
-echo "$wifi\t$audio\t$battery\t$date\t$keyboard"
+echo "$wifi  $audio  $battery  $date  $keyboard"
