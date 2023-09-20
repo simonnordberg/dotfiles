@@ -79,7 +79,7 @@ bindsym Shift+Control+Print exec grim -o $(swaymsg -t get_outputs | jq -r '.[] |
 
 bar {
     position top
-    status_command while /home/simon/.config/sway/status.sh; do sleep 1; done
+    status_command while $HOME/.config/sway/status.sh; do sleep 1; done
     colors {
         statusline #ffffff
         background #323232
@@ -98,8 +98,7 @@ input "type:keyboard" {
     xkb_layout se,us
     repeat_delay 250
     repeat_rate 45
-    xkb_options ctrl:nocaps,grp:alt_shift_toggle
-    # grp:rctrl_toggle
+    xkb_options ctrl:nocaps,grp:rctrl_toggle
 }
 
 input "type:touchpad" {
@@ -120,10 +119,10 @@ set $laptop eDP-1
 bindswitch --reload --locked lid:on output $laptop disable
 bindswitch --reload --locked lid:off output $laptop enable
 
-exec_always /home/simon/.config/sway/lidctl.sh
+exec_always $HOME/.config/sway/lidctl.sh
 
 # https://github.com/swaywm/sway/wiki/GTK-3-settings-on-Wayland
-exec_always /home/simon/.config/sway/themectl.sh night
-bindsym $mod+m exec /home/simon/.config/sway/themectl.sh toggle
+exec_always $HOME/.config/sway/themectl.sh night
+bindsym $mod+m exec $HOME/.config/sway/themectl.sh toggle
 
 include /etc/sway/config.d/*
