@@ -1,4 +1,4 @@
-export PATH=/opt/homebrew/bin:$HOME/bin:/usr/local/bin:/usr/local/go/bin:$PATH
+export PATH=/opt/homebrew/bin:$HOME/bin:/usr/local/bin:/usr/local/go/bin:$HOME/.cargo/bin:$PATH
 export ZSH="$HOME/.oh-my-zsh"
 
 # EDITOR
@@ -79,6 +79,9 @@ alias j11='javahome 11'
 alias j17='javahome 17'
 alias j19='javahome 19'
 
+autoload -U +X bashcompinit && bashcompinit
+complete -o nospace -C /opt/homebrew/bin/terraform terraform
+
 # VERSION={v1,v2,v3} weather <location>
 function weather() {
     [[ "$1" != "" ]] && LOCATION="$1" || LOCATION="Gothenburg"
@@ -86,14 +89,19 @@ function weather() {
     curl "https://${VERSION}.wttr.in/${LOCATION}"
 }
 
-autoload -U +X bashcompinit && bashcompinit
-complete -o nospace -C /opt/homebrew/bin/terraform terraform
-
 function awsdi() {
     aws ec2 describe-instances \
         --filter "Name=instance-state-name,Values=running" \
         --query "Reservations[*].Instances[*].[Tags[?Key=='Name'].Value|[0], PublicIpAddress, State.Name]" \
         --output text
+}
+
+function pomodoro() {
+    local msg="Take a break"
+    local min="${1:-25}"
+    local sec=$((min * 60))
+
+    sleep $min && echo "$msg" && notify-send -u critical -t 0 "Pomodoro" "$msg"
 }
 
 # fp auto-completion
