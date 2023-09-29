@@ -1,0 +1,14 @@
+#!/bin/bash
+#
+# Find and run most recent version of IntelliJ PyCharm
+
+# Flavor of PyCharm: pycharm-community, pycharm-professional
+FLAVOR="pycharm-community"
+
+# Base directory to search in
+BASE_DIR="/opt"
+
+latest=$(find /opt -name "pycharm.sh" -print 2> /dev/null | grep "$FLAVOR" | sort -Vr | head -n 1)
+if [ -e "$latest" ]; then
+    sh "$latest"
+fi

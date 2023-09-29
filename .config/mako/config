@@ -1,0 +1,5 @@
+default-timeout=5000
+anchor=top-right
+
+# [urgency=high]
+# ignore-timeout=1

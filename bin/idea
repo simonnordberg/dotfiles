@@ -1,8 +1,8 @@
 #!/bin/bash
-# 
+#
 # Find and run most recent version of IntelliJ IDEA
 
-# Flavor of IDEA: idea-IC, idea-IU"
+# Flavor of IDEA: idea-IC, idea-IU
 FLAVOR="idea-IC"
 
 # Base directory to search in
