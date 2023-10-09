@@ -41,3 +41,4 @@ ln -sn $SCRIPT_DIR/.config/waybar $HOME/.config/waybar
 mkdir -p $HOME/.config/systemd/user
 ln -sn $SCRIPT_DIR/.config/systemd/user/emacs.service $HOME/.config/systemd/user/emacs.service
 
+echo "Now remember to install the system wide stuff, i.e. sudo $SCRIPT_DIR/setup-sudo.sh"
