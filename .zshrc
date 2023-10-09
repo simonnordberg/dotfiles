@@ -101,7 +101,7 @@ function pomodoro() {
     local min="${1:-25}"
     local sec=$((min * 60))
 
-    sleep $min && echo "$msg" && notify-send -u critical -t 0 "Pomodoro" "$msg"
+    sleep $sec && echo "$msg" && notify-send -u critical -t 0 "Pomodoro" "$msg"
 }
 
 # fp auto-completion
