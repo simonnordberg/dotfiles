@@ -19,6 +19,10 @@ export PATH="${GOPATH}/bin:${GOROOT}/bin:${PYENV_ROOT}/bin:$PATH"
 export AWS_DEFAULT_PROFILE=legacy-sso
 export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
 
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
 mkdir -p $HOME/go/{bin,src,pkg}
 
 ZSH_THEME="blinks"
@@ -96,13 +100,13 @@ function awsdi() {
         --output text
 }
 
-function pomodoro() {
-    local msg="Take a break"
-    local min="${1:-25}"
-    local sec=$((min * 60))
-
-    sleep $sec && echo "$msg" && notify-send -u critical -t 0 "Pomodoro" "$msg"
-}
+#function pomodoro() {
+#    local msg="Take a break"
+#    local min="${1:-25}"
+#    local sec=$((min * 60))#
+#
+#    sleep $sec && echo "$msg" && notify-send -u critical -t 0 "Pomodoro" "$msg"
+#}
 
 # fp auto-completion
 () {

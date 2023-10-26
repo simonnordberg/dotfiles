@@ -5,3 +5,5 @@
 	branch = false
 [alias]
         tree = log --all --graph --decorate --pretty=oneline --abbrev-commit
+[init]
+	defaultBranch = main

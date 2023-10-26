@@ -7,6 +7,13 @@ vpn="vpn: $(mullvad status | grep -oP 'Connected to \K([^[:space:]]+)|Disconnect
 wifi="📡 $( (iwgetid | grep -o '"[^"]\+"') | xargs) ($vpn)"
 keyboard=$(swaymsg -t get_inputs | jq -r 'map(select(.xkb_active_layout_name != null)) | .[0].xkb_active_layout_name')
 
+# https://github.com/open-pomodoro/openpomodoro-cli
+if command -v pomodoro 1> /dev/null; then
+    pomodoro="$(pomodoro status --format "🍅 %!r")"
+else
+    pomodoro=""
+fi
+
 case $keyboard in
     Swedish)
         keyboard="🇸🇪"
@@ -19,4 +26,4 @@ case $keyboard in
         ;;
 esac
 
-echo "$wifi  $audio  $battery  $date  $keyboard"
+echo "$pomodoro  $wifi  $audio  $battery  $date  $keyboard"
