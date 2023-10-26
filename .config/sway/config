@@ -79,7 +79,7 @@ bindsym Shift+Control+Print exec grim -o $(swaymsg -t get_outputs | jq -r '.[] |
 
 bar {
     position top
-    status_command while $HOME/.config/sway/status.sh; do sleep 5; done
+    status_command while $HOME/.config/sway/status.sh; do sleep 1; done
     colors {
         statusline #ffffff
         background #323232

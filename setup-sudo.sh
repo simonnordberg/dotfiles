@@ -12,6 +12,11 @@ ln -sn $SCRIPT_DIR/root/usr/local/bin/rubymine /usr/local/bin/rubymine
 ln -sn $SCRIPT_DIR/root/usr/local/bin/idea /usr/local/bin/idea
 ln -sn $SCRIPT_DIR/root/usr/local/bin/pycharm /usr/local/bin/pycharm
 ln -sn $SCRIPT_DIR/root/usr/local/bin/fp /usr/local/bin/fp
+ln -sn $SCRIPT_DIR/root/usr/local/bin/chrome /usr/local/bin/chrome
+ln -sn $SCRIPT_DIR/root/usr/local/bin/firefox /usr/local/bin/firefox
+ln -sn $SCRIPT_DIR/root/usr/local/bin/spotify /usr/local/bin/spotify
+ln -sn $SCRIPT_DIR/root/usr/local/bin/slack /usr/local/bin/slack
+
 
 echo "Installing etc config"
 ln -sn $SCRIPT_DIR/root/etc/initramfs-tools/conf.d/resume /etc/initramfs-tools/conf.d/resume
@@ -29,7 +34,7 @@ if [ $swap -lt $mem ]; then
     echo "Resize and try again."
     exit
 fi
-    
+
 echo "Trying to update the resume block id"
 swapuuid=$(blkid | grep swap | grep -oP ' UUID="\K[^"]+')
 
