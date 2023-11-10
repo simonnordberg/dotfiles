@@ -17,6 +17,8 @@ ln -sn $SCRIPT_DIR/root/usr/local/bin/firefox /usr/local/bin/firefox
 ln -sn $SCRIPT_DIR/root/usr/local/bin/spotify /usr/local/bin/spotify
 ln -sn $SCRIPT_DIR/root/usr/local/bin/slack /usr/local/bin/slack
 
+echo "Installing wayland stuff (copy)"
+cp $SCRIPT_DIR/usr/share/wayland-sessions/sway-shell.desktop /usr/share/wayland-sessions/sway-shell.desktop
 
 echo "Installing etc config"
 ln -sn $SCRIPT_DIR/root/etc/initramfs-tools/conf.d/resume /etc/initramfs-tools/conf.d/resume

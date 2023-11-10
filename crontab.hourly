@@ -9,19 +9,16 @@ case "$(uname -sr)" in
         PATH=/opt/homebrew/bin/:$PATH
 
         if command -v trash 1> /dev/null; then
-            find ~/Downloads -depth 1 -mtime +48h -exec trash {} \; 2>&1 
-            find ~/tmp -depth 1 -mtime +48h -exec trash {} \; 2>&1 
+            find ~/Downloads -depth 1 -mtime +48h -exec trash {} \; 2>&1
+            find ~/tmp -depth 1 -mtime +48h -exec trash {} \; 2>&1
         fi
         ;;
 
     Linux*)
         echo "Cleaning [Downloads, tmp] for Linux"
         if command -v trash 1> /dev/null; then
-            find ~/Downloads -maxdepth 1 -mmin +2880 -printf '%p\n' -exec trash {} \; 2>&1 
-            find ~/tmp -maxdepth 1 -mmin +2880 -printf '%p\n' -exec trash {} \; 2>&1 
+            find ~/Downloads/ -maxdepth 1 -mmin +2880 -printf '%p\n' -exec trash {} \; 2>&1
+            find ~/tmp/ -maxdepth 1 -mmin +2880 -printf '%p\n' -exec trash {} \; 2>&1
         fi
         ;;
 esac
-
-
-

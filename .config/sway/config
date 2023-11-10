@@ -1,6 +1,8 @@
 # Variables
 set $mod Mod4
-set $term foot
+set $term "$HOME/bin/term"
+
+#set $term alacritty
 set $menu dmenu_path | dmenu "$@" | xargs swaymsg exec --
 set $laptop eDP-1
 
@@ -64,10 +66,10 @@ bindsym $mod+Shift+minus move scratchpad
 bindsym $mod+minus scratchpad show
 
 mode "resize" {
-    bindsym Left resize shrink width 64px
-    bindsym Down resize grow height 64px
-    bindsym Up resize shrink height 64px
-    bindsym Right resize grow width 64px
+    bindsym Left resize shrink width 128px
+    bindsym Down resize grow height 128px
+    bindsym Up resize shrink height 128px
+    bindsym Right resize grow width 128px
 
     bindsym Return mode "default"
     bindsym Escape mode "default"
