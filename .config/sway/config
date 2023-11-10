@@ -1,12 +1,11 @@
 # Variables
 set $mod Mod4
 set $term "$HOME/bin/term"
-
-#set $term alacritty
 set $menu dmenu_path | dmenu "$@" | xargs swaymsg exec --
 set $laptop eDP-1
 
 # Look and feel
+#font pango:Cantarell 10px
 font pango: "Roboto" Regular 10
 output * bg /home/simon/.config/sway/background.jpeg fill
 
@@ -80,13 +79,7 @@ bindsym Shift+Alt+Print exec grim -g "$(slurp)" - | wl-copy
 bindsym Shift+Control+Print exec grim -o $(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name') - | wl-copy
 
 bar {
-    position top
-    status_command while $HOME/.config/sway/status.sh; do sleep 1; done
-    colors {
-        statusline #ffffff
-        background #323232
-        inactive_workspace #32323200 #32323200 #5c5c5c
-    }
+    swaybar_command waybar
 }
 
 bindsym XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
