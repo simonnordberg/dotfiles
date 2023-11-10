@@ -11,6 +11,7 @@ if [ "$EUID" -eq 0 ]; then
 fi
 
 echo "Linking misc config"
+ln -sn $SCRIPT_DIR/bin $HOME/bin
 ln -sn $SCRIPT_DIR/.gitconfig $HOME/.gitconfig
 ln -sn $SCRIPT_DIR/.vimrc $HOME/.vimrc
 ln -sn $SCRIPT_DIR/.vim_runtime $HOME/.vim_runtime
@@ -21,6 +22,10 @@ if [ ! -d "$PRELUDE_INSTALL_DIR" ]; then
 else
     echo "Prelude already installed"
 fi
+
+echo "Configuring emacs"
+ln -sn $SCRIPT_DIR/.emacs.d/personal/theme.el \
+   $HOME/.emacs.d/personal/theme.el
 
 echo "Disabling tracker3"
 systemctl --user mask tracker-extract-3.service \
@@ -38,7 +43,17 @@ ln -sn $SCRIPT_DIR/.config/mako $HOME/.config/mako
 ln -sn $SCRIPT_DIR/.config/foot $HOME/.config/foot
 ln -sn $SCRIPT_DIR/.config/waybar $HOME/.config/waybar
 
+echo "Linking alacritty stuff, remember to install the terminfo"
+echo "See https://github.com/alacritty/alacritty/blob/master/INSTALL.md#post-build"
+ln -sn $SCRIPT_DIR/.config/alacritty $HOME/.config/alacritty
+
 mkdir -p $HOME/.config/systemd/user
-ln -sn $SCRIPT_DIR/.config/systemd/user/emacs.service $HOME/.config/systemd/user/emacs.service
+ln -sn $SCRIPT_DIR/.config/systemd/user/emacs.service \
+   $HOME/.config/systemd/user/emacs.service
+
+echo "Configuring shell"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+git clone https://github.com/mroth/evalcache \
+    $HOME/.oh-my-zsh/custom/plugins/evalcache
 
 echo "Now remember to install the system wide stuff, i.e. sudo $SCRIPT_DIR/setup-sudo.sh"

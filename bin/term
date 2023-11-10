@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if command -v alacritty >/dev/null 2>&1; then
+    exec alacritty "$@"
+elif command -v foot >/dev/null 2>&1; then
+    exec foot "$@"
+else
+    echo "No known terminal emulator found."
+    exit 1
+fi
+
