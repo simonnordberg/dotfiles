@@ -47,13 +47,22 @@ echo "Linking alacritty stuff, remember to install the terminfo"
 echo "See https://github.com/alacritty/alacritty/blob/master/INSTALL.md#post-build"
 ln -sn $SCRIPT_DIR/.config/alacritty $HOME/.config/alacritty
 
+echo "Configuring autostart"
 mkdir -p $HOME/.config/systemd/user
 ln -sn $SCRIPT_DIR/.config/systemd/user/emacs.service \
    $HOME/.config/systemd/user/emacs.service
+ln -sn $SCRIPT_DIR/.config/systemd/user/mullvad-gui.service \
+   $HOME/.config/systemd/user/mullvad-gui.service
+systemctl --user enable emacs mullvad-gui
 
 echo "Configuring shell"
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-git clone https://github.com/mroth/evalcache \
-    $HOME/.oh-my-zsh/custom/plugins/evalcache
+if [ ! -d $HOME/.oh-my-zsh ]; then
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+fi
+
+if [ ! -d $HOME/.oh-my-zsh/custom/plugins/evalcache ]; then
+    git clone https://github.com/mroth/evalcache \
+        $HOME/.oh-my-zsh/custom/plugins/evalcache
+fi
 
 echo "Now remember to install the system wide stuff, i.e. sudo $SCRIPT_DIR/setup-sudo.sh"

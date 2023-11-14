@@ -24,7 +24,11 @@ CASE_SENSITIVE="true"
 HIST_STAMPS="yyyy-mm-dd"
 ENABLE_CORRECTION="false"
 
+export NVM_LAZY_LOAD=true
+export NVM_COMPLETION=true
+
 plugins=(
+    zsh-nvm
     git
     macos
     dotenv
@@ -83,7 +87,7 @@ function weather() {
 function togglescheme() {
     if command -v theme.sh 1>/dev/null 2>&1; then
         local scheme=$(/home/simon/.config/sway/themectl.sh query)
-        
+
         if [ "$scheme" = "night" ];then
             theme.sh solarized-dark
         elif [ "$scheme" = "day" ]; then
