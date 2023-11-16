@@ -12,6 +12,9 @@ fi
 
 echo "Linking misc config"
 ln -sn $SCRIPT_DIR/bin $HOME/bin
+ln -sn $SCRIPT_DIR/.zshrc $HOME/.zshrc
+ln -sn $SCRIPT_DIR/.profile $HOME/.profile
+ln -sn $SCRIPT_DIR/.zprofile $HOME/.zprofile
 ln -sn $SCRIPT_DIR/.gitconfig $HOME/.gitconfig
 ln -sn $SCRIPT_DIR/.vimrc $HOME/.vimrc
 ln -sn $SCRIPT_DIR/.vim_runtime $HOME/.vim_runtime

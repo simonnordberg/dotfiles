@@ -120,4 +120,6 @@ exec_always $HOME/.config/sway/lidctl.sh
 exec_always $HOME/.config/sway/themectl.sh night
 bindsym $mod+m exec $HOME/.config/sway/themectl.sh toggle
 
+exec_always "gdbus wait --session org.kde.StatusNotifierWatcher && dex -a -s $HOME/.config/autostart"
+
 include /etc/sway/config.d/*
