@@ -7,18 +7,8 @@ if [ "$EUID" -ne 0 ]; then
     exit
 fi
 
-echo "Installing helper binaries"
-ln -sn $SCRIPT_DIR/root/usr/local/bin/rubymine /usr/local/bin/rubymine
-ln -sn $SCRIPT_DIR/root/usr/local/bin/idea /usr/local/bin/idea
-ln -sn $SCRIPT_DIR/root/usr/local/bin/pycharm /usr/local/bin/pycharm
-ln -sn $SCRIPT_DIR/root/usr/local/bin/fp /usr/local/bin/fp
-ln -sn $SCRIPT_DIR/root/usr/local/bin/chrome /usr/local/bin/chrome
-ln -sn $SCRIPT_DIR/root/usr/local/bin/firefox /usr/local/bin/firefox
-ln -sn $SCRIPT_DIR/root/usr/local/bin/spotify /usr/local/bin/spotify
-ln -sn $SCRIPT_DIR/root/usr/local/bin/slack /usr/local/bin/slack
-
 echo "Installing wayland stuff (copy)"
-cp $SCRIPT_DIR/usr/share/wayland-sessions/sway-shell.desktop /usr/share/wayland-sessions/sway-shell.desktop
+cp $SCRIPT_DIR/root/usr/share/wayland-sessions/sway-shell.desktop /usr/share/wayland-sessions/sway-shell.desktop
 
 echo "Installing etc config"
 ln -sn $SCRIPT_DIR/root/etc/initramfs-tools/conf.d/resume /etc/initramfs-tools/conf.d/resume
