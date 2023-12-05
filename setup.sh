@@ -42,6 +42,7 @@ tracker3 reset -s -r
 echo "Linking config files"
 mkdir -p $HOME/.config
 ln -sn $SCRIPT_DIR/.config/sway $HOME/.config/sway
+ln -sn $SCRIPT_DIR/.config/i3 $HOME/.config/i3
 ln -sn $SCRIPT_DIR/.config/mako $HOME/.config/mako
 ln -sn $SCRIPT_DIR/.config/foot $HOME/.config/foot
 ln -sn $SCRIPT_DIR/.config/waybar $HOME/.config/waybar
