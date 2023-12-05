@@ -4,15 +4,16 @@ set $term "$HOME/bin/term"
 set $menu dmenu_run
 
 # Look and feel
-font pango:Roboto Regular 10
+font pango:Roboto Regular 8
 exec_always feh --bg-fill /home/simon/.config/sway/background.jpeg
 
 # Key bindings
 bindsym $mod+Return exec $term
+bindsym $mod+l exec i3lock -c 000000
 bindsym $mod+Shift+q kill
 bindsym $mod+d exec $menu
 bindsym $mod+Shift+c reload
-bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -b 'Yes, exit i3' 'i3-msg exit'"
+bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'Exit?' -b 'Yes' 'i3-msg exit'"
 bindsym $mod+Left focus left
 bindsym $mod+Down focus down
 bindsym $mod+Up focus up
@@ -72,13 +73,18 @@ bindsym XF86MonBrightnessUp exec xbacklight -inc 10
 exec_always setxkbmap se,us -option ctrl:nocaps,grp:rctrl_toggle
 
 # Touchpad and pointer configuration (if applicable)
-exec_always xinput set-prop <touchpad_id> "libinput Tapping Enabled" 1
-exec_always xinput set-prop <touchpad_id> "libinput Natural Scrolling Enabled" 1
-exec_always xinput set-prop <pointer_id> "libinput Accel Speed" -0.8
+# exec_always xinput set-prop <touchpad_id> "libinput Tapping Enabled" 1
+exec_always --no-startup-id xinput set-prop "pointer:Razer Razer DeathAdder V2" "libinput Natural Scrolling Enabled" 1
+exec_always --no-startup-id xinput set-prop "pointer:Razer Razer DeathAdder V2" "libinput Scrolling Pixel Distance" 2
+exec_always --no-startup-id xinput set-prop "pointer:Razer Razer DeathAdder V2" "libinput Accel Speed" -0.5
+
+exec_always --no-startup-id xset r rate 200 30
+exec_always --no-startup-id picom
 
 # Bar configuration (i3bar with i3status or similar)
 bar {
     status_command i3status
+    position top
 }
 
 # Autostart applications

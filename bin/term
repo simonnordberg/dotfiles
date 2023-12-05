@@ -2,6 +2,8 @@
 
 if command -v alacritty >/dev/null 2>&1; then
     exec alacritty "$@"
+elif command -v i3-sensible-terminal >/dev/null 2>&1; then
+    exec i3-sensible-terminal "$@"
 elif command -v foot >/dev/null 2>&1; then
     exec foot "$@"
 else

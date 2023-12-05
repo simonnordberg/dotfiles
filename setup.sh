@@ -69,4 +69,9 @@ if [ ! -d $HOME/.oh-my-zsh/custom/plugins/evalcache ]; then
         $HOME/.oh-my-zsh/custom/plugins/evalcache
 fi
 
+if [ ! -d $HOME/.oh-my-zsh/custom/plugins/zsh-nvm ]; then
+    git clone https://github.com/lukechilds/zsh-nvm \
+        $HOME/.oh-my-zsh/custom/plugins/zsh-nvm
+fi
+
 echo "Now remember to install the system wide stuff, i.e. sudo $SCRIPT_DIR/setup-sudo.sh"
