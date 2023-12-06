@@ -19,6 +19,10 @@ ln -sn $SCRIPT_DIR/.gitconfig $HOME/.gitconfig
 ln -sn $SCRIPT_DIR/.vimrc $HOME/.vimrc
 ln -sn $SCRIPT_DIR/.vim_runtime $HOME/.vim_runtime
 
+if [ ! -f "$HOME/bin/theme.sh" ]; then
+    curl -Lo $HOME/bin/theme.sh https://git.io/JM70M && chmod +x $HOME/bin/theme.sh
+fi
+
 if [ ! -d "$PRELUDE_INSTALL_DIR" ]; then
     echo "Installing Prelude"
     curl -L $PRELUDE_INSTALL | sh
@@ -43,6 +47,7 @@ echo "Linking config files"
 mkdir -p $HOME/.config
 ln -sn $SCRIPT_DIR/.config/sway $HOME/.config/sway
 ln -sn $SCRIPT_DIR/.config/i3 $HOME/.config/i3
+ln -sn $SCRIPT_DIR/.config/i3status $HOME/.config/i3status
 ln -sn $SCRIPT_DIR/.config/mako $HOME/.config/mako
 ln -sn $SCRIPT_DIR/.config/foot $HOME/.config/foot
 ln -sn $SCRIPT_DIR/.config/waybar $HOME/.config/waybar
