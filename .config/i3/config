@@ -2,18 +2,26 @@
 set $mod Mod4
 set $term "$HOME/bin/term"
 set $menu dmenu_run
+set $mouse "pointer:Razer Razer DeathAdder V2"
 
 # Look and feel
-font pango:Roboto Regular 8
-exec_always feh --bg-fill /home/simon/.config/sway/background.jpeg
+font pango:monospace 8
+exec_always --no-startup-id feh --bg-fill /home/simon/.config/sway/background.jpeg
+
+# Requires i3 >= 4.22
+# https://i3wm.org/docs/repositories.html
+gaps inner 5px
+smart_gaps inverse_outer
 
 # Key bindings
-bindsym $mod+Return exec $term
-bindsym $mod+l exec i3lock -c 000000
+bindsym $mod+Return exec --no-startup-id $term
+bindsym $mod+l exec --no-startup-id i3lock -c 000000
 bindsym $mod+Shift+q kill
-bindsym $mod+d exec $menu
+bindsym $mod+d exec --no-startup-id $menu
 bindsym $mod+Shift+c reload
-bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'Exit?' -b 'Yes' 'i3-msg exit'"
+bindsym $mod+Shift+r restart
+bindsym $mod+Shift+e exec --no-startup-id "i3-nagbar -t warning -m 'Exit?' -b 'Yes' 'i3-msg exit'"
+bindsym Shift+Print exec --no-startup-id maim --format=png --select | xclip -selection clipboard -t image/png
 bindsym $mod+Left focus left
 bindsym $mod+Down focus down
 bindsym $mod+Up focus up
@@ -63,23 +71,24 @@ mode "resize" {
 bindsym $mod+r mode "resize"
 
 # Screen brightness and volume control keybindings
-bindsym XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
-bindsym XF86AudioLowerVolume exec pactl set-sink-volume @DEFAULT_SINK@ -5%
-bindsym XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
-bindsym XF86MonBrightnessDown exec xbacklight -dec 10
-bindsym XF86MonBrightnessUp exec xbacklight -inc 10
+bindsym XF86AudioRaiseVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ +5%
+bindsym XF86AudioLowerVolume exec --no-startup-id  pactl set-sink-volume @DEFAULT_SINK@ -5%
+bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ toggle
+bindsym XF86MonBrightnessDown exec --no-startup-id xbacklight -dec 10
+bindsym XF86MonBrightnessUp exec --no-startup-id xbacklight -inc 10
 
 # Setting keyboard layout
-exec_always setxkbmap se,us -option ctrl:nocaps,grp:rctrl_toggle
+exec_always --no-startup-id setxkbmap se,us -option ctrl:nocaps,grp:rctrl_toggle
 
 # Touchpad and pointer configuration (if applicable)
 # exec_always xinput set-prop <touchpad_id> "libinput Tapping Enabled" 1
-exec_always --no-startup-id xinput set-prop "pointer:Razer Razer DeathAdder V2" "libinput Natural Scrolling Enabled" 1
-exec_always --no-startup-id xinput set-prop "pointer:Razer Razer DeathAdder V2" "libinput Scrolling Pixel Distance" 2
-exec_always --no-startup-id xinput set-prop "pointer:Razer Razer DeathAdder V2" "libinput Accel Speed" -0.5
+exec_always --no-startup-id xinput set-prop $mouse "libinput Natural Scrolling Enabled" 1
+exec_always --no-startup-id xinput set-prop $mouse "libinput Scrolling Pixel Distance" 2
+exec_always --no-startup-id xinput set-prop $mouse "libinput Accel Speed" -0.5
 
 exec_always --no-startup-id xset r rate 200 30
-exec_always --no-startup-id picom
+exec_always --no-startup-id picom -b --experimental-backends
+exec_always --no-startup-id /usr/libexec/gsd-xsettings
 
 # Bar configuration (i3bar with i3status or similar)
 bar {
@@ -88,5 +97,8 @@ bar {
 }
 
 # Autostart applications
-exec_always dex -a -s $HOME/.config/autostart
+exec_always --no-startup-id dex -a -s $HOME/.config/autostart
 
+# Theme
+exec_always --no-startup-id $HOME/.config/sway/themectl.sh night
+bindsym $mod+m exec $HOME/.config/sway/themectl.sh toggle
