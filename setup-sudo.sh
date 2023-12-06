@@ -7,8 +7,8 @@ if [ "$EUID" -ne 0 ]; then
     exit
 fi
 
-echo "Installing wayland stuff (copy)"
-cp $SCRIPT_DIR/root/usr/share/wayland-sessions/sway-shell.desktop /usr/share/wayland-sessions/sway-shell.desktop
+# echo "Installing wayland stuff (copy)"
+# cp $SCRIPT_DIR/root/usr/share/wayland-sessions/sway-shell.desktop /usr/share/wayland-sessions/sway-shell.desktop
 
 echo "Installing etc config"
 ln -sn $SCRIPT_DIR/root/etc/initramfs-tools/conf.d/resume /etc/initramfs-tools/conf.d/resume

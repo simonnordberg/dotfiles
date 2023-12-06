@@ -58,11 +58,11 @@ ln -sn $SCRIPT_DIR/.config/alacritty $HOME/.config/alacritty
 
 echo "Configuring autostart"
 mkdir -p $HOME/.config/systemd/user
-ln -sn $SCRIPT_DIR/.config/systemd/user/emacs.service \
-   $HOME/.config/systemd/user/emacs.service
-ln -sn $SCRIPT_DIR/.config/systemd/user/mullvad-gui.service \
-   $HOME/.config/systemd/user/mullvad-gui.service
-systemctl --user enable emacs mullvad-gui
+ln -sn $SCRIPT_DIR/.config/systemd/user/emacs.service $HOME/.config/systemd/user/emacs.service
+
+mkdir -p $HOME/.config/autostart
+ln -sn $SCRIPT_DIR/.config/autostart/nvidia-force-full-composition.desktop $HOME/.config/autostart
+ln -sn /usr/share/applications/mullvad-vpn.desktop $HOME/.config/autostart
 
 echo "Configuring shell"
 if [ ! -d $HOME/.oh-my-zsh ]; then
