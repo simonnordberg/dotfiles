@@ -89,6 +89,8 @@ exec_always --no-startup-id xinput set-prop $mouse "libinput Accel Speed" -0.5
 exec_always --no-startup-id xset r rate 200 30
 exec_always --no-startup-id picom -b --experimental-backends
 exec_always --no-startup-id /usr/libexec/gsd-xsettings
+exec_always --no-startup-id xautolock -detectsleep -time 10 -locker "i3lock -c 000000"
+
 
 # Bar configuration (i3bar with i3status or similar)
 bar {
