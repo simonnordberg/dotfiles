@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=Sway (in shell)
+Name=Sway
 Comment=An i3-compatible Wayland compositor
-Exec=zsh -l -c sway
+Exec=ssway
 Type=Application

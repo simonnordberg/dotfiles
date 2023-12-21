@@ -8,12 +8,13 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # echo "Installing wayland stuff (copy)"
-# cp $SCRIPT_DIR/root/usr/share/wayland-sessions/sway-shell.desktop /usr/share/wayland-sessions/sway-shell.desktop
+cp $SCRIPT_DIR/root/usr/share/wayland-sessions/ubuntu-sway.desktop /usr/share/wayland-sessions/ubuntu-sway.desktop
 
 echo "Installing etc config"
 ln -sn $SCRIPT_DIR/root/etc/initramfs-tools/conf.d/resume /etc/initramfs-tools/conf.d/resume
 ln -sn $SCRIPT_DIR/root/etc/systemd/sleep.conf /etc/systemd/sleep.conf
 ln -sn $SCRIPT_DIR/root/etc/systemd/logind.conf /etc/systemd/logind.conf
+ln -sn $SCRIPT_DIR/root/usr/local/bin/ssway /usr/local/bin/ssway
 
 mem=$(awk '/MemTotal/{ print $2 }' /proc/meminfo)
 swap=$(awk '/partition/{ print $3 }' /proc/swaps)
