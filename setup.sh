@@ -43,6 +43,8 @@ systemctl --user mask tracker-extract-3.service \
           tracker-miner-fs-control-3.service
 tracker3 reset -s -r
 
+mkdir -p $HOME/logs
+
 echo "Linking config files"
 mkdir -p $HOME/.config
 ln -sn $SCRIPT_DIR/.config/sway $HOME/.config/sway

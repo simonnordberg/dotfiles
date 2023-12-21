@@ -2,7 +2,7 @@
 set $mod Mod4
 set $term "$HOME/bin/term"
 set $menu dmenu_run
-set $mouse "pointer:Razer Razer DeathAdder V2"
+# set $mouse "pointer:Razer Razer DeathAdder V2"
 
 # Look and feel
 font pango:monospace 8
@@ -77,14 +77,26 @@ bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ to
 bindsym XF86MonBrightnessDown exec --no-startup-id xbacklight -dec 10
 bindsym XF86MonBrightnessUp exec --no-startup-id xbacklight -inc 10
 
+set $kb_default "setxkbmap -model pc105 -layout 'se' -option -option ctrl:nocaps ; echo 'qwerty' > $HOME/tmp/kb.txt ; killall -USR1 i3status"
+set $kb_colemak "setxkbmap -model pc105awide -layout 'se(cmk_ed_us)' -option -option misc:extend,lv5:caps_switch_lock,compose:menu,misc:cmk_curl_dh -v 9 ; echo 'colemak' > $HOME/tmp/kb.txt ; killall -USR1 i3status"
+
 # Setting keyboard layout
-exec_always --no-startup-id setxkbmap se,us -option ctrl:nocaps,grp:rctrl_toggle
+# exec_always --no-startup-id setxkbmap se -option ctrl:nocaps,grp:rctrl_toggle
+exec_always --no-startup-id $kb_default 
+
+bindsym $mod+shift+F11 exec --no-startup-id $kb_default
+bindsym $mod+shift+F12 exec --no-startup-id $kb_colemak
 
 # Touchpad and pointer configuration (if applicable)
 # exec_always xinput set-prop <touchpad_id> "libinput Tapping Enabled" 1
-exec_always --no-startup-id xinput set-prop $mouse "libinput Natural Scrolling Enabled" 1
-exec_always --no-startup-id xinput set-prop $mouse "libinput Scrolling Pixel Distance" 2
-exec_always --no-startup-id xinput set-prop $mouse "libinput Accel Speed" -0.5
+
+set $mouse1 "pointer:Logitech USB Receiver"
+#set $mouse1 "pointer:Logitech PRO X Wireless"
+
+exec_always --no-startup-id xinput set-prop $mouse1 "libinput Natural Scrolling Enabled" 1
+exec_always --no-startup-id xinput set-prop $mouse1 "libinput Scrolling Pixel Distance" 2
+exec_always --no-startup-id xinput set-prop $mouse1 "libinput Accel Speed" 0.0
+exec_always --no-startup-id xinput set-prop $mouse1 "Coordinate Transformation Matrix" 0.3 0 0 0 0.3 0 0 0 1
 
 exec_always --no-startup-id xset r rate 200 30
 exec_always --no-startup-id picom -b --experimental-backends
