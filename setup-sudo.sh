@@ -7,6 +7,25 @@ if [ "$EUID" -ne 0 ]; then
     exit
 fi
 
+if [[ ! -f /usr/share/keyrings/mullvad-keyring.asc ]]; then
+    curl -fsSLo /usr/share/keyrings/mullvad-keyring.asc https://repository.mullvad.net/deb/mullvad-keyring.asc
+    echo "deb [signed-by=/usr/share/keyrings/mullvad-keyring.asc arch=$( dpkg --print-architecture )] https://repository.mullvad.net/deb/beta $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/mullvad.list
+fi
+
+apt update
+apt install -y \
+    sway \
+    swayidle \
+    swaylock \
+    waybar \
+    fzf \
+    emacs \
+    nfs-common \
+    flatpak \
+    mullvad-vpn \
+    dex \
+    pavucontrol \
+
 # echo "Installing wayland stuff (copy)"
 cp $SCRIPT_DIR/root/usr/share/wayland-sessions/ubuntu-sway.desktop /usr/share/wayland-sessions/ubuntu-sway.desktop
 
@@ -22,7 +41,7 @@ swap=$(awk '/partition/{ print $3 }' /proc/swaps)
 echo "Memory size: $mem"
 echo "Swap size: $swap"
 
-if [ $swap -lt $mem ]; then
+if [[ $swap -lt $mem ]]; then
     echo "Swap partition need to be at least as large as the memory size."
     echo "Resize and try again."
     exit

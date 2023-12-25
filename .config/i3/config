@@ -2,7 +2,6 @@
 set $mod Mod4
 set $term "$HOME/bin/term"
 set $menu dmenu_run
-# set $mouse "pointer:Razer Razer DeathAdder V2"
 
 # Look and feel
 font pango:monospace 8
