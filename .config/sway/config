@@ -9,6 +9,9 @@ set $laptop eDP-1
 font pango: "Roboto" Regular 10
 output * bg /home/simon/.config/sway/background.jpeg fill
 
+gaps inner 5px
+smart_gaps inverse_outer
+
 # Idle configuration
 for_window [shell=".*"] inhibit_idle fullscreen
 exec swayidle -w \
