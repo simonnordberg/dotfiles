@@ -25,6 +25,10 @@ apt install -y \
     mullvad-vpn \
     dex \
     pavucontrol \
+    brightnessctl \
+
+# User needs to be in video group to change brightness
+usermod -a -G video simon
 
 # echo "Installing wayland stuff (copy)"
 cp $SCRIPT_DIR/root/usr/share/wayland-sessions/ubuntu-sway.desktop /usr/share/wayland-sessions/ubuntu-sway.desktop
