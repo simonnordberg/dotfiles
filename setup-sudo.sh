@@ -26,6 +26,9 @@ apt install -y \
     dex \
     pavucontrol \
     brightnessctl \
+    slurp \
+    grim \
+    wl-clipboard
 
 # User needs to be in video group to change brightness
 usermod -a -G video simon
