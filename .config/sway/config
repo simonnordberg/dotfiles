@@ -103,13 +103,13 @@ input "type:touchpad" {
     tap enabled
     natural_scroll enabled
     pointer_accel 0.4
-    accel_profile "adaptive"
+    accel_profile "flat"
 }
 
 input "type:pointer" {
     natural_scroll enabled
-    pointer_accel -0.8
-    accel_profile "adaptive"
+    pointer_accel 0.4
+    accel_profile "flat"
 }
 
 # Clamshell Mode
@@ -124,5 +124,3 @@ bindsym $mod+m exec $HOME/.config/sway/themectl.sh toggle
 exec_always /usr/libexec/gsd-xsettings
 
 exec_always "gdbus wait --session org.kde.StatusNotifierWatcher && dex -a -s $HOME/.config/autostart"
-
-include /etc/sway/config.d/*
