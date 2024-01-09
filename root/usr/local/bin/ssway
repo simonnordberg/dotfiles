@@ -34,6 +34,6 @@ fi
 #find ~/.ssh ! -name "*.pub" ! -name "config" ! -name "known_hosts" -type f | xargs ssh-add 2>&1 > /dev/null
 
 mkdir -p $HOME/logs
-mv $HOME/logs/sway.log $HOME/logs/sway-prev.log
+# mv $HOME/logs/sway.log $HOME/logs/sway-prev.log
 
-exec sway -d --unsupported-gpu 2> $HOME/logs/sway.log
+exec sway -d --unsupported-gpu 2>> $HOME/logs/sway.log

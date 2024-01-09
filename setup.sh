@@ -4,6 +4,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 export PRELUDE_INSTALL_DIR="$HOME/.emacs.d"
 export PRELUDE_INSTALL="https://github.com/bbatsov/prelude/raw/master/utils/installer.sh"
+export JOPLIN_INSTALL=""
 
 if [ "$EUID" -eq 0 ]; then
     echo "Please don't run as root"
@@ -33,6 +34,9 @@ fi
 echo "Configuring emacs"
 ln -sn $SCRIPT_DIR/.emacs.d/personal/theme.el \
    $HOME/.emacs.d/personal/theme.el
+
+echo "Installing Joplin"
+curl -L https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh | bash
 
 echo "Disabling tracker3"
 systemctl --user mask tracker-extract-3.service \
