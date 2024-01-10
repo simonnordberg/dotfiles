@@ -47,7 +47,10 @@ apt install -y \
     wl-clipboard \
     1password \
     fonts-font-awesome \
-    libfuse2
+    libfuse2 \
+    xdg-desktop-portal \
+    xdg-desktop-portal-wlr \
+    xdg-desktop-portal-gtk
 
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 

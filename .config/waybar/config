@@ -1,5 +1,5 @@
 {
-    "modules-left": ["sway/workspaces", "sway/mode"],
+    "modules-left": ["sway/workspaces", "sway/mode", "sway/scratchpad"],
     "modules-center": ["sway/window"],
     "modules-right": ["cpu", "memory", "temperature", "pulseaudio", "battery", "network", "tray", "clock"],
     "sway/scratchpad": {
