@@ -15,6 +15,7 @@ if [ -d "$HOME/.cargo" ]; then
 fi
 
 export PATH
+export TERM=foot-direct
 
 export ZSH="$HOME/.oh-my-zsh"
 
