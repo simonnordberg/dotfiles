@@ -28,6 +28,9 @@ else
     export EDITOR='vi'
 fi
 
+export ALTERNATE_EDITOR=""
+alias e="emacsclient --tty"
+
 export PYENV_ROOT="$HOME/.pyenv"
 export GOPATH=$HOME/go
 

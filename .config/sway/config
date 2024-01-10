@@ -77,6 +77,7 @@ mode "resize" {
     bindsym Escape mode "default"
 }
 bindsym $mod+r mode "resize"
+bindsym $mod+Shift+k exec exec grim -g "$(slurp)" - | wl-copy
 bindsym Shift+Print exec grim - | wl-copy    
 bindsym Shift+Alt+Print exec grim -g "$(slurp)" - | wl-copy    
 bindsym Shift+Control+Print exec grim -o $(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name') - | wl-copy
@@ -124,3 +125,5 @@ bindsym $mod+m exec $HOME/.config/sway/themectl.sh toggle
 exec_always /usr/libexec/gsd-xsettings
 
 exec_always "gdbus wait --session org.kde.StatusNotifierWatcher && dex -a -s $HOME/.config/autostart"
+
+include /etc/sway/config.d/*

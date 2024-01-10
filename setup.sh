@@ -32,8 +32,8 @@ else
 fi
 
 echo "Configuring emacs"
-ln -sn $SCRIPT_DIR/.emacs.d/personal/theme.el \
-   $HOME/.emacs.d/personal/theme.el
+ln -sn $SCRIPT_DIR/.emacs.d/personal/config.el \
+   $HOME/.emacs.d/personal/config.el
 
 echo "Installing Joplin"
 curl -L https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh | bash
@@ -65,6 +65,7 @@ ln -sn $SCRIPT_DIR/.config/alacritty $HOME/.config/alacritty
 echo "Configuring autostart"
 mkdir -p $HOME/.config/systemd/user
 ln -sn $SCRIPT_DIR/.config/systemd/user/emacs.service $HOME/.config/systemd/user/emacs.service
+systemctl --user enable --now emacs
 
 mkdir -p $HOME/.config/autostart
 ln -sn $SCRIPT_DIR/.config/autostart/nvidia-force-full-composition.desktop $HOME/.config/autostart
