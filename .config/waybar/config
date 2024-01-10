@@ -42,9 +42,9 @@
     },
     "network": {
         "format-wifi": " {essid} ({signalStrength}%)",
-        "format-ethernet": " {ifname}",
-        "tooltip-format": " {ifname} via {gwaddr}",
-        "format-linked": " {ifname} (No IP)",
+        "format-ethernet": " {ifname}",
+        "tooltip-format": " {ifname} via {gwaddr}",
+        "format-linked": " {ifname} (No IP)",
         "format-disconnected": "Disconnected ⚠ {ifname}",
         "format-alt": " {ifname}: {ipaddr}/{cidr}",
         "on-click": "nm-connection-editor",
