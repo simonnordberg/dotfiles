@@ -9,7 +9,6 @@ fi
 
 add-apt-repository -y universe
 add-apt-repository -y ppa:graphics-drivers/ppa
-add-apt-repository -y ppa:xorg-edgers/nouveau
 apt install -y curl
 
 if [[ ! -f /usr/share/keyrings/mullvad-keyring.asc ]]; then
