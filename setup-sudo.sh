@@ -9,6 +9,7 @@ fi
 
 add-apt-repository -y universe
 add-apt-repository -y ppa:graphics-drivers/ppa
+add-apt-repository -y ppa:xorg-edgers/nouveau
 apt install -y curl
 
 if [[ ! -f /usr/share/keyrings/mullvad-keyring.asc ]]; then
@@ -50,7 +51,10 @@ apt install -y \
     libfuse2 \
     xdg-desktop-portal \
     xdg-desktop-portal-wlr \
-    xdg-desktop-portal-gtk
+    xdg-desktop-portal-gtk \
+    wofi \
+    fonts-roboto \
+    xserver-xorg-video-nouveau
 
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 

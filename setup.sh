@@ -57,6 +57,7 @@ ln -sn $SCRIPT_DIR/.config/i3status $HOME/.config/i3status
 ln -sn $SCRIPT_DIR/.config/mako $HOME/.config/mako
 ln -sn $SCRIPT_DIR/.config/foot $HOME/.config/foot
 ln -sn $SCRIPT_DIR/.config/waybar $HOME/.config/waybar
+ln -sn $SCRIPT_DIR/.config/wofi $HOME/.config/wofi
 
 echo "Linking alacritty stuff, remember to install the terminfo"
 echo "See https://github.com/alacritty/alacritty/blob/master/INSTALL.md#post-build"
