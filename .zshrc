@@ -1,3 +1,5 @@
+PATH="$PATH:/usr/local/go/bin"
+
 if [ -d "/opt/homebrew/bin" ]; then
     PATH="/opt/homebrew/bin:$PATH"
 fi
