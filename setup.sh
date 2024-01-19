@@ -2,9 +2,12 @@
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-export PRELUDE_INSTALL_DIR="$HOME/.emacs.d"
-export PRELUDE_INSTALL="https://github.com/bbatsov/prelude/raw/master/utils/installer.sh"
-export JOPLIN_INSTALL=""
+PRELUDE_DIR="$HOME/.emacs.d"
+FONTS_DIR="$HOME/.local/share/fonts/"
+
+PRELUDE_INSTALL="https://github.com/bbatsov/prelude/raw/master/utils/installer.sh"
+JOPLIN_INSTALL="https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh "
+FONT_AWESOME_INSTALL="https://use.fontawesome.com/releases/v6.5.1/fontawesome-free-6.5.1-desktop.zip"
 
 if [ "$EUID" -eq 0 ]; then
     echo "Please don't run as root"
@@ -12,19 +15,19 @@ if [ "$EUID" -eq 0 ]; then
 fi
 
 echo "Linking misc config"
-ln -sn $SCRIPT_DIR/bin $HOME/bin
-ln -sn $SCRIPT_DIR/.zshrc $HOME/.zshrc
-ln -sn $SCRIPT_DIR/.profile $HOME/.profile
-ln -sn $SCRIPT_DIR/.zprofile $HOME/.zprofile
-ln -sn $SCRIPT_DIR/.gitconfig $HOME/.gitconfig
-ln -sn $SCRIPT_DIR/.vimrc $HOME/.vimrc
-ln -sn $SCRIPT_DIR/.vim_runtime $HOME/.vim_runtime
+ln -fsn $SCRIPT_DIR/bin $HOME/bin
+ln -fsn $SCRIPT_DIR/.zshrc $HOME/.zshrc
+ln -fsn $SCRIPT_DIR/.profile $HOME/.profile
+ln -fsn $SCRIPT_DIR/.zprofile $HOME/.zprofile
+ln -fsn $SCRIPT_DIR/.gitconfig $HOME/.gitconfig
+ln -fsn $SCRIPT_DIR/.vimrc $HOME/.vimrc
+ln -fsn $SCRIPT_DIR/.vim_runtime $HOME/.vim_runtime
 
 if [ ! -f "$HOME/bin/theme.sh" ]; then
     curl -Lo $HOME/bin/theme.sh https://git.io/JM70M && chmod +x $HOME/bin/theme.sh
 fi
 
-if [ ! -d "$PRELUDE_INSTALL_DIR" ]; then
+if [ ! -d "$PRELUDE_DIR" ]; then
     echo "Installing Prelude"
     curl -L $PRELUDE_INSTALL | sh
 else
@@ -32,11 +35,25 @@ else
 fi
 
 echo "Configuring emacs"
-ln -sn $SCRIPT_DIR/.emacs.d/personal/config.el \
+ln -fsn $SCRIPT_DIR/.emacs.d/personal/config.el \
    $HOME/.emacs.d/personal/config.el
 
 echo "Installing Joplin"
-curl -L https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh | bash
+if [ ! -d "$HOME/.joplin/" ]; then
+    curl -L $JOPLIN_INSTALL | bash
+else
+    echo "Joplin already installed"
+fi
+
+echo "Installing Font Awesome"
+if [ -z "$(find "$FONTS_DIR" -name "Font Awesome*" -print -quit)" ]; then
+    tmp=$(mktemp)
+    curl -o "$tmp" "$FONT_AWESOME_INSTALL"
+    unzip -j "$tmp" '*.otf' -d "$FONTS_DIR"
+    rm "$tmp"
+else
+    echo "Font Awesome already installed"
+fi
 
 echo "Disabling tracker3"
 systemctl --user mask tracker-extract-3.service \
@@ -51,26 +68,26 @@ mkdir -p $HOME/logs
 
 echo "Linking config files"
 mkdir -p $HOME/.config
-ln -sn $SCRIPT_DIR/.config/sway $HOME/.config/sway
-ln -sn $SCRIPT_DIR/.config/i3 $HOME/.config/i3
-ln -sn $SCRIPT_DIR/.config/i3status $HOME/.config/i3status
-ln -sn $SCRIPT_DIR/.config/mako $HOME/.config/mako
-ln -sn $SCRIPT_DIR/.config/foot $HOME/.config/foot
-ln -sn $SCRIPT_DIR/.config/waybar $HOME/.config/waybar
-ln -sn $SCRIPT_DIR/.config/wofi $HOME/.config/wofi
+ln -fsn $SCRIPT_DIR/.config/sway $HOME/.config/sway
+ln -fsn $SCRIPT_DIR/.config/i3 $HOME/.config/i3
+ln -fsn $SCRIPT_DIR/.config/i3status $HOME/.config/i3status
+ln -fsn $SCRIPT_DIR/.config/mako $HOME/.config/mako
+ln -fsn $SCRIPT_DIR/.config/foot $HOME/.config/foot
+ln -fsn $SCRIPT_DIR/.config/waybar $HOME/.config/waybar
+ln -fsn $SCRIPT_DIR/.config/wofi $HOME/.config/wofi
 
 echo "Linking alacritty stuff, remember to install the terminfo"
 echo "See https://github.com/alacritty/alacritty/blob/master/INSTALL.md#post-build"
-ln -sn $SCRIPT_DIR/.config/alacritty $HOME/.config/alacritty
+ln -fsn $SCRIPT_DIR/.config/alacritty $HOME/.config/alacritty
 
 echo "Configuring autostart"
 mkdir -p $HOME/.config/systemd/user
-ln -sn $SCRIPT_DIR/.config/systemd/user/emacs.service $HOME/.config/systemd/user/emacs.service
-systemctl --user enable --now emacs
+ln -fsn $SCRIPT_DIR/.config/systemd/user/emacs.service $HOME/.config/systemd/user/emacs.service
+systemctl --user is-active emacs && systemctl --user restart emacs || systemctl --user enable --now emacs
 
 mkdir -p $HOME/.config/autostart
-ln -sn $SCRIPT_DIR/.config/autostart/nvidia-force-full-composition.desktop $HOME/.config/autostart
-ln -sn /usr/share/applications/mullvad-vpn.desktop $HOME/.config/autostart
+ln -fsn $SCRIPT_DIR/.config/autostart/nvidia-force-full-composition.desktop $HOME/.config/autostart
+ln -fsn /usr/share/applications/mullvad-vpn.desktop $HOME/.config/autostart
 
 echo "Configuring shell"
 if [ ! -d $HOME/.oh-my-zsh ]; then
@@ -87,4 +104,4 @@ if [ ! -d $HOME/.oh-my-zsh/custom/plugins/zsh-nvm ]; then
         $HOME/.oh-my-zsh/custom/plugins/zsh-nvm
 fi
 
-echo "Now remember to install the system wide stuff, i.e. sudo $SCRIPT_DIR/setup-sudo.sh"
+echo "All done!"
