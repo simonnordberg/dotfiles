@@ -29,31 +29,30 @@ fi
 
 apt update
 apt install -y \
-    zsh \
+    1password \
+    brightnessctl \
+    dex \
+    emacs \
+    flatpak \
+    fonts-roboto \
+    fzf \
+    grim \
+    libfuse2 \
+    mullvad-vpn \
+    nfs-common \
+    pavucontrol \
+    slurp \
     sway \
     swayidle \
     swaylock \
     waybar \
-    fzf \
-    emacs \
-    nfs-common \
-    flatpak \
-    mullvad-vpn \
-    dex \
-    pavucontrol \
-    brightnessctl \
-    slurp \
-    grim \
     wl-clipboard \
-    1password \
-    fonts-font-awesome \
-    libfuse2 \
-    xdg-desktop-portal \
-    xdg-desktop-portal-wlr \
-    xdg-desktop-portal-gtk \
     wofi \
-    fonts-roboto \
-    xserver-xorg-video-nouveau
+    xdg-desktop-portal \
+    xdg-desktop-portal-gtk \
+    xdg-desktop-portal-wlr \
+    xserver-xorg-video-nouveau \
+    zsh
 
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
@@ -64,10 +63,10 @@ usermod -a -G video simon
 cp $SCRIPT_DIR/root/usr/share/wayland-sessions/ubuntu-sway.desktop /usr/share/wayland-sessions/ubuntu-sway.desktop
 
 echo "Installing etc config"
-ln -sn $SCRIPT_DIR/root/etc/initramfs-tools/conf.d/resume /etc/initramfs-tools/conf.d/resume
-ln -sn $SCRIPT_DIR/root/etc/systemd/sleep.conf /etc/systemd/sleep.conf
-ln -sn $SCRIPT_DIR/root/etc/systemd/logind.conf /etc/systemd/logind.conf
-ln -sn $SCRIPT_DIR/root/usr/local/bin/ssway /usr/local/bin/ssway
+ln -fsn $SCRIPT_DIR/root/etc/initramfs-tools/conf.d/resume /etc/initramfs-tools/conf.d/resume
+ln -fsn $SCRIPT_DIR/root/etc/systemd/sleep.conf /etc/systemd/sleep.conf
+ln -fsn $SCRIPT_DIR/root/etc/systemd/logind.conf /etc/systemd/logind.conf
+ln -fsn $SCRIPT_DIR/root/usr/local/bin/ssway /usr/local/bin/ssway
 
 mem=$(awk '/MemTotal/{ print $2 }' /proc/meminfo)
 swap=$(awk '/partition/{ print $3 }' /proc/swaps)
@@ -88,3 +87,6 @@ if [[ $swapuuid ]]; then
     echo "resume=UUID=$swapblkid" > $SCRIPT_DIR/root/etc/initramfs-tools/conf.d/resume
     update-initramfs -u -k all
 fi
+
+
+echo "Now remember to install the user stuff, i.e. $SCRIPT_DIR/setup.sh"
