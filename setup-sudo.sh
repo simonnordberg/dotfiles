@@ -48,11 +48,10 @@ apt install -y \
     waybar \
     wl-clipboard \
     wofi \
-    xdg-desktop-portal \
-    xdg-desktop-portal-gtk \
-    xdg-desktop-portal-wlr \
-    xserver-xorg-video-nouveau \
     zsh
+    fonts-roboto \
+    xserver-xorg-video-nouveau \
+    libssl-dev
 
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
