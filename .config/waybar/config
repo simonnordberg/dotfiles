@@ -1,7 +1,7 @@
 {
     "modules-left": ["sway/workspaces", "sway/mode", "sway/scratchpad"],
     "modules-center": ["sway/window"],
-    "modules-right": ["cpu", "memory", "temperature", "backlight", "pulseaudio", "battery", "network", "tray", "clock"],
+    "modules-right": ["cpu", "memory", "temperature", "pulseaudio", "battery", "network", "tray", "sway/language", "clock"],
     "sway/scratchpad": {
         "format": "{icon} {count}",
         "show-empty": false,
@@ -71,5 +71,8 @@
         },
         "on-click": "pavucontrol"
     },
+    "sway/language": {
+      "format": "{flag} {long}"
+    }
 }
 
