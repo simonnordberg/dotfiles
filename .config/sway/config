@@ -8,7 +8,7 @@ set                     $laptop eDP-1
 # Look and feel
 #font pango:Cantarell 10px
 font                    pango: "Roboto" Regular 10
-output                  * bg /home/simon/.config/sway/background.jpeg fill
+output                  * bg $HOME/.config/sway/background.jpeg fill
 
 gaps                    inner 5px
 smart_gaps              inverse_outer
@@ -109,7 +109,7 @@ input                   "type:touchpad" {
     tap                 enabled
     natural_scroll      enabled
     pointer_accel       0.4
-    accel_profile       "flat"
+    accel_profile       "adaptive"
 }
 
 input                   "type:pointer" {

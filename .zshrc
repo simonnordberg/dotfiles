@@ -112,7 +112,7 @@ function weather() {
 
 function togglescheme() {
     if command -v theme.sh 1>/dev/null 2>&1; then
-        local scheme=$(/home/simon/.config/sway/themectl.sh query)
+        local scheme=$($HOME/.config/sway/themectl.sh query)
 
         if [ "$scheme" = "night" ];then
             theme.sh solarized-dark
