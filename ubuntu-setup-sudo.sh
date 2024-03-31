@@ -48,7 +48,7 @@ apt install -y \
     waybar \
     wl-clipboard \
     wofi \
-    zsh
+    zsh \
     fonts-roboto \
     xserver-xorg-video-nouveau \
     libssl-dev

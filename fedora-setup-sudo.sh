@@ -10,6 +10,8 @@ fi
 dnf config-manager --add-repo https://repository.mullvad.net/rpm/beta/mullvad.repo
 dnf update -y
 dnf install -y \
+    brightnessctl \
+    dex-autostart \
     emacs \
     flatpak \
     google-roboto-fonts \
@@ -24,11 +26,11 @@ dnf install -y \
     wl-clipboard \
     wofi \
     zsh \
-    google-roboto-fonts \
-    xorg-x11-drv-nouveau \
     openssl-devel \
     dnf-plugins-core \
-    mullvad-vpn
+    mullvad-vpn \
+    pulseaudio-utils \
+    lightdm
 
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
