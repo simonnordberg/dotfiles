@@ -27,7 +27,8 @@ dnf install -y \
     google-roboto-fonts \
     xorg-x11-drv-nouveau \
     openssl-devel \
-    dnf-plugins-core
+    dnf-plugins-core \
+    mullvad-vpn
 
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
