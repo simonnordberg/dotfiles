@@ -73,10 +73,6 @@ ln -fsn $SCRIPT_DIR/.config/foot $HOME/.config/foot
 ln -fsn $SCRIPT_DIR/.config/waybar $HOME/.config/waybar
 ln -fsn $SCRIPT_DIR/.config/wofi $HOME/.config/wofi
 
-echo "Linking alacritty stuff, remember to install the terminfo"
-echo "See https://github.com/alacritty/alacritty/blob/master/INSTALL.md#post-build"
-ln -fsn $SCRIPT_DIR/.config/alacritty $HOME/.config/alacritty
-
 echo "Configuring autostart"
 mkdir -p $HOME/.config/systemd/user
 ln -fsn $SCRIPT_DIR/.config/systemd/user/emacs.service $HOME/.config/systemd/user/emacs.service
