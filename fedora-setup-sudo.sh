@@ -42,4 +42,16 @@ cp $SCRIPT_DIR/root/usr/share/wayland-sessions/sway-wrapper.desktop \
 echo "Installing etc config"
 ln -fsn $SCRIPT_DIR/root/usr/local/bin/ssway /usr/local/bin/ssway
 
+echo "Configuring fstab"
+cp /etc/fstab "/etc/fstab.backup.$(date +%Y%m%d%H%M%S)"
+PARTIAL_FSTAB="$SCRIPT_DIR/root/etc/fstab.partial"
+START_MARKER="# Begin Custom Mounts"
+END_MARKER="# End Custom Mounts"
+
+{
+    echo "$START_MARKER"
+    cat "$PARTIAL_FSTAB"
+    echo "$END_MARKER"
+} >> /etc/fstab
+
 echo "Now remember to install the user stuff, i.e. $SCRIPT_DIR/fedora-setup.sh"
