@@ -16,9 +16,6 @@ fi
 
 echo "Linking misc config"
 ln -fsn $SCRIPT_DIR/bin $HOME/bin
-ln -fsn $SCRIPT_DIR/.zshrc $HOME/.zshrc
-ln -fsn $SCRIPT_DIR/.profile $HOME/.profile
-ln -fsn $SCRIPT_DIR/.zprofile $HOME/.zprofile
 ln -fsn $SCRIPT_DIR/.gitconfig $HOME/.gitconfig
 ln -fsn $SCRIPT_DIR/.vimrc $HOME/.vimrc
 ln -fsn $SCRIPT_DIR/.vim_runtime $HOME/.vim_runtime
@@ -103,5 +100,9 @@ if [ ! -d $HOME/.oh-my-zsh/custom/plugins/zsh-nvm ]; then
     git clone https://github.com/lukechilds/zsh-nvm \
         $HOME/.oh-my-zsh/custom/plugins/zsh-nvm
 fi
+
+ln -fsn $SCRIPT_DIR/.zshrc $HOME/.zshrc
+ln -fsn $SCRIPT_DIR/.profile $HOME/.profile
+ln -fsn $SCRIPT_DIR/.zprofile $HOME/.zprofile
 
 echo "All done!"
