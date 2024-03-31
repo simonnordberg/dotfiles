@@ -35,8 +35,8 @@ flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.f
 usermod -a -G video simon
 
 # echo "Installing wayland stuff (copy)"
-cp $SCRIPT_DIR/root/usr/share/wayland-sessions/ubuntu-sway.desktop \
-   /usr/share/wayland-sessions/ubuntu-sway.desktop
+cp $SCRIPT_DIR/root/usr/share/wayland-sessions/sway-wrapper.desktop \
+   /usr/share/wayland-sessions/sway-wrapper.desktop
 
 echo "Installing etc config"
 ln -fsn $SCRIPT_DIR/root/usr/local/bin/ssway /usr/local/bin/ssway
