@@ -70,6 +70,7 @@ if command -v brew 1> /dev/null; then
 fi
 
 if command -v gpgconf 1> /dev/null; then
+    mkdir -p $HOME/.gnupg
     export GPG_TTY="$(tty)"
     export SSH_AUTH_SOCK="$(gpgconf --list-dirs agent-ssh-socket)"
     gpgconf --launch gpg-agent
