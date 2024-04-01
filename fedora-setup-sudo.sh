@@ -15,6 +15,7 @@ dnf install -y \
     emacs \
     flatpak \
     google-roboto-fonts \
+    google-noto-color-emoji-fonts \
     fzf \
     fuse \
     nfs-utils \
@@ -30,9 +31,12 @@ dnf install -y \
     dnf-plugins-core \
     mullvad-vpn \
     pulseaudio-utils \
-    lightdm
+    gdm
 
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+systemctl enable gdm
+systemctl set-default graphical.target
 
 # User needs to be in video group to change brightness
 usermod -a -G video simon

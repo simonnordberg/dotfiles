@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-
-PRELUDE_DIR="$HOME/.emacs.d"
-FONTS_DIR="$HOME/.local/share/fonts/"
-
-PRELUDE_INSTALL="https://github.com/bbatsov/prelude/raw/master/utils/installer.sh"
-JOPLIN_INSTALL="https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh "
-FONT_AWESOME_INSTALL="https://use.fontawesome.com/releases/v6.5.1/fontawesome-free-6.5.1-desktop.zip"
-
 if [ "$EUID" -eq 0 ]; then
     echo "Please don't run as root"
     exit
 fi
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+PRELUDE_DIR="$HOME/.emacs.d"
+FONTS_DIR="$HOME/.local/share/fonts/"
+PRELUDE_INSTALL="https://github.com/bbatsov/prelude/raw/master/utils/installer.sh"
+JOPLIN_INSTALL="https://raw.githubusercontent.com/laurent22/joplin/dev/Joplin_install_and_update.sh "
+FONT_AWESOME_INSTALL="https://use.fontawesome.com/releases/v6.5.1/fontawesome-free-6.5.1-desktop.zip"
 
 echo "Linking misc config"
 ln -fsn $SCRIPT_DIR/bin $HOME/bin
@@ -43,6 +41,7 @@ else
 fi
 
 echo "Installing Font Awesome"
+mkdir -p "$FONTS_DIR"
 if [ -z "$(find "$FONTS_DIR" -name "Font Awesome*" -print -quit)" ]; then
     tmp=$(mktemp)
     curl -o "$tmp" "$FONT_AWESOME_INSTALL"
