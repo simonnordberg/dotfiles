@@ -7,6 +7,11 @@ if [ "$EUID" -ne 0 ]; then
     exit
 fi
 
+if [[ ! -f /etc/yum.repos.d/1password.repo ]]; then
+    rpm --import https://downloads.1password.com/linux/keys/1password.asc
+    sh -c 'echo -e "[1password]\nname=1Password Stable Channel\nbaseurl=https://downloads.1password.com/linux/rpm/stable/\$basearch\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=\"https://downloads.1password.com/linux/keys/1password.asc\"" > /etc/yum.repos.d/1password.repo'
+fi
+
 dnf config-manager --add-repo https://repository.mullvad.net/rpm/beta/mullvad.repo
 dnf update -y
 dnf install -y \
@@ -31,7 +36,8 @@ dnf install -y \
     dnf-plugins-core \
     mullvad-vpn \
     pulseaudio-utils \
-    gdm
+    gdm \
+    1password
 
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
