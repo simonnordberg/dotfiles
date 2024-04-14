@@ -40,17 +40,6 @@ else
     echo "Joplin already installed"
 fi
 
-echo "Installing Font Awesome"
-mkdir -p "$FONTS_DIR"
-if [ -z "$(find "$FONTS_DIR" -name "Font Awesome*" -print -quit)" ]; then
-    tmp=$(mktemp)
-    curl -o "$tmp" "$FONT_AWESOME_INSTALL"
-    unzip -j "$tmp" '*.otf' -d "$FONTS_DIR"
-    rm "$tmp"
-else
-    echo "Font Awesome already installed"
-fi
-
 echo "Disabling tracker3"
 systemctl --user mask tracker-extract-3.service \
           tracker-miner-fs-3.service \
