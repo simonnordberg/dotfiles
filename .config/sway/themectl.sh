@@ -37,9 +37,11 @@ esac
 if [ "$scheme" = "night" ]; then
     gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
     gsettings set org.gnome.desktop.interface gtk-theme "Adwaita-dark"
+    swaymsg "output * bg $HOME/.config/sway/bg-dark.jpg fill"
 else
     gsettings set org.gnome.desktop.interface color-scheme "prefer-light"
     gsettings set org.gnome.desktop.interface gtk-theme "Adwaita-light"
+    swaymsg "output * bg $HOME/.config/sway/bg-light.jpg fill"
 fi
 
 pkill -USR1 zsh
