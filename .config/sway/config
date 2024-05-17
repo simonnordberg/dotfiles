@@ -8,7 +8,6 @@ set                     $laptop eDP-1
 # Look and feel
 #font pango:Cantarell 10px
 font                    pango: "Roboto" Regular 10
-output                  * bg $HOME/.config/sway/background.jpeg fill
 
 gaps                    inner 5px
 smart_gaps              inverse_outer
