@@ -43,7 +43,8 @@ dnf install -y \
     gdm \
     1password \
     slurp \
-    alacritty
+    alacritty \
+    bemenu
 
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
