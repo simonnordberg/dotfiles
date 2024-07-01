@@ -10,4 +10,3 @@ else
     echo "No known terminal emulator found."
     exit 1
 fi
-

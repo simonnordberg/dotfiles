@@ -1,16 +1,4 @@
-PATH="$PATH:/usr/local/go/bin"
-
-if [ -d "/opt/homebrew/bin" ]; then
-    PATH="/opt/homebrew/bin:$PATH"
-fi
-
-if [ -d "$HOME/bin" ]; then
-    PATH="$HOME/bin:$PATH"
-fi
-
-if [ -d "$HOME/.local/bin" ]; then
-    PATH="$HOME/.local/bin:$PATH"
-fi
+PATH="$PATH:/usr/local/go/bin:/opt/homebrew/path:$HOME/bin:$HOME/.local/bin"
 
 if [ -d "$HOME/.cargo" ]; then
     . "$HOME/.cargo/env"

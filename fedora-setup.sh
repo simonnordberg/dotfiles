@@ -60,6 +60,7 @@ ln -fsn $SCRIPT_DIR/.config/mako $HOME/.config/mako
 ln -fsn $SCRIPT_DIR/.config/foot $HOME/.config/foot
 ln -fsn $SCRIPT_DIR/.config/waybar $HOME/.config/waybar
 ln -fsn $SCRIPT_DIR/.config/wofi $HOME/.config/wofi
+ln -fsn $SCRIPT_DIR/.config/alacritty $HOME/.config/alacritty
 
 echo "Configuring autostart"
 mkdir -p $HOME/.config/systemd/user
