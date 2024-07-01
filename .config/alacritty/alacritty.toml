@@ -1,0 +1,8 @@
+[env]
+TERM = "alacritty-direct"
+
+[font]
+size = 9.0
+
+[window]
+opacity = 0.85
