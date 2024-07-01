@@ -1,7 +1,7 @@
 # Variables
 set                     $mod Mod4
 set                     $term "$HOME/bin/term"
-set                     $menu wofi --show run
+set                     $menu bemenu-run -p '>' -m all -i
 set                     $laptop eDP-1
 
 # Look and feel
@@ -23,7 +23,7 @@ bindsym                 $mod+l exec swaylock -f -c 000000
 # Key bindings
 bindsym                 $mod+Return exec $term
 bindsym                 $mod+Shift+q kill
-bindsym                 $mod+d exec $menu
+bindsym                 $mod+d exec $menu | xargs swaymsg exec --
 floating_modifier       $mod normal
 bindsym                 $mod+Shift+c reload
 bindsym                 $mod+Shift+e exec swaynag -t warning -m 'Exit?' -B 'Yes' 'swaymsg exit'
