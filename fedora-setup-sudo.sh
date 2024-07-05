@@ -1,51 +1,58 @@
 #!/usr/bin/env bash
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 if [ "$EUID" -ne 0 ]; then
-    echo "Please run as root"
-    exit
+  echo "Please run as root"
+  exit
 fi
 
-if [[ ! -f /etc/yum.repos.d/1password.repo ]]; then
-    rpm --import https://downloads.1password.com/linux/keys/1password.asc
-    sh -c 'echo -e "[1password]\nname=1Password Stable Channel\nbaseurl=https://downloads.1password.com/linux/rpm/stable/\$basearch\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=\"https://downloads.1password.com/linux/keys/1password.asc\"" > /etc/yum.repos.d/1password.repo'
-fi
+rpm --import https://downloads.1password.com/linux/keys/1password.asc
+cat <<EOF >/etc/yum.repos.d/1password.repo
+[1password]
+name=1Password Stable Channel
+baseurl=https://downloads.1password.com/linux/rpm/stable/\$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://downloads.1password.com/linux/keys/1password.asc
+EOF
 
 dnf install \
-    https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
-    https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+  https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
+  https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
 
 dnf config-manager --add-repo https://repository.mullvad.net/rpm/beta/mullvad.repo
 dnf update -y
 dnf install -y \
-    brightnessctl \
-    dex-autostart \
-    emacs \
-    flatpak \
-    google-roboto-fonts \
-    google-noto-color-emoji-fonts \
-    fzf \
-    fuse \
-    nfs-utils \
-    pavucontrol \
-    sway \
-    swayidle \
-    swaylock \
-    waybar \
-    wl-clipboard \
-    wofi \
-    zsh \
-    openssl-devel \
-    dnf-plugins-core \
-    mullvad-vpn \
-    pulseaudio-utils \
-    gdm \
-    1password \
-    slurp \
-    alacritty \
-    bemenu \
-    j4-dmenu-desktop
+  brightnessctl \
+  dex-autostart \
+  emacs \
+  flatpak \
+  google-roboto-fonts \
+  google-noto-color-emoji-fonts \
+  fzf \
+  fuse \
+  nfs-utils \
+  pavucontrol \
+  sway \
+  swayidle \
+  swaylock \
+  waybar \
+  wl-clipboard \
+  wofi \
+  zsh \
+  openssl-devel \
+  dnf-plugins-core \
+  mullvad-vpn \
+  pulseaudio-utils \
+  gdm \
+  1password \
+  slurp \
+  alacritty \
+  bemenu \
+  j4-dmenu-desktop \
+  neovim
 
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
@@ -56,8 +63,7 @@ systemctl set-default graphical.target
 usermod -a -G video simon
 
 # echo "Installing wayland stuff (copy)"
-cp $SCRIPT_DIR/root/usr/share/wayland-sessions/sway-wrapper.desktop \
-   /usr/share/wayland-sessions/sway-wrapper.desktop
+cp $SCRIPT_DIR/root/usr/share/wayland-sessions/sway-wrapper.desktop /usr/share/wayland-sessions/sway-wrapper.desktop
 
 echo "Installing etc config"
 ln -fsn $SCRIPT_DIR/root/usr/local/bin/ssway /usr/local/bin/ssway
@@ -71,9 +77,9 @@ END_MARKER="# End Custom Mounts"
 sed -i "/$START_MARKER/,/$END_MARKER/d" /etc/fstab
 
 {
-    echo "$START_MARKER"
-    cat "$PARTIAL_FSTAB"
-    echo "$END_MARKER"
-} >> /etc/fstab
+  echo "$START_MARKER"
+  cat "$PARTIAL_FSTAB"
+  echo "$END_MARKER"
+} >>/etc/fstab
 
 echo "Now remember to install the user stuff, i.e. $SCRIPT_DIR/fedora-setup.sh"
