@@ -1,9 +1,9 @@
 #!/bin/sh
 
-LAPTOP="eDP-1"
+OUTPUT=${1:-eDP-1}
 
-if grep -q open /proc/acpi/button/lid/LID/state; then
-    swaymsg output $LAPTOP enable
+if grep -q closed /proc/acpi/button/lid/*/state; then
+  swaymsg output $OUTPUT disable
 else
-    swaymsg output $LAPTOP disable
+  swaymsg output $OUTPUT enable
 fi

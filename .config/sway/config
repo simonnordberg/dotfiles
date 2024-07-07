@@ -88,7 +88,7 @@ bindsym                 XF86MonBrightnessUp exec brightnessctl set 5%+
 input                   "type:keyboard" {
     repeat_delay        250
     repeat_rate         45
-    xkb_layout          se
+    xkb_layout          se,us
     xkb_variant         basic
     xkb_model           pc105
     xkb_options         ctrl:nocaps,grp:rctrl_toggle
@@ -107,11 +107,15 @@ input                   "type:pointer" {
     accel_profile       "flat"
 }
 
+output                  $laptop {
+    scale 1.5
+}
+
 # Clamshell Mode
 bindswitch              --reload --locked lid:on output $laptop disable
 bindswitch              --reload --locked lid:off output $laptop enable
 
-exec_always             $HOME/.config/sway/lidctl.sh
+exec_always             $HOME/.config/sway/lidctl.sh $laptop
 
 # https://github.com/swaywm/sway/wiki/GTK-3-settings-on-Wayland
 exec_always             $HOME/.config/sway/themectl.sh night
