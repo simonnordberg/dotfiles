@@ -1,1 +1,3 @@
-sudo dnf install -y fzf
+sudo dnf install -y \
+  fzf \
+  fd-find
