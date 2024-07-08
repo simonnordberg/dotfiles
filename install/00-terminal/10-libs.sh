@@ -1,3 +1,4 @@
 sudo dnf install -y \
   openssl-devel \
-  dnf-plugins-core
+  dnf-plugins-core \
+  libssl-dev
