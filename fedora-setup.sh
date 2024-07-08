@@ -8,8 +8,8 @@ if [ "$EUID" -eq 0 ]; then
 fi
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-PRELUDE_DIR="$HOME/.emacs.d"
 FONTS_DIR="$HOME/.local/share/fonts/"
+PRELUDE_DIR="$HOME/.emacs.d"
 PRELUDE_INSTALL="https://github.com/bbatsov/prelude/raw/master/utils/installer.sh"
 FONT_AWESOME_INSTALL="https://use.fontawesome.com/releases/v6.5.1/fontawesome-free-6.5.1-desktop.zip"
 
