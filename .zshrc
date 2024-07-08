@@ -10,7 +10,7 @@ export ZSH="$HOME/.oh-my-zsh"
 
 if command -v nvim 1> /dev/null; then
     export EDITOR='nvim'
-if command -v emacsclient 1> /dev/null; then
+elif command -v emacsclient 1> /dev/null; then
     export EDITOR='emacsclient -t'
 elif command -v emacs 1> /dev/null; then
     export EDITOR='emacs -nw'
