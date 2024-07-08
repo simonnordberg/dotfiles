@@ -9,7 +9,8 @@ sudo dnf install -y \
   wl-clipboard \
   pulseaudio-utils \
   slurp \
-  j4-dmenu-desktop
+  j4-dmenu-desktop \
+  bemenu
 
 mkdir -p $HOME/.config
 ln -fsn $SCRIPT_DIR/.config/sway $HOME/.config/sway

@@ -120,7 +120,6 @@ exec_always             $HOME/.config/sway/lidctl.sh $laptop
 # https://github.com/swaywm/sway/wiki/GTK-3-settings-on-Wayland
 exec_always             $HOME/.config/sway/themectl.sh night
 bindsym                 $mod+m exec $HOME/.config/sway/themectl.sh toggle
-bindsym                 $mod+n exec $HOME/.config/sway/kbctl.sh
 exec_always             /usr/libexec/gsd-xsettings
 
 exec_always             "gdbus wait --session org.kde.StatusNotifierWatcher && dex-autostart -a -s $HOME/.config/autostart"
