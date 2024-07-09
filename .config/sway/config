@@ -107,8 +107,9 @@ input                   "type:pointer" {
     accel_profile       "flat"
 }
 
-output                  $laptop {
-    scale 1.0
+output                  * {
+    scale               1.0
+    adaptive_sync       on
 }
 
 # Clamshell Mode
