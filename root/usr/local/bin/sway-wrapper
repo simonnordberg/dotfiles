@@ -1,0 +1,8 @@
+#!/usr/bin/env zsh
+
+if [ -f "$HOME/.zshrc" ]; then
+    . "$HOME/.zshrc"
+fi
+
+mkdir -p $HOME/logs
+exec sway -d 2>> $HOME/logs/sway.log
