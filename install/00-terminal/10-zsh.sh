@@ -1,4 +1,5 @@
 sudo dnf install -y zsh
+sudo chsh -s $(which zsh) $USER
 
 [[ -e $HOME/.oh-my-zsh/ ]] && rm -rf $HOME/.oh-my-zsh/
 [[ -e $HOME/.zshrc ]] && rm -f $HOME/.zshrc
