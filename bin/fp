@@ -1,8 +1,7 @@
 #!/bin/sh
 
 app=$(flatpak list --app | cut -f2 | awk -v app="$1" '(tolower($NF) ~ tolower(app))')
-test -z $1 && printf "Enter an app to fp.\n\$ fp <app>\n\nINSTALLED APPS\n$app\n" &&
-return;
+test -z $1 && printf "Enter an app to fp.\n\$ fp <app>\n\nINSTALLED APPS\n$app\n" && exit
 shift 1;
 ( 
     flatpak run "$app" "$@" &> /dev/null & 
