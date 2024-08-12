@@ -84,6 +84,7 @@ bindsym                 XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ to
 bindsym                 XF86AudioMicMute exec pactl set-source-mute @DEFAULT_SOURCE@ toggle
 bindsym                 XF86MonBrightnessDown exec brightnessctl set 5%-
 bindsym                 XF86MonBrightnessUp exec brightnessctl set 5%+
+bindsym                 $mod+n exec pactl set-default-sink $(pactl list short sinks | awk '{print $2}' | bemenu -l 10 -p 'Sink')
 
 input                   "type:keyboard" {
     repeat_delay        250
