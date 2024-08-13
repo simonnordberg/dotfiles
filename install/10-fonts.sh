@@ -1,3 +1,4 @@
-sudo dnf install -y \
-  google-roboto-fonts \
-  google-noto-color-emoji-fonts \
+FONTS=$HOME/.local/share/fonts
+
+mkdir -p $FONTS
+curl -fL https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz | tar -xJ -C $FONTS
