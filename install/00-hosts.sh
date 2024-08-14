@@ -1,4 +1,4 @@
-PARTIAL="$SCRIPT_DIR/root/etc/hosts.partial"
+PARTIAL="$BASE_DIR/root/etc/hosts.partial"
 START_MARKER="# start-hosts"
 END_MARKER="# end-hosts"
 

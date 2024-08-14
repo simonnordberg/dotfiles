@@ -1,4 +1,4 @@
-PARTIAL="$SCRIPT_DIR/root/etc/fstab.partial"
+PARTIAL="$BASE_DIR/root/etc/fstab.partial"
 START_MARKER="# start-fstab"
 END_MARKER="# end-fstab"
 
