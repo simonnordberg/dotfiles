@@ -6,4 +6,4 @@ tar -xf $DIR/zellij.tar.gz -C $DIR
 sudo install $DIR/zellij /usr/local/bin
 
 mkdir -p $HOME/.config
-ln -fsn $SCRIPT_DIR/.config/zellij $HOME/.config/zellij
+ln -fsn $BASE_DIR/.config/zellij $HOME/.config/zellij

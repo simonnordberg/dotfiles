@@ -1,2 +1,2 @@
 sudo dnf install -y alacritty
-ln -fsn $SCRIPT_DIR/.config/alacritty $HOME/.config/alacritty
+ln -fsn $BASE_DIR/.config/alacritty $HOME/.config/alacritty
