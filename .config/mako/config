@@ -6,3 +6,6 @@ border-size=1
 [urgency=high]
 ignore-timeout=1
 background-color=#ff0000
+
+[mode=dnd]
+invisible=1
