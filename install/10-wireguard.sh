@@ -1,1 +1,1 @@
-sudo dnf install wireguard-tools
+sudo dnf install -y wireguard-tools
