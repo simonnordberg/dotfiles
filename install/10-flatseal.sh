@@ -1,1 +1,2 @@
-flatpak install -y com.github.tchx84.Flatseal
+flatpak install -y flathub com.github.tchx84.Flatseal
+

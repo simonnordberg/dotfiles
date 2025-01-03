@@ -1,1 +1,2 @@
-flatpak install -y com.spotify.Client
+flatpak install -y flathub com.spotify.Client
+
