@@ -1,4 +1,4 @@
-sudo dnf install -y neovim
+sudo dnf install -y neovim fzf
 
 if [ ! -e $HOME/.config/nvim ]; then
   git clone https://github.com/LazyVim/starter $HOME/.config/nvim

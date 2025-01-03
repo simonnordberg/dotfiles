@@ -1,4 +1,4 @@
-sudo dnf config-manager --add-repo https://repository.mullvad.net/rpm/beta/mullvad.repo
+sudo dnf config-manager addrepo --overwrite --from-repofile=https://repository.mullvad.net/rpm/beta/mullvad.repo
 sudo dnf install -y mullvad-vpn
 
 mkdir -p $HOME/.config/autostart
