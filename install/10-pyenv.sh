@@ -3,7 +3,8 @@ PATH=$PATH:$HOME/.pyenv/bin
 
 sudo dnf install -y zlib-ng-compat zlib-ng-compat-devel
 
-[ -e $HOME/.pyenv ] && rm -rf $HOME/.pyenv
-curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
+if [ ! -e $HOME/.pyenv ]; then
+  curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
+fi
 
 pyenv install --skip-existing $VERSION
