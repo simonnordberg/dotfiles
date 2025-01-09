@@ -38,12 +38,12 @@ if [ "$scheme" = "night" ]; then
   gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
   gsettings set org.gnome.desktop.interface gtk-theme "Adwaita-dark"
   swaymsg "output * bg $HOME/.config/sway/bg-dark.jpg fill"
-  echo 'import = ["~/.config/alacritty/themes/solarized_dark.toml"]' >$HOME/.config/alacritty/theme.toml
+  echo 'general.import = ["~/.config/alacritty/themes/solarized_dark.toml"]' >$HOME/.config/alacritty/theme.toml
   alacritty msg config "$(cat $ALACRITTY_THEME)"
 else
   gsettings set org.gnome.desktop.interface color-scheme "prefer-light"
   gsettings set org.gnome.desktop.interface gtk-theme "Adwaita-light"
   swaymsg "output * bg $HOME/.config/sway/bg-light.jpg fill"
-  echo 'import = ["~/.config/alacritty/themes/solarized_light.toml"]' >$HOME/.config/alacritty/theme.toml
+  echo 'general.import = ["~/.config/alacritty/themes/solarized_light.toml"]' >$HOME/.config/alacritty/theme.toml
   alacritty msg config "$(cat $ALACRITTY_THEME)"
 fi
