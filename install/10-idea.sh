@@ -10,7 +10,8 @@ DIR=$(mktemp -d)
 URL="https://download-cdn.jetbrains.com/idea/$FILENAME"
 
 curl -Lo $DIR/$FILENAME $URL
-sudo tar -xf $DIR/$FILENAME -C /opt
+sudo mkdir -p /opt/$VERSION
+sudo tar -xf $DIR/$FILENAME -C /opt/$VERSION --strip-components=1
 
 cat <<EOF >$HOME/.local/share/applications/jetbrains-idea-ce.desktop
 [Desktop Entry]
@@ -25,4 +26,3 @@ Terminal=false
 StartupWMClass=jetbrains-idea-ce
 StartupNotify=true
 EOF
-
