@@ -11,7 +11,8 @@ sudo dnf install -y \
   slurp \
   j4-dmenu-desktop \
   bemenu \
-  google-noto-color-emoji-fonts
+  google-noto-color-emoji-fonts \
+  mako
 
 mkdir -p $HOME/.config
 ln -fsn $BASE_DIR/.config/sway $HOME/.config/sway
