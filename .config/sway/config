@@ -3,6 +3,8 @@ set                     $mod Mod4
 set                     $term "$HOME/bin/term"
 set                     $menu j4-dmenu-desktop --dmenu='bemenu -i -p ">"'
 set                     $laptop eDP-1
+set                     $primary "Dell Inc. DELL U3421WE B8ZW653"
+set                     $secondary "Dell Inc. DELL P2415Q D8VXF9AU0K6B"
 
 # Look and feel
 #font pango:Cantarell 10px
@@ -13,6 +15,7 @@ smart_gaps              inverse_outer
 
 # Idle configuration
 for_window              [shell=".*"] inhibit_idle fullscreen
+
 exec_always             swayidle -w \
          timeout        900 'swaylock -f -c 000000' \
          timeout        1800 'systemctl suspend' \
@@ -58,6 +61,16 @@ bindsym                 $mod+space focus mode_toggle
 bindsym                 $mod+a focus parent
 bindsym                 $mod+Shift+minus move scratchpad
 bindsym                 $mod+minus scratchpad show
+
+workspace 1 output $primary
+workspace 2 output $primary
+workspace 3 output $primary
+workspace 4 output $primary
+
+workspace 5 output $secondary
+workspace 6 output $secondary
+workspace 7 output $secondary
+workspace 8 output $secondary
 
 mode                    "resize" {
     bindsym             Left resize shrink width 128px
@@ -108,18 +121,7 @@ input                   "type:pointer" {
     accel_profile       "flat"
 }
 
-output                  * {
-    scale               1.0
-    adaptive_sync       on
-}
-
-# Clamshell Mode
-bindswitch              --reload --locked lid:on output $laptop disable
-bindswitch              --reload --locked lid:off output $laptop enable
-
-exec_always             $HOME/.config/sway/lidctl.sh $laptop
-
-# https://github.com/swaywm/sway/wiki/GTK-3-settings-on-Wayland
+exec_always             pkill kanshi; /usr/bin/kanshi
 exec_always             $HOME/.config/sway/themectl.sh night
 bindsym                 $mod+m exec $HOME/.config/sway/themectl.sh toggle
 exec_always             /usr/libexec/gsd-xsettings
