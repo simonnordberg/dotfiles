@@ -1,8 +1,8 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env fish
 
-if [ -f "$HOME/.zshrc" ]; then
-    . "$HOME/.zshrc"
-fi
+if test -f $HOME/.config/fish/config.fish
+  source $HOME/.config/fish/config.fish
+end
 
 mkdir -p $HOME/logs
 exec sway -d 2>> $HOME/logs/sway.log
