@@ -4,8 +4,8 @@ profile "Laptop Setup" {
 
 profile "Dual Setup (Dell U3421WE + Dell P2415Q)" {
   output eDP-1 disable
-  output "Dell Inc. DELL U3421WE B8ZW653" mode 3440x1440 transform normal position 0,560
-  output "Dell Inc. DELL P2415Q D8VXF9AU0K6B" mode 2560x1440 transform 90 position 3440,0
+  output "Dell Inc. DELL U3421WE B8ZW653" mode 3440x1440 position 1440,560 transform normal
+  output "Dell Inc. DELL P2415Q D8VXF9AU0K6B" mode 2560x1440 position 0,0 transform 90
 }
 
 profile "Single Setup (Dell U3421WE)" {
