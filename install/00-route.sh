@@ -1,9 +1,9 @@
-wired_interface="enp195s0f3u1u6"
-wifi_ssid="Mumindalen 24/7"
 gateway="192.168.2.1"
 routes=("192.168.5.0/24" "192.168.4.0/24")
+wired_interface="enp195s0f3u1u6"
 wired_profile="Mumindalen Wired"
 wired_metric=50
+wifi_ssid="Mumindalen 24/7"
 wifi_metric=200
 
 # Check if a connection exists
