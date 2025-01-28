@@ -83,8 +83,8 @@ mode                    "resize" {
 }
 bindsym                 $mod+r mode "resize"
 bindsym                 $mod+Shift+k exec exec grim -g "$(slurp)" - | wl-copy
-bindsym                 Shift+Print exec grim - | wl-copy    
-bindsym                 Shift+Alt+Print exec grim -g "$(slurp)" - | wl-copy    
+bindsym                 Shift+Print exec grim - | wl-copy
+bindsym                 Shift+Alt+Print exec grim -g "$(slurp)" - | wl-copy
 bindsym                 Shift+Control+Print exec grim -o $(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name') - | wl-copy
 
 bar                     {
@@ -121,7 +121,7 @@ input                   "type:pointer" {
     accel_profile       "flat"
 }
 
-exec_always             pkill kanshi; /usr/bin/kanshi
+exec_always             "systemctl --user restart kanshi.service"
 exec_always             $HOME/.config/sway/themectl.sh night
 bindsym                 $mod+m exec $HOME/.config/sway/themectl.sh toggle
 exec_always             /usr/libexec/gsd-xsettings
