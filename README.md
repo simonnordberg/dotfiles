@@ -5,7 +5,7 @@ Turns a newly installed Fedora installation into an opinionated desktop experien
 ## Installation
 
 ```mkdir -p $HOME/code/github
-git clone git@github.com:simonnordberg/dotfiles.git $HOME/code/github/dotfiles
+git clone https://github.com/simonnordberg/dotfiles.git $HOME/code/github/dotfiles
 cd $HOME/code/github/dotfiles
 bash install.sh
 ```
