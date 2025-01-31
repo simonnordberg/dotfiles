@@ -1,0 +1,14 @@
+# Look and feel
+theme = dark:MaterialDesignColors,light:Material
+font-family = Hack Nerd Font
+font-size = 10
+
+# Misc
+shell-integration = fish
+
+# Keybindings
+keybind = alt+n=new_split:auto
+keybind = alt+up=goto_split:up
+keybind = alt+right=goto_split:right
+keybind = alt+down=goto_split:down
+keybind = alt+left=goto_split:left
