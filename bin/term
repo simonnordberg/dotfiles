@@ -1,12 +1,14 @@
 #!/bin/bash
 
-if command -v alacritty >/dev/null 2>&1; then
-    exec alacritty "$@"
+if command -v ghostty >/dev/null 2>&1; then
+  exec ghostty "$@"
+elif command -v alacritty >/dev/null 2>&1; then
+  exec alacritty "$@"
 elif command -v i3-sensible-terminal >/dev/null 2>&1; then
-    exec i3-sensible-terminal "$@"
+  exec i3-sensible-terminal "$@"
 elif command -v foot >/dev/null 2>&1; then
-    exec foot "$@"
+  exec foot "$@"
 else
-    echo "No known terminal emulator found."
-    exit 1
+  echo "No known terminal emulator found."
+  exit 1
 fi
