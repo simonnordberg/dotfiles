@@ -1,2 +1,2 @@
-flatpak install -y flathub com.google.ChromeDev
-xdg-settings set default-web-browser com.google.ChromeDev.desktop
+flatpak install -y flathub io.github.ungoogled_software.ungoogled_chromium
+xdg-settings set default-web-browser io.github.ungoogled_software.ungoogled_chromium.desktop
