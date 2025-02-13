@@ -120,11 +120,30 @@ input                   "type:pointer" {
     pointer_accel       0.4
     accel_profile       "flat"
 }
+output eDP-1 {
+  mode 2256x1504
+  transform normal
+  scale 1.0
+  enable
+}
 
-exec_always             "systemctl --user restart kanshi.service"
+output "Dell Inc. DELL U3421WE B8ZW653" {
+  mode 3440x1440
+  transform normal
+  position 0,0
+  scale 1.0
+}
+
+# exec_always             "systemctl --user restart kanshi.service"
 exec_always             $HOME/.config/sway/themectl.sh night
 bindsym                 $mod+m exec $HOME/.config/sway/themectl.sh toggle
 exec_always             /usr/libexec/gsd-xsettings
+
+
+# Clamshell Mode
+bindswitch              --reload --locked lid:on output $laptop disable
+bindswitch              --reload --locked lid:off output $laptop enable
+exec_always             $HOME/.config/sway/lidctl.sh $laptop
 
 exec_always             "gdbus wait --session org.kde.StatusNotifierWatcher && dex-autostart -a -s $HOME/.config/autostart"
 
