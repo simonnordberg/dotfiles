@@ -123,6 +123,7 @@ input                   "type:pointer" {
 output eDP-1 {
   mode 2256x1504
   transform normal
+  position 0,0
   scale 1.0
   enable
 }
@@ -130,8 +131,9 @@ output eDP-1 {
 output "Dell Inc. DELL U3421WE B8ZW653" {
   mode 3440x1440
   transform normal
-  position 0,0
+  position 2256,0
   scale 1.0
+  enable
 }
 
 # exec_always             "systemctl --user restart kanshi.service"
