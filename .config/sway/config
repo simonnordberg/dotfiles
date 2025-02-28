@@ -122,7 +122,7 @@ output eDP-1 {
 output "Dell Inc. DELL U3421WE B8ZW653" {
   mode 3440x1440
   transform normal
-  position 2256,0
+  position 0,0
   scale 1.0
   enable
 }
