@@ -1,6 +1,6 @@
 # Based on https://ghostty.org/docs/install/build
 
-VERSION=v1.1.0
+VERSION=v1.1.2
 
 ln -fsn $BASE_DIR/.config/ghostty $HOME/.config/ghostty
 
