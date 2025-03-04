@@ -1,122 +1,139 @@
 # Variables
-set                     $mod Mod4
-set                     $term "$HOME/bin/term"
-set                     $menu j4-dmenu-desktop --dmenu='bemenu -i -p ">"'
-set                     $laptop eDP-1
+set $mod Mod4
+set $term "$HOME/bin/term"
+set $laptop eDP-1
 
 # Look and feel
-#font pango:Cantarell 10px
-font                    pango: "Roboto" Regular 10
+font pango: "Roboto" Regular 10
 
-gaps                    inner 5px
-smart_gaps              inverse_outer
+gaps inner 5px
+smart_gaps inverse_outer
 
 # Idle configuration
-for_window              [shell=".*"] inhibit_idle fullscreen
+for_window [shell=".*"] inhibit_idle fullscreen
 
-#exec_always             swayidle -w \
-#         timeout        900 'swaylock -f -c 000000' \
-#         timeout        1800 'systemctl suspend' \
-#         timeout        900 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' \
-#         before-sleep   'swaylock -f -c 000000'
-#bindsym                 $mod+l exec swaylock -f -c 000000
+exec_always swayidle -w \
+    timeout 900 'swaylock -f -c 000000' \
+    timeout 1800 'systemctl suspend' \
+    timeout 900 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' \
+    before-sleep 'swaylock -f -c 000000'
+bindsym $mod+l exec swaylock -f -c 000000
 
 # Key bindings
-bindsym                 $mod+Return exec $term
-bindsym                 $mod+Shift+q kill
-bindsym                 $mod+d exec $menu | xargs swaymsg exec --
-floating_modifier       $mod normal
-bindsym                 $mod+Shift+c reload
-bindsym                 $mod+Shift+e exec swaynag -t warning -m 'Exit?' -B 'Yes' 'swaymsg exit'
-bindsym                 $mod+Left focus left
-bindsym                 $mod+Down focus down
-bindsym                 $mod+Up focus up
-bindsym                 $mod+Right focus right
-bindsym                 $mod+Shift+Left move left
-bindsym                 $mod+Shift+Down move down
-bindsym                 $mod+Shift+Up move up
-bindsym                 $mod+Shift+Right move right
-bindsym                 $mod+Shift+Alt+Left move workspace to output left
-bindsym                 $mod+Shift+Alt+Right move workspace to output right
-bindsym                 $mod+1 workspace number 1
-bindsym                 $mod+2 workspace number 2
-bindsym                 $mod+3 workspace number 3
-bindsym                 $mod+4 workspace number 4
-bindsym                 $mod+5 workspace number 5
-bindsym                 $mod+6 workspace number 6
-bindsym                 $mod+Shift+1 move container to workspace number 1
-bindsym                 $mod+Shift+2 move container to workspace number 2
-bindsym                 $mod+Shift+3 move container to workspace number 3
-bindsym                 $mod+Shift+4 move container to workspace number 4
-bindsym                 $mod+Shift+5 move container to workspace number 5
-bindsym                 $mod+Shift+6 move container to workspace number 6
-bindsym                 $mod+b splith
-bindsym                 $mod+v splitv
-bindsym                 $mod+s layout stacking
-bindsym                 $mod+w layout tabbed
-bindsym                 $mod+e layout toggle split
-bindsym                 $mod+f fullscreen
-bindsym                 $mod+Shift+space floating toggle
-bindsym                 $mod+space focus mode_toggle
-bindsym                 $mod+a focus parent
-bindsym                 $mod+Shift+minus move scratchpad
-bindsym                 $mod+minus scratchpad show
+bindsym $mod+Return exec $term
+bindsym $mod+d exec rofi -show combi -combi-modes "drun,run,ssh" -modes combi
 
-mode                    "resize" {
-    bindsym             Left resize shrink width 128px
-    bindsym             Down resize grow height 128px
-    bindsym             Up resize shrink height 128px
-    bindsym             Right resize grow width 128px
+bindsym $mod+Shift+q kill
+floating_modifier $mod normal
 
-    bindsym             Return mode "default"
-    bindsym             Escape mode "default"
+bindsym $mod+Shift+c reload
+bindsym $mod+Shift+e exec swaynag -t warning -m 'Exit?' -B 'Yes' 'swaymsg exit'
+
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+
+bindsym $mod+Shift+Alt+Left move workspace to output left
+bindsym $mod+Shift+Alt+Right move workspace to output right
+
+bindsym $mod+1 workspace number 1
+bindsym $mod+2 workspace number 2
+bindsym $mod+3 workspace number 3
+bindsym $mod+4 workspace number 4
+bindsym $mod+5 workspace number 5
+bindsym $mod+6 workspace number 6
+
+bindsym $mod+Shift+1 move container to workspace number 1
+bindsym $mod+Shift+2 move container to workspace number 2
+bindsym $mod+Shift+3 move container to workspace number 3
+bindsym $mod+Shift+4 move container to workspace number 4
+bindsym $mod+Shift+5 move container to workspace number 5
+bindsym $mod+Shift+6 move container to workspace number 6
+
+bindsym $mod+b splith
+bindsym $mod+v splitv
+
+bindsym $mod+s layout stacking
+bindsym $mod+w layout tabbed
+bindsym $mod+e layout toggle split
+bindsym $mod+f fullscreen
+
+bindsym $mod+Shift+space floating toggle
+bindsym $mod+space focus mode_toggle
+bindsym $mod+a focus parent
+
+bindsym $mod+Shift+minus move scratchpad
+bindsym $mod+minus scratchpad show
+
+# Resize mode
+mode "resize" {
+    bindsym Left resize shrink width 128px
+    bindsym Down resize grow height 128px
+    bindsym Up resize shrink height 128px
+    bindsym Right resize grow width 128px
+
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
 }
-bindsym                 $mod+r mode "resize"
-bindsym                 $mod+Shift+k exec exec grim -g "$(slurp)" - | wl-copy
-bindsym                 Shift+Print exec grim - | wl-copy
-bindsym                 Shift+Alt+Print exec grim -g "$(slurp)" - | wl-copy
-bindsym                 Shift+Control+Print exec grim -o $(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name') - | wl-copy
+bindsym $mod+r mode "resize"
 
-bar                     {
-    swaybar_command     waybar
-}
+# Screenshot bindings
+bindsym $mod+Shift+k exec exec grim -g "$(slurp)" - | wl-copy
+bindsym Shift+Print exec grim - | wl-copy
+bindsym Shift+Alt+Print exec grim -g "$(slurp)" - | wl-copy
+bindsym Shift+Control+Print exec grim -o $(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name') - | wl-copy
 
-bindsym                 XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
-bindsym                 XF86AudioLowerVolume exec pactl set-sink-volume @DEFAULT_SINK@ -5%
-bindsym                 XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
-bindsym                 XF86AudioMicMute exec pactl set-source-mute @DEFAULT_SOURCE@ toggle
-bindsym                 XF86MonBrightnessDown exec brightnessctl set 5%-
-bindsym                 XF86MonBrightnessUp exec brightnessctl set 5%+
-bindsym                 $mod+n exec pactl set-default-sink $(pactl list short sinks | awk '{print $2}' | bemenu -l 10 -p 'Sink')
-
-input                   "type:keyboard" {
-    repeat_delay        250
-    repeat_rate         45
-    xkb_layout          se,us
-    xkb_variant         basic
-    xkb_model           pc105
-    xkb_options         ctrl:nocaps,grp:rctrl_toggle
+# Status bar
+bar {
+    swaybar_command waybar
 }
 
-input                   "type:touchpad" {
-    tap                 enabled
-    natural_scroll      enabled
-    pointer_accel       0.4
-    accel_profile       "adaptive"
+# Media and hardware controls
+bindsym XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
+bindsym XF86AudioLowerVolume exec pactl set-sink-volume @DEFAULT_SINK@ -5%
+bindsym XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
+bindsym XF86AudioMicMute exec pactl set-source-mute @DEFAULT_SOURCE@ toggle
+
+bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
+bindsym XF86MonBrightnessUp exec brightnessctl set 5%+
+
+bindsym $mod+n exec pactl set-default-sink $(pactl list short sinks | awk '{print $2}' | rofi -dmenu -i -p 'Sink')
+
+# Input devices
+input "type:keyboard" {
+    repeat_delay 250
+    repeat_rate 45
+    xkb_layout se,us
+    xkb_variant basic
+    xkb_model pc105
+    xkb_options ctrl:nocaps,grp:rctrl_toggle
 }
 
-input                   "type:pointer" {
-    natural_scroll      enabled
-    pointer_accel       0.4
-    accel_profile       "flat"
+input "type:touchpad" {
+    tap enabled
+    natural_scroll enabled
+    pointer_accel 0.4
+    accel_profile "adaptive"
 }
 
+input "type:pointer" {
+    natural_scroll enabled
+    pointer_accel 0.4
+    accel_profile "flat"
+}
+
+# Output configuration
 output eDP-1 {
   mode 2256x1504
   transform normal
   position 0,0
   scale 1.0
-  # enable
 }
 
 output "Dell Inc. DELL U3421WE B8ZW653" {
@@ -124,21 +141,21 @@ output "Dell Inc. DELL U3421WE B8ZW653" {
   transform normal
   position 0,0
   scale 1.0
-  # enable
 }
 
-# exec_always             "systemctl --user restart kanshi.service"
-exec_always             $HOME/.config/sway/themectl.sh night
-bindsym                 $mod+m exec $HOME/.config/sway/themectl.sh toggle
-exec_always             /usr/libexec/gsd-xsettings
+# Theme and system integration
+exec_always $HOME/.config/sway/themectl.sh night
+bindsym $mod+m exec $HOME/.config/sway/themectl.sh toggle
+exec_always /usr/libexec/gsd-xsettings
 
+# Laptop lid controls
+bindswitch --reload --locked lid:on output $laptop disable
+bindswitch --reload --locked lid:off output $laptop enable
+exec_always $HOME/.config/sway/lidctl.sh $laptop
 
-# Clamshell Mode
-bindswitch              --reload --locked lid:on output $laptop disable
-bindswitch              --reload --locked lid:off output $laptop enable
-exec_always             $HOME/.config/sway/lidctl.sh $laptop
+# Autostart applications
+exec_always "gdbus wait --session org.kde.StatusNotifierWatcher && dex-autostart -a -s $HOME/.config/autostart"
 
-exec_always             "gdbus wait --session org.kde.StatusNotifierWatcher && dex-autostart -a -s $HOME/.config/autostart"
-
-include                 $HOME/.config/sway/config.d/*
-include                 /etc/sway/config.d/*
+# Include additional configs
+include $HOME/.config/sway/config.d/*
+include /etc/sway/config.d/*
