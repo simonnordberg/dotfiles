@@ -116,7 +116,7 @@ output eDP-1 {
   transform normal
   position 0,0
   scale 1.0
-  enable
+  # enable
 }
 
 output "Dell Inc. DELL U3421WE B8ZW653" {
@@ -124,7 +124,7 @@ output "Dell Inc. DELL U3421WE B8ZW653" {
   transform normal
   position 0,0
   scale 1.0
-  enable
+  # enable
 }
 
 # exec_always             "systemctl --user restart kanshi.service"
