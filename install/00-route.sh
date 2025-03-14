@@ -1,5 +1,5 @@
 gateway="192.168.2.1"
-routes=("192.168.5.0/24" "192.168.4.0/24")
+routes=("192.168.5.0/24" "192.168.4.0/24" "192.168.6.0/24")
 wired_interface="enp195s0f3u1u6"
 wired_profile="Mumindalen Wired"
 wired_metric=50
@@ -27,7 +27,8 @@ setup_wired() {
     echo "Added route $route via $gateway with metric $wired_metric to $wired_profile"
   done
 
-  nmcli connection down "$wired_profile" ; nmcli connection up "$wired_profile"
+  nmcli connection down "$wired_profile"
+  nmcli connection up "$wired_profile"
 }
 
 # Configure Wi-Fi connection
@@ -40,7 +41,8 @@ setup_wifi() {
       echo "Added route $route via $gateway with metric $wifi_metric to $wifi_ssid"
     done
 
-    nmcli connection down "$wifi_ssid" ; nmcli connection up "$wifi_ssid"
+    nmcli connection down "$wifi_ssid"
+    nmcli connection up "$wifi_ssid"
   else
     echo "Wi-Fi '$wifi_ssid' not found. Skipping."
   fi
