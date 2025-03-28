@@ -1,4 +1,4 @@
-VERSION="0.0.88"
+VERSION="0.0.89"
 
 TARGET_DIR="/opt/discord-$VERSION"
 

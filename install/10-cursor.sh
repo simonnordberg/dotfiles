@@ -30,7 +30,7 @@ sudo ln -sf "$TARGET_DIR/cursor" "$BIN_PATH"
 cat <<EOF >"$DESKTOP_FILE"
 [Desktop Entry]
 Name=Cursor
-Exec=$TARGET_DIR/cursor
+Exec=$BIN_PATH/cursor
 Icon=$TARGET_DIR/resources/app/resources/linux/cursor.png
 Type=Application
 Categories=Development;IDE;
