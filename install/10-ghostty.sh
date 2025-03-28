@@ -13,12 +13,11 @@ mkdir -p $HOME/code/github
 
 if [ ! -d $HOME/code/github/ghostty ]; then
   git clone https://github.com/ghostty-org/ghostty $HOME/code/github/ghostty
+  cd $HOME/code/github/ghostty
+
+  git fetch
+  git checkout $VERSION
+
+  # Install for local user
+  zig build -p $HOME/.local -Doptimize=ReleaseFast
 fi
-
-cd $HOME/code/github/ghostty
-
-git fetch
-git checkout $VERSION
-
-# Install for local user
-zig build -p $HOME/.local -Doptimize=ReleaseFast

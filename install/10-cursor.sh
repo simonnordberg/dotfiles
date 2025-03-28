@@ -10,12 +10,12 @@ mkdir -p $bin_dir
 
 if [ -f "$bin_dir/$filename" ]; then
   echo "Cursor AppImage already exists: $bin_dir/$filename"
-  return 0
+  exit 0
 fi
 
 if ! curl -Lo $bin_dir/$filename "$latest_url" --progress-bar; then
   echo "Error: Failed to download Cursor AppImage" >&2
-  return 1
+  exit 1
 fi
 
 chmod +x $bin_dir/$filename
