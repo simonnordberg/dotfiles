@@ -6,14 +6,16 @@ latest_version=$(echo "$versions" | jq -r '.version')
 latest_url=$(echo "$versions" | jq -r '.linux.x64')
 filename=$(basename "$latest_url")
 
+mkdir -p $bin_dir
+
 if [ -f "$bin_dir/$filename" ]; then
   echo "Cursor AppImage already exists: $bin_dir/$filename"
-  exit 0
+  return 0
 fi
 
 if ! curl -Lo $bin_dir/$filename "$latest_url" --progress-bar; then
   echo "Error: Failed to download Cursor AppImage" >&2
-  exit 1
+  return 1
 fi
 
 chmod +x $bin_dir/$filename
