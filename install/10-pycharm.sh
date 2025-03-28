@@ -2,7 +2,7 @@ VERSION="pycharm-community-2024.3"
 
 if [ -d "/opt/$VERSION" ]; then
   echo "PyCharm is already installed"
-  return 0
+  exit 0
 fi
 
 FILENAME="$VERSION.tar.gz"
@@ -26,4 +26,3 @@ Terminal=false
 StartupWMClass=jetbrains-pycharm-ce
 StartupNotify=true
 EOF
-

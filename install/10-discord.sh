@@ -4,7 +4,7 @@ TARGET_DIR="/opt/discord-$VERSION"
 
 if [ -d "$TARGET_DIR" ]; then
   echo "Discord is already installed"
-  return 0
+  exit 0
 fi
 
 FILENAME="discord-$VERSION.tar.gz"

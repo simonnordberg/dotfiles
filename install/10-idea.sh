@@ -2,7 +2,7 @@ VERSION="ideaIC-2024.3.1.1"
 
 if [ -d "/opt/$VERSION" ]; then
   echo "Intellij IDEA is already installed"
-  return 0
+  exit 0
 fi
 
 FILENAME="$VERSION.tar.gz"

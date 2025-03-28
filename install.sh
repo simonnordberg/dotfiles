@@ -12,12 +12,18 @@ fi
 SOURCE_FILES="install/*.sh"
 
 if [ $# -gt 0 ]; then
-    SOURCE_FILES="$@"
+  SOURCE_FILES="$@"
 fi
 
 for script in $SOURCE_FILES; do
   echo ">>> $script"
-  source $script
+  bash "$script"
+  if [ $? -eq 0 ]; then
+    echo "<<< $script"
+  else
+    echo "Error executing: $script"
+    exit 1
+  fi
 done
 
 echo "All done!"
