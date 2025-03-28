@@ -120,7 +120,7 @@
         "tooltip-format": "{}",
         "return-type": "json",
         "tooltip": true,
-        "interval": 5,
+        "interval": 15,
         "signal": 12,
         "format-icons": {
             "connected": "🔒✅",
