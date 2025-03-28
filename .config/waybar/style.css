@@ -36,6 +36,7 @@ window#waybar.hidden {
 #cpu,
 #memory,
 #disk,
+#custom-tailscale,
 #temperature,
 #backlight,
 #network,
@@ -94,11 +95,11 @@ window#waybar.hidden {
 }
 
 /* Module positioning */
-.modules-left > widget:first-child > #workspaces {
+.modules-left>widget:first-child>#workspaces {
   margin-left: 0;
 }
 
-.modules-right > widget:last-child > #workspaces {
+.modules-right>widget:last-child>#workspaces {
   margin-right: 0;
 }
 
@@ -108,7 +109,8 @@ window#waybar.hidden {
   color: #a8e156;
 }
 
-#battery.charging, #battery.plugged {
+#battery.charging,
+#battery.plugged {
   color: #ffffff;
   background-color: rgba(42, 166, 91, 0.7);
 }
@@ -155,11 +157,13 @@ window#waybar.hidden {
 }
 
 /* Audio module */
-#pulseaudio, #wireplumber {
+#pulseaudio,
+#wireplumber {
   color: #a8e156;
 }
 
-#pulseaudio.muted, #wireplumber.muted {
+#pulseaudio.muted,
+#wireplumber.muted {
   color: #ff8a8a;
 }
 
@@ -184,11 +188,11 @@ window#waybar.hidden {
   background-color: rgba(20, 20, 20, 0.7);
 }
 
-#tray > .passive {
+#tray>.passive {
   -gtk-icon-effect: dim;
 }
 
-#tray > .needs-attention {
+#tray>.needs-attention {
   -gtk-icon-effect: highlight;
   background-color: rgba(235, 77, 75, 0.7);
 }
@@ -210,9 +214,11 @@ window#waybar.hidden {
   0% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.7;
   }
+
   100% {
     opacity: 1;
   }
@@ -224,6 +230,7 @@ window#waybar.hidden {
 #cpu:hover,
 #memory:hover,
 #disk:hover,
+#custom-tailscale:hover,
 #temperature:hover,
 #backlight:hover,
 #network:hover,
