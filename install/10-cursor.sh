@@ -1,38 +1,35 @@
-TARGET_DIR="/opt/cursor"
-BIN_PATH="/usr/local/bin/cursor"
-DESKTOP_FILE="$HOME/.local/share/applications/cursor.desktop"
-URL="https://downloader.cursor.sh/linux/appImage/x64"
+desktop_file="$HOME/.local/share/applications/cursor.desktop"
+bin_dir="$HOME/.local/bin"
 
-if [ -d "$TARGET_DIR" ]; then
-  echo "Cursor is already installed at $TARGET_DIR"
+versions=$(curl https://cursor.uuid.site/api/versions | jq -r '.versions[] | select(.isLatest == true)')
+latest_version=$(echo "$versions" | jq -r '.version')
+latest_url=$(echo "$versions" | jq -r '.linux.x64')
+filename=$(basename "$latest_url")
+
+if [ -f "$bin_dir/$filename" ]; then
+  echo "Cursor AppImage already exists: $bin_dir/$filename"
   exit 0
 fi
 
-TMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TMP_DIR"' EXIT
-cd "$TMP_DIR"
-
-if ! curl -Lo ./cursor.appImage "$URL" --progress-bar; then
+if ! curl -Lo $bin_dir/$filename "$latest_url" --progress-bar; then
   echo "Error: Failed to download Cursor AppImage" >&2
   exit 1
 fi
 
-chmod +x ./cursor.appImage
-if ! ./cursor.appImage --appimage-extract; then
-  echo "Error: Failed to extract AppImage" >&2
-  exit 1
-fi
+chmod +x $bin_dir/$filename
 
-sudo mkdir -p "$TARGET_DIR"
-sudo mv squashfs-root/* "$TARGET_DIR/"
-sudo ln -sf "$TARGET_DIR/cursor" "$BIN_PATH"
-
-cat <<EOF >"$DESKTOP_FILE"
+cat <<EOF >"$desktop_file"
 [Desktop Entry]
 Name=Cursor
-Exec=$BIN_PATH/cursor
-Icon=$TARGET_DIR/resources/app/resources/linux/cursor.png
+Comment=The AI Code Editor.
+GenericName=Text Editor
+Exec=$bin_dir/$filename %F
+Icon=co.anysphere.cursor
 Type=Application
-Categories=Development;IDE;
-Terminal=false
+StartupNotify=false
+StartupWMClass=Cursor
+Categories=TextEditor;Development;IDE;
+MimeType=application/x-cursor-workspace;
+Actions=new-empty-window;
+Keywords=cursor;
 EOF
