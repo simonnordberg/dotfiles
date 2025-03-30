@@ -15,7 +15,6 @@ sudo dnf install -y \
   mako \
   rofi-wayland
 
-mkdir -p $HOME/.config
 ln -fsn $BASE_DIR/.config/sway $HOME/.config/sway
 ln -fsn $BASE_DIR/.config/waybar $HOME/.config/waybar
 ln -fsn $BASE_DIR/.config/mako $HOME/.config/mako

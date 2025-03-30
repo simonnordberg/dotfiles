@@ -1,6 +1,6 @@
 # Based on https://ghostty.org/docs/install/build
 
-VERSION=v1.1.2
+VERSION=v1.1.3
 
 ln -fsn $BASE_DIR/.config/ghostty $HOME/.config/ghostty
 
@@ -13,11 +13,13 @@ mkdir -p $HOME/code/github
 
 if [ ! -d $HOME/code/github/ghostty ]; then
   git clone https://github.com/ghostty-org/ghostty $HOME/code/github/ghostty
-  cd $HOME/code/github/ghostty
-
-  git fetch
-  git checkout $VERSION
-
-  # Install for local user
-  zig build -p $HOME/.local -Doptimize=ReleaseFast
 fi
+
+cd $HOME/code/github/ghostty
+
+git fetch
+if [ "$(git rev-parse HEAD)" != "$(git rev-parse $VERSION)" ]; then
+  git checkout $VERSION
+fi
+
+zig build -p $HOME/.local -Doptimize=ReleaseFast
