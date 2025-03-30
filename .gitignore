@@ -1,2 +1,4 @@
 theme.sh
 .idea
+.env
+.ssh
