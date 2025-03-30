@@ -1,3 +1,6 @@
+mkdir -p /mnt/home
+mkdir -p /mnt/media
+
 PARTIAL="$BASE_DIR/root/etc/fstab.partial"
 START_MARKER="# start-fstab"
 END_MARKER="# end-fstab"
@@ -11,3 +14,5 @@ sudo sed -i "/$START_MARKER/,/$END_MARKER/d" /etc/fstab
   echo "$END_MARKER"
 } | sudo tee -a /etc/fstab >/dev/null
 
+sudo systemctl daemon-reload
+sudo mount -a
