@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+export BASE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 set -e
 
@@ -17,7 +17,7 @@ fi
 
 for script in $SOURCE_FILES; do
   echo ">>> $script"
-  bash "$script"
+  (bash "$script")
   if [ $? -eq 0 ]; then
     echo "<<< $script"
   else

@@ -1,6 +1,6 @@
 VERSION="0.0.89"
-
 TARGET_DIR="/opt/discord-$VERSION"
+
 
 if [ -d "$TARGET_DIR" ]; then
   echo "Discord is already installed"
@@ -14,8 +14,6 @@ DIR=$(mktemp -d)
 sudo mkdir -p $TARGET_DIR
 curl -Lo $DIR/$FILENAME $URL
 sudo tar -xf $DIR/$FILENAME -C $TARGET_DIR --strip-components=1
-
-mkdir -p $HOME/logs
 
 cat <<EOF >$HOME/.local/share/applications/discord.desktop
 [Desktop Entry]

@@ -6,7 +6,8 @@ latest_version=$(echo "$versions" | jq -r '.version')
 latest_url=$(echo "$versions" | jq -r '.linux.x64')
 filename=$(basename "$latest_url")
 
-mkdir -p $bin_dir
+mkdir -p $HOME/.local/bin
+mkdir -p $HOME/.local/share/aplications
 
 if [ -f "$bin_dir/$filename" ]; then
   echo "Cursor AppImage already exists: $bin_dir/$filename"
