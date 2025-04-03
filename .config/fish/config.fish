@@ -16,6 +16,7 @@ set -Ux LS_COLORS "di=0;36:ln=0;35:so=0;33:pi=0;33:ex=0;32:bd=1;33;01:cd=1;33;01
 
 set -Ux EDITOR nvim
 set -Ux VISUAL nvim
+set -Ux SDL_VIDEODRIVER wayland,x11
 
 if test -f ~/.env
     source ~/.env
