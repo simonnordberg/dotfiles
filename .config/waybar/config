@@ -115,13 +115,13 @@
     },
     "custom/tailscale": {
         "exec": "$HOME/.config/sway/waybar-tailscale.sh status",
-        "on-click": "$HOME/.config/sway/waybar-tailscale.sh toggle && pkill -SIGRTMIN+12 waybar",
+        "on-click": "$HOME/.config/sway/waybar-tailscale.sh toggle && pkill -SIGUSR2 waybar",
         "format": "{icon}",
         "tooltip-format": "{}",
         "return-type": "json",
         "tooltip": true,
         "interval": 15,
-        "signal": 12,
+        "signal": 8,
         "format-icons": {
             "connected": "🔒✅",
             "disconnected": "🔒❌"

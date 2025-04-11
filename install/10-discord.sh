@@ -1,6 +1,5 @@
-VERSION="0.0.89"
+VERSION="0.0.90"
 TARGET_DIR="/opt/discord-$VERSION"
-
 
 if [ -d "$TARGET_DIR" ]; then
   echo "Discord is already installed"
