@@ -19,6 +19,8 @@ set -Ux VISUAL nvim
 set -Ux SDL_VIDEODRIVER wayland,x11
 set -Ux SSH_AUTH_SOCK $HOME/.1password/agent.sock
 
+alias dokku "ssh -t dokku@dokku --"
+
 if test -f ~/.env
     source ~/.env
 end

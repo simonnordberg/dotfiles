@@ -39,7 +39,7 @@ toggle)
   if tailscale_running; then
     tailscale down
   else
-    tailscale up --exit-node $(tailscale exit-node suggest | head -n 1 | awk '{print $NF}')
+    tailscale up --exit-node-allow-lan-access --exit-node $(tailscale exit-node suggest | head -n 1 | awk '{print $NF}')
   fi
   ;;
 *)
