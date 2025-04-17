@@ -6,7 +6,7 @@
 set -euo pipefail
 
 tailscale_running() {
-  curl -s https://am.i.mullvad.net/json 2>/dev/null | jq '.mullvad_exit_ip' | grep -q "true"
+  tailscale status >/dev/null 2>&1
 }
 
 format_status() {
@@ -29,17 +29,16 @@ fi
 case $1 in
 status)
   if tailscale_running; then
-    exitnode=$(curl -s https://am.i.mullvad.net/json 2>/dev/null | jq -r '.mullvad_exit_ip_hostname')
-    format_status "Connected to $exitnode" "connected" "Connected to $exitnode"
+    format_status "Running" "running" "Running"
   else
-    format_status "Not connected" "disconnected" "Not connected"
+    format_status "Stopped" "stopped" "Stopped"
   fi
   ;;
 toggle)
   if tailscale_running; then
     tailscale down
   else
-    tailscale up --exit-node-allow-lan-access --exit-node $(tailscale exit-node suggest | head -n 1 | awk '{print $NF}')
+    tailscale up
   fi
   ;;
 *)

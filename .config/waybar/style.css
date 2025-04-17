@@ -37,6 +37,7 @@ window#waybar.hidden {
 #memory,
 #disk,
 #custom-tailscale,
+#custom-mullvad,
 #temperature,
 #backlight,
 #network,
@@ -231,6 +232,7 @@ window#waybar.hidden {
 #memory:hover,
 #disk:hover,
 #custom-tailscale:hover,
+#custom-mullvad:hover,
 #temperature:hover,
 #backlight:hover,
 #network:hover,
@@ -244,4 +246,54 @@ window#waybar.hidden {
 #language:hover,
 #mpd:hover {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Custom modules */
+
+#custom-mullvad,
+#custom-tailscale {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  transition: background-color 0.3s ease;
+  min-width: 24px;
+  margin: 0 4px;
+}
+
+#custom-mullvad {
+  background-image: url('/home/simon/.config/waybar/mullvad.svg');
+}
+
+#custom-tailscale {
+  background-image: url('/home/simon/.config/waybar/tailscale.svg');
+}
+
+#custom-mullvad.connected,
+#custom-tailscale.running {
+  background-color: #43a047;
+}
+
+#custom-mullvad.connecting {
+  background-color: #fb8c00;
+  animation: pulse 1s infinite;
+}
+
+#custom-mullvad.disconnected,
+#custom-tailscale.stopped {
+  background-color: #e53935;
+  animation: pulse 3s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
