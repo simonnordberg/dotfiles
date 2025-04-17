@@ -116,20 +116,22 @@
     },
     "custom/tailscale": {
         "exec": "$HOME/.config/sway/waybar-tailscale.sh status",
-        "on-click": "$HOME/.config/sway/waybar-tailscale.sh toggle",
+        "on-click": "$HOME/.config/sway/waybar-tailscale.sh toggle && pkill -SIGRTMIN+8 waybar",
         "format": " ",
         "tooltip-format": "{}",
         "return-type": "json",
         "tooltip": true,
-        "interval": 5
+        "interval": 5,
+        "signal": 8
     },
     "custom/mullvad": {
         "exec": "$HOME/.config/sway/waybar-mullvad.sh status",
-        "on-click": "$HOME/.config/sway/waybar-mullvad.sh toggle",
+        "on-click": "$HOME/.config/sway/waybar-mullvad.sh toggle && pkill -SIGRTMIN+9 waybar",
         "format": " ",
         "tooltip-format": "{}",
         "return-type": "json",
         "tooltip": true,
-        "interval": 5
+        "interval": 5,
+        "signal": 9
     }
 }
