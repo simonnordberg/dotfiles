@@ -25,14 +25,16 @@ fi
 
 case $1 in
 status)
-  status=$(mullvad status --json | jq -r '.state')
+  json=$(mullvad status --json)
+  status=$(echo "$json" | jq -r '.state') || status="unknown"
+  exitnode=$(echo "$json" | jq -r '.details.location.hostname') || exitnode="unknown"
+
   case $status in
   connected)
-    exitnode=$(mullvad status --json | jq -r '.details.location.hostname')
     format_status "Connected to $exitnode" "connected" "Connected to $exitnode"
     ;;
   connecting)
-    format_status "Connecting..." "connecting" "Connecting..."
+    format_status "Connecting to $exitnode..." "connecting" "Connecting to $exitnode..."
     ;;
   *)
     format_status "Not connected" "disconnected" "Not connected"
