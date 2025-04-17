@@ -104,9 +104,7 @@ window#waybar.hidden {
   margin-right: 0;
 }
 
-/* Battery styling */
 #battery {
-  /* Neutral color that works with both light and dark */
   color: #a8e156;
 }
 
@@ -133,7 +131,8 @@ window#waybar.hidden {
 }
 
 #network.disconnected {
-  background-color: rgba(245, 60, 60, 0.7);
+  background-color: #e53935;
+  animation: pulse 3s infinite;
   color: #ffffff;
 }
 
@@ -282,18 +281,4 @@ window#waybar.hidden {
 #custom-tailscale.stopped {
   background-color: #e53935;
   animation: pulse 3s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.6;
-  }
-
-  100% {
-    opacity: 1;
-  }
 }
