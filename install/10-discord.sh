@@ -1,4 +1,4 @@
-VERSION="0.0.90"
+VERSION="0.0.91"
 TARGET_DIR="/opt/discord-$VERSION"
 
 if [ -d "$TARGET_DIR" ]; then
