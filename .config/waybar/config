@@ -13,6 +13,7 @@
         "pulseaudio",
         "battery",
         "network",
+        "custom/mullvad",
         "custom/tailscale",
         "tray",
         "sway/language",
@@ -115,16 +116,20 @@
     },
     "custom/tailscale": {
         "exec": "$HOME/.config/sway/waybar-tailscale.sh status",
-        "on-click": "$HOME/.config/sway/waybar-tailscale.sh toggle && pkill -SIGUSR2 waybar",
-        "format": "{icon}",
+        "on-click": "$HOME/.config/sway/waybar-tailscale.sh toggle",
+        "format": " ",
         "tooltip-format": "{}",
         "return-type": "json",
         "tooltip": true,
-        "interval": 15,
-        "signal": 8,
-        "format-icons": {
-            "connected": "🔒✅",
-            "disconnected": "🔒❌"
-        }
+        "interval": 5
+    },
+    "custom/mullvad": {
+        "exec": "$HOME/.config/sway/waybar-mullvad.sh status",
+        "on-click": "$HOME/.config/sway/waybar-mullvad.sh toggle",
+        "format": " ",
+        "tooltip-format": "{}",
+        "return-type": "json",
+        "tooltip": true,
+        "interval": 5
     }
 }
