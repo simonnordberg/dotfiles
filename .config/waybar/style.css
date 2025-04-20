@@ -268,17 +268,18 @@ window#waybar.hidden {
 }
 
 #custom-mullvad.connected,
-#custom-tailscale.running {
+#custom-tailscale.connected {
   background-color: #43a047;
 }
 
-#custom-mullvad.connecting {
+#custom-mullvad.connecting,
+#custom-tailscale.connecting {
   background-color: #fb8c00;
   animation: pulse 1s infinite;
 }
 
 #custom-mullvad.disconnected,
-#custom-tailscale.stopped {
+#custom-tailscale.disconnected {
   background-color: #e53935;
   animation: pulse 3s infinite;
 }

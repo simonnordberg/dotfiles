@@ -115,23 +115,19 @@
         "format": "{flag}"
     },
     "custom/tailscale": {
-        "exec": "$HOME/.config/sway/waybar-tailscale.sh status",
-        "on-click": "$HOME/.config/sway/waybar-tailscale.sh toggle && pkill -SIGRTMIN+8 waybar",
+        "exec": "bash -c 'journalctl -f -u tailscaled | $HOME/code/github/dotfiles/.config/sway/waybar-tailscale-transform.sh'",
+        "restart-interval": 5,
         "format": " ",
         "tooltip-format": "{}",
         "return-type": "json",
-        "tooltip": true,
-        "interval": 5,
-        "signal": 8
+        "tooltip": true
     },
     "custom/mullvad": {
-        "exec": "$HOME/.config/sway/waybar-mullvad.sh status",
-        "on-click": "$HOME/.config/sway/waybar-mullvad.sh toggle && pkill -SIGRTMIN+9 waybar",
+        "exec": "bash -c 'journalctl -f -u mullvad-daemon | $HOME/code/github/dotfiles/.config/sway/waybar-mullvad-transform.sh'",
+        "restart-interval": 5,
         "format": " ",
         "tooltip-format": "{}",
         "return-type": "json",
-        "tooltip": true,
-        "interval": 5,
-        "signal": 9
+        "tooltip": true
     }
 }
