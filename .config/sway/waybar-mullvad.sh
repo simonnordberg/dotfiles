@@ -1,60 +1,45 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-set -euo pipefail
+output_mullvad_state() {
+    local state="$1"
+    local hostname="$2"
+    local class text tooltip
 
-mullvad_connected() {
-  mullvad status --json | jq -r '.state' | grep -q "^connected$" 2>/dev/null
+    case "$state" in
+    "connected" | "connecting")
+        class="$state"
+        text="${state^} to $hostname"
+        tooltip="$text"
+        ;;
+    "disconnected" | "disconnecting")
+        class="$state"
+        text="${state^}"
+        tooltip="$text"
+        ;;
+    *)
+        class="unknown"
+        text="Unknown state: $state"
+        tooltip="$text"
+        ;;
+    esac
+
+    jq --unbuffered --compact-output -n \
+        --arg text "$text" \
+        --arg class "$class" \
+        --arg alt "$class" \
+        --arg tooltip "$tooltip" \
+        '{text: $text, tooltip: $tooltip, class: $class, alt: $alt}'
 }
 
-format_status() {
-  local text="$1"
-  local class="$2"
-  local tooltip="$3"
-  jq -c -n \
-    --arg text "$text" \
-    --arg class "$class" \
-    --arg tooltip "$tooltip" \
-    '{text: $text, class: $class, alt: $class, tooltip: $tooltip}'
-}
+# get initial state
+read -r state hostname < <(mullvad status --json 2>/dev/null | jq -r '[.state, (.details.location.hostname // empty)] | @tsv')
+output_mullvad_state "$state" "$hostname"
 
-# Check if an argument was provided
-if [ $# -eq 0 ]; then
-  echo "Usage: $0 [status|toggle]" >&2
-  exit 1
-fi
-
-case $1 in
-status)
-  json=$(mullvad status --json)
-  status=$(echo "$json" | jq -r '.state') || status="unknown"
-  exitnode=$(echo "$json" | jq -r '.details.location.hostname') || exitnode="unknown"
-
-  case $status in
-  connected)
-    format_status "Connected to $exitnode" "connected" "Connected to $exitnode"
-    ;;
-  connecting)
-    format_status "Connecting to $exitnode..." "connecting" "Connecting to $exitnode..."
-    ;;
-  *)
-    format_status "Not connected" "disconnected" "Not connected"
-    ;;
-  esac
-  ;;
-toggle)
-  status=$(mullvad status --json | jq -r '.state')
-  case $status in
-  disconnected)
-    mullvad connect
-    ;;
-  *)
-    mullvad reconnect
-    ;;
-  esac
-  ;;
-*)
-  echo "Usage: $0 status" >&2
-  echo "       $0 toggle" >&2
-  exit 1
-  ;;
-esac
+# Monitor for state changes
+journalctl -f -n 0 -u mullvad-daemon.service | while IFS= read -r line; do
+    if echo "$line" | grep -q "New tunnel state:"; then
+        state=$(echo "$line" | grep -o "New tunnel state: \(Disconnecting\|Connecting\|Connected\|Disconnected\)" | cut -d ' ' -f4 | tr '[:upper:]' '[:lower:]')
+        hostname=$(echo "$line" | grep -o 'hostname: Some("[^"]*")' | sed -E 's/hostname: Some\("([^"]*)"\)/\1/' || echo "")
+        output_mullvad_state "$state" "$hostname"
+    fi
+done
