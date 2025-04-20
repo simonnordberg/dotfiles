@@ -7,13 +7,13 @@ format_status() {
     case "$state" in
     "Running" | "Starting" | "Stopped")
         class="${state,,}"
-        text="Tailscale is ${state,,}"
-        tooltip="$text"
+        text="${state^}"
+        tooltip="${state^}"
         ;;
     *)
-        class="unknown"
-        text="Unknown state: $state"
-        tooltip="$text"
+        class="error"
+        text="Error: $state"
+        tooltip="Error: $state"
         ;;
     esac
 
@@ -26,14 +26,21 @@ format_status() {
 }
 
 get_tailscale_state() {
-    read -r state < <(tailscale status --json 2>/dev/null | jq -r '.BackendState')
+    json=$(tailscale status --json 2>/dev/null)
+    state=$(echo "$json" | jq -r '.BackendState')
+    online=$(echo "$json" | jq -r '.Self.Online') # Check difference between .Online and .Active
+
+    if [[ "$state" == "Running" && "$online" == false ]]; then
+        state="Starting"
+    fi
+
     format_status "$state"
 }
 
 get_tailscale_state
 
 journalctl -f -n 0 -u tailscaled.service | while IFS= read -r line; do
-    if echo "$line" | grep -q "Switching ipn state"; then
+    if echo "$line" | grep -q "Switching ipn state\|LinkChange"; then
         get_tailscale_state
     fi
 done

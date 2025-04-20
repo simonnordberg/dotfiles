@@ -2,24 +2,24 @@
 
 format_status() {
     local state="$1"
-    local hostname="$2"
+    local message="$2"
     local class text tooltip
 
     case "$state" in
     "connected" | "connecting")
         class="$state"
-        text="${state^} to $hostname"
+        text="${state^} to $message"
         tooltip="$text"
         ;;
     "disconnected" | "disconnecting")
         class="$state"
         text="${state^}"
-        tooltip="$text"
+        tooltip="${state^}"
         ;;
     *)
-        class="unknown"
-        text="Unknown state: $state"
-        tooltip="$text"
+        class="error"
+        text="Error: $message"
+        tooltip="Error: $message"
         ;;
     esac
 
@@ -32,8 +32,27 @@ format_status() {
 }
 
 get_mullvad_state() {
-    read -r state hostname < <(mullvad status --json 2>/dev/null | jq -r '[.state, (.details.location.hostname // empty)] | @tsv')
-    format_status "$state" "$hostname"
+    json=$(mullvad status --json 2>/dev/null)
+    state=$(echo "$json" | jq -r '.state')
+    local message
+
+    case "$state" in
+    "connected" | "connecting")
+        message=$(echo "$json" | jq -r '(.details.location.hostname // empty)')
+        ;;
+    "error")
+        message=$(echo "$json" | jq -r '(.details.cause.reason // empty)')
+        if [[ "$message" == "is_offline" ]]; then
+            state="connecting"
+            message=""
+        fi
+        ;;
+    *)
+        message=""
+        ;;
+    esac
+
+    format_status "$state" "$message"
 }
 
 get_mullvad_state
