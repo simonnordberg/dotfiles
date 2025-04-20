@@ -115,7 +115,7 @@
         "format": "{flag}"
     },
     "custom/tailscale": {
-        "exec": "bash -c 'journalctl -f -u tailscaled | $HOME/code/github/dotfiles/.config/sway/waybar-tailscale-transform.sh'",
+        "exec": "$HOME/code/github/dotfiles/.config/sway/waybar-tailscale.sh",
         "restart-interval": 5,
         "format": " ",
         "tooltip-format": "{}",
@@ -123,7 +123,7 @@
         "tooltip": true
     },
     "custom/mullvad": {
-        "exec": "bash -c 'journalctl -f -u mullvad-daemon | $HOME/code/github/dotfiles/.config/sway/waybar-mullvad-transform.sh'",
+        "exec": "$HOME/code/github/dotfiles/.config/sway/waybar-mullvad.sh",
         "restart-interval": 5,
         "format": " ",
         "tooltip-format": "{}",

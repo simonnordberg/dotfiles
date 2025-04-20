@@ -1,49 +1,38 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-# Remember to set tailscale operator to not require root, i.e.
-#   sudo tailscale set --operator=$USER
+output_tailscale_state() {
+    local state="$1"
+    local class text tooltip
 
-set -euo pipefail
+    case "$state" in
+    "Running" | "Starting" | "Stopped")
+        class="${state,,}"
+        text="Tailscale is ${state,,}"
+        tooltip="$text"
+        ;;
+    *)
+        class="unknown"
+        text="Unknown state: $state"
+        tooltip="$text"
+        ;;
+    esac
 
-tailscale_running() {
-  tailscale status >/dev/null 2>&1
+    jq --unbuffered --compact-output -n \
+        --arg text "$text" \
+        --arg class "$class" \
+        --arg alt "$class" \
+        --arg tooltip "$tooltip" \
+        '{text: $text, tooltip: $tooltip, class: $class, alt: $alt}'
 }
 
-format_status() {
-  local text="$1"
-  local class="$2"
-  local tooltip="$3"
-  jq -c -n \
-    --arg text "$text" \
-    --arg class "$class" \
-    --arg tooltip "$tooltip" \
-    '{text: $text, class: $class, alt: $class, tooltip: $tooltip}'
-}
+# Get initial state and output
+state=$(tailscale status --json 2>/dev/null | jq -r '.BackendState')
+output_tailscale_state "$state"
 
-# Check if an argument was provided
-if [ $# -eq 0 ]; then
-  echo "Usage: $0 [status|toggle]" >&2
-  exit 1
-fi
-
-case $1 in
-status)
-  if tailscale_running; then
-    format_status "Running" "running" "Running"
-  else
-    format_status "Stopped" "stopped" "Stopped"
-  fi
-  ;;
-toggle)
-  if tailscale_running; then
-    tailscale down
-  else
-    tailscale up
-  fi
-  ;;
-*)
-  echo "Usage: $0 status" >&2
-  echo "       $0 toggle" >&2
-  exit 1
-  ;;
-esac
+# Monitor for state changes
+journalctl -f -n 0 -u tailscaled.service | while IFS= read -r line; do
+    if echo "$line" | grep -q "Switching ipn state"; then
+        state=$(echo "$line" | sed -E 's/.*Switching ipn state ([^ ]+) -> ([^ ]+).*/\2/')
+        output_tailscale_state "$state"
+    fi
+done
