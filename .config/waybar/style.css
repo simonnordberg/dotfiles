@@ -284,8 +284,8 @@ window#waybar.hidden {
   animation: pulse 3s infinite;
 }
 
-#custom-mullvad.unknown,
-#custom-tailscale.unknown {
+#custom-mullvad.error,
+#custom-tailscale.error {
   background-color: #e53935;
-  animation: pulse 0.5s infinite;
+  animation: pulse 0.3s infinite;
 }
