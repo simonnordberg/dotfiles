@@ -5,6 +5,7 @@ font-size = 10
 
 # Misc
 shell-integration = fish
+shell-integration-features = sudo
 
 # Keybindings
 keybind = alt+n=new_split:auto

@@ -40,6 +40,7 @@ get_tailscale_state() {
 get_tailscale_state
 
 journalctl -f -n 0 -u tailscaled.service | while IFS= read -r line; do
+    # What else is needed to capture resume state?
     if echo "$line" | grep -q "Switching ipn state\|LinkChange"; then
         get_tailscale_state
     fi
