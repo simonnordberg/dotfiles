@@ -1,7 +1,7 @@
 #!/usr/bin/env fish
 
 if test -f $HOME/.config/fish/config.fish
-  source $HOME/.config/fish/config.fish
+    source $HOME/.config/fish/config.fish
 end
 
-exec sway -d 2>> $HOME/logs/sway.log
+exec sway --unsupported-gpu -d 2>>$HOME/logs/sway.log
