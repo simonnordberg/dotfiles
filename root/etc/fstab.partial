@@ -1,2 +1,0 @@
-nas01:/volume1/media /mnt/media nfs soft,timeo=600,retrans=2,bg,intr,local_lock=all,rsize=1048576,wsize=1048576 0 
-nas01:/volume1/homes/simon /mnt/home nfs soft,timeo=600,retrans=2,bg,intr,local_lock=all,rsize=1048576,wsize=1048576 0 
