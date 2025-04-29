@@ -4,6 +4,7 @@ VERSION=v1.1.3
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
+rm -rf $HOME/.config/ghostty
 mkdir -p $HOME/.config/ghostty
 cp $SCRIPT_DIR/config $HOME/.config/ghostty/config
 
