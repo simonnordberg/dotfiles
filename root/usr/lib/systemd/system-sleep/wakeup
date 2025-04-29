@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+case $1 in
+  pre)
+    if grep -qE '^XHC0.*enabled' /proc/acpi/wakeup; then
+        echo XHC0 > /proc/acpi/wakeup
+    fi
+    ;;
+esac
