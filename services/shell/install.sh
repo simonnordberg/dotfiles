@@ -5,8 +5,9 @@ sudo chsh -s $(which fish) $USER
 
 curl -sS https://starship.rs/install.sh | sh -s -- -y
 
-[ -L $HOME/.config/fish ] && rm $HOME/.config/fish
 
-mkdir -p $HOME/.config/fish
-rsync -r --delete $SCRIPT_DIR/fish $HOME/.config/fish
+rm -rf $HOME/.config/fish
+rsync -r --delete $SCRIPT_DIR/fish/ $HOME/.config/fish/
+
+rm -f $HOME/.config/starship.toml
 cp $SCRIPT_DIR/starship.toml $HOME/.config/starship.toml
