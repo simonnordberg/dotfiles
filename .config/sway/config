@@ -13,9 +13,8 @@ smart_gaps inverse_outer
 for_window [shell=".*"] inhibit_idle fullscreen
 
 exec_always swayidle -w \
-    timeout 900 'swaylock -f -c 000000' \
-    timeout 1800 'systemctl suspend' \
-    timeout 900 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' \
+    timeout 300 'swaylock -f -c 000000' \
+    timeout 300 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' \
     before-sleep 'swaylock -f -c 000000'
 bindsym $mod+l exec swaylock -f -c 000000
 

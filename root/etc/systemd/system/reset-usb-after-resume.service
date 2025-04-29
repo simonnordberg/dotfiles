@@ -4,7 +4,7 @@ After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'for x in $(ls /sys/bus/pci/drivers/xhci_hcd/ | grep :); do if [[ $x =~ ^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]$ ]]; then echo "Resetting USB controller $x"; echo -n "$x" > /sys/bus/pci/drivers/xhci_hcd/unbind; sleep 1; echo -n "$x" > /sys/bus/pci/drivers/xhci_hcd/bind; fi; done'
+ExecStart=/bin/bash -c 'for x in $$(ls /sys/bus/pci/drivers/xhci_hcd/ | grep :); do if [[ $$x =~ ^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\\.[0-9a-f]$$ ]]; then echo "Resetting USB controller $$x"; echo -n "$$x" > /sys/bus/pci/drivers/xhci_hcd/unbind; sleep 1; echo -n "$$x" > /sys/bus/pci/drivers/xhci_hcd/bind; fi; done'
 TimeoutSec=30
 
 [Install]
