@@ -4,8 +4,13 @@ mkdir -p $HOME/.local/share/applications
 mkdir -p $HOME/logs
 
 # Extend root partition to fill the disk
-sudo lvextend -l +100%FREE /dev/mapper/fedora-root
-sudo xfs_growfs /dev/mapper/fedora-root
+if command -v lvs >/dev/null 2>&1; then
+  ROOT_LV=$(sudo lvs --noheadings -o lv_path | grep -E '/root$' | tr -d ' ')
+  if [ -n "$ROOT_LV" ] && [ -e "$ROOT_LV" ]; then
+    sudo lvextend -l +100%FREE "$ROOT_LV"
+    sudo xfs_growfs "$ROOT_LV"
+  fi
+fi
 
 # Install packages
 sudo dnf install -y \

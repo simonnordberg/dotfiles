@@ -4,46 +4,50 @@ set -e
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 SERVICES_DIR="$SCRIPT_DIR/services"
+BASE_SERVICES="base shell"
 
 if [ "$EUID" -eq 0 ]; then
   echo "Do not run as root"
   exit 1
 fi
 
-# Logging function
-log() {
-  local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-  echo "$msg"
-}
-
 # Install a service
 install_service() {
   local service_dir="$1"
 
   if [ -f "$service_dir/install.sh" ]; then
-    log "Installing $service_dir..."
+    echo "Installing $service_dir"
     cd "$service_dir"
-    # bash install.sh
+    bash install.sh
     cd - >/dev/null
   fi
 }
 
 # Main installation
 main() {
-  log "Starting server setup..."
+  echo "Starting server setup..."
 
   if [ $# -eq 0 ]; then
-    log "No service specified. Installing all services..."
-    # Find and sort services by numeric prefix
-    for service_dir in $(find "$SERVICES_DIR" -maxdepth 1 -type d | sort); do
-      install_service "$service_dir"
+    echo "No service specified. Installing all services..."
+
+    echo "Installing base services..."
+    for service in $BASE_SERVICES; do
+      install_service "$SERVICES_DIR/$service"
+    done
+
+    echo "Installing other services..."
+    for service in $(ls -1 "$SERVICES_DIR"); do
+      if [[ " $BASE_SERVICES " =~ " $service " ]]; then
+        continue
+      fi
+      install_service "$SERVICES_DIR/$service"
     done
   else
-    log "Installing requested service: $1"
+    echo "Installing requested service: $1"
     install_service "$1"
   fi
 
-  log "Setup completed successfully!"
+  echo "Setup completed successfully!"
 }
 
 main "$@"
