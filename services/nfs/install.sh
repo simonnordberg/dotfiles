@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo mkdir -p /mnt/media /mnt/immich
+sudo mkdir -p /mnt/media /mnt/home
 
 add_mount() {
     local source=$1
@@ -13,7 +13,7 @@ add_mount() {
 }
 
 add_mount "nas01:/volume1/media" "/mnt/media"
-add_mount "nas01:/volume1/immich" "/mnt/immich"
+add_mount "nas01:/volume1/homes/simon" "/mnt/home"
 
 sudo systemctl daemon-reload
 sudo mount -a
