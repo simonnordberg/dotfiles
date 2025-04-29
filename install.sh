@@ -1,29 +1,53 @@
-#!/usr/bin/env bash
-
-export BASE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+#!/bin/bash
 
 set -e
 
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+SERVICES_DIR="$SCRIPT_DIR/services"
+BASE_SERVICES="base shell"
+
 if [ "$EUID" -eq 0 ]; then
-  echo "Please don't run as root"
-  exit
+  echo "Do not run as root"
+  exit 1
 fi
 
-SOURCE_FILES="install/*.sh"
+# Install a service
+install_service() {
+  local service_dir="$1"
 
-if [ $# -gt 0 ]; then
-  SOURCE_FILES="$@"
-fi
-
-for script in $SOURCE_FILES; do
-  echo ">>> $script"
-  (bash "$script")
-  if [ $? -eq 0 ]; then
-    echo "<<< $script"
-  else
-    echo "Error executing: $script"
-    exit 1
+  if [ -f "$service_dir/install.sh" ]; then
+    echo "Installing $service_dir"
+    cd "$service_dir"
+    bash install.sh
+    cd - >/dev/null
   fi
-done
+}
 
-echo "All done!"
+# Main installation
+main() {
+  echo "Starting server setup..."
+
+  if [ $# -eq 0 ]; then
+    echo "No service specified. Installing all services..."
+
+    echo "Installing base services..."
+    for service in $BASE_SERVICES; do
+      install_service "$SERVICES_DIR/$service"
+    done
+
+    echo "Installing other services..."
+    for service in $(ls -1 "$SERVICES_DIR"); do
+      if [[ " $BASE_SERVICES " =~ " $service " ]]; then
+        continue
+      fi
+      install_service "$SERVICES_DIR/$service"
+    done
+  else
+    echo "Installing requested service: $1"
+    install_service "$1"
+  fi
+
+  echo "Setup completed successfully!"
+}
+
+main "$@"
