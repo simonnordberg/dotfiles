@@ -115,7 +115,7 @@
         "format": "{flag}"
     },
     "custom/tailscale": {
-        "exec": "$HOME/code/github/dotfiles/.config/sway/waybar-tailscale.sh",
+        "exec": "$HOME/.config/sway/waybar-tailscale.sh",
         "restart-interval": 5,
         "format": " ",
         "tooltip-format": "{}",
@@ -123,7 +123,7 @@
         "tooltip": true
     },
     "custom/mullvad": {
-        "exec": "$HOME/code/github/dotfiles/.config/sway/waybar-mullvad.sh",
+        "exec": "$HOME/.config/sway/waybar-mullvad.sh",
         "restart-interval": 5,
         "format": " ",
         "tooltip-format": "{}",
