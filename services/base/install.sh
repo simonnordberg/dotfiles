@@ -24,4 +24,5 @@ sudo dnf install -y \
   openssl-devel \
   dnf-plugins-core \
   fuse \
-  fuse-libs
+  fuse-libs \
+  htop
