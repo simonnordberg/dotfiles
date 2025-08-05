@@ -1,13 +1,9 @@
-# Look and feel
 theme = dark:MaterialDesignColors,light:catppuccin-latte
 font-family = Hack Nerd Font
-font-size = 10
 
-# Misc
 shell-integration = fish
 shell-integration-features = sudo
 
-# Keybindings
 keybind = alt+n=new_split:auto
 keybind = alt+up=goto_split:up
 keybind = alt+right=goto_split:right
