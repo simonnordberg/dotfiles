@@ -5,6 +5,7 @@ set -e
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 SERVICES_DIR="$SCRIPT_DIR/services"
 BASE_SERVICES="base shell"
+SERVICES="flatpak 1password chromium desktop discord docker ghostty git neovim niri obsidian signal spotify ssh steam syncthing tailscale"
 
 if [ "$EUID" -eq 0 ]; then
   echo "Do not run as root"
@@ -36,10 +37,7 @@ main() {
     done
 
     echo "Installing other services..."
-    for service in $(ls -1 "$SERVICES_DIR"); do
-      if [[ " $BASE_SERVICES " =~ " $service " ]]; then
-        continue
-      fi
+    for service in $SERVICES; do
       install_service "$SERVICES_DIR/$service"
     done
   else
