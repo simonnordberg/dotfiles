@@ -8,4 +8,4 @@ if [ ! -e $HOME/.config/nvim ]; then
 fi
 
 rm -rf $HOME/.config/nvim/lua/plugins
-rsync -r --delete $SCRIPT_DIR/lua/plugins/ $HOME/.config/nvim/lua/plugins/
+rsync -r --delete $SCRIPT_DIR/config/lua/plugins/ $HOME/.config/nvim/lua/plugins/
