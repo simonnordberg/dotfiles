@@ -1,4 +1,4 @@
-theme = dark:MaterialDesignColors,light:catppuccin-latte
+theme = Material Design Colors
 font-family = Hack Nerd Font
 
 shell-integration = fish
