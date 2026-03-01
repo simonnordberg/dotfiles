@@ -1,7 +1,7 @@
 theme = Material Design Colors
 font-family = Hack Nerd Font
 
-shell-integration = fish
+shell-integration = zsh
 shell-integration-features = sudo
 
 keybind = alt+n=new_split:auto
