@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-source $HOME/.zshrc 2>/dev/null
-
-exec sway --unsupported-gpu -d 2>>$HOME/logs/sway.log
