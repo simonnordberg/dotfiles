@@ -32,31 +32,19 @@ brew install ghostty
 echo "Installing Neovim and fzf..."
 brew install neovim fzf
 
-echo "Installing fish shell..."
-brew install fish
-
-echo "Setting fish as default shell..."
-FISH_PATH=$(which fish)
-if [[ "$SHELL" != "$FISH_PATH" ]]; then
-  echo "$FISH_PATH" | sudo tee -a /etc/shells >/dev/null
-  chsh -s "$FISH_PATH"
-fi
+echo "Installing zsh configuration..."
+cp "$SCRIPT_DIR/services/shell/zsh/.zshrc" "$HOME/.zshrc"
 
 echo "Installing Starship prompt..."
 if ! command -v starship &>/dev/null; then
   curl -sS https://starship.rs/install.sh | sh -s -- -y
-  cp "$SCRIPT_DIR/services/shell/starship.toml" "$HOME/.config/starship.toml"
 fi
+mkdir -p "$HOME/.config"
+cp "$SCRIPT_DIR/services/shell/starship.toml" "$HOME/.config/starship.toml"
 
 echo "Installing ghostty config"
-rm -rf $HOME/.config/ghostty
 mkdir -p $HOME/.config/ghostty
 cp $SCRIPT_DIR/services/ghostty/config $HOME/.config/ghostty/config
-
-echo "Installing fish configuration..."
-rm -rf $HOME/.config/fish
-mkdir -p $HOME/.config/fish
-cp -r "$SCRIPT_DIR/services/shell/fish/" "$HOME/.config/fish/"
 
 echo "Installing Neovim"
 brew install nvim luarocks tree-sitter-cli
