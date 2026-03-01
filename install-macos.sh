@@ -46,15 +46,12 @@ echo "Installing ghostty config"
 mkdir -p $HOME/.config/ghostty
 cp $SCRIPT_DIR/services/ghostty/config $HOME/.config/ghostty/config
 
-echo "Installing Neovim"
-brew install nvim luarocks tree-sitter-cli
-
 echo "Installing Neovim configuration..."
-rm -rf $HOME/.config/nvim
-git clone https://github.com/LazyVim/starter $HOME/.config/nvim
-cp -R $SCRIPT_DIR/services/neovim/config/* $HOME/.config/nvim/
-rm -rf $HOME/.config/nvim/.git
-echo "vim.opt.relativenumber = false" >>$HOME/.config/nvim/lua/config/options.lua
+if [ ! -e $HOME/.config/nvim ]; then
+  git clone https://github.com/LazyVim/starter $HOME/.config/nvim
+  rm -rf $HOME/.config/nvim/.git
+fi
+rsync -r --delete $SCRIPT_DIR/services/neovim/config/lua/plugins/ $HOME/.config/nvim/lua/plugins/
 
 echo "Installing tmux..."
 brew install tmux
