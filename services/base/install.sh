@@ -25,4 +25,4 @@ sudo dnf install -y \
   dnf-plugins-core \
   fuse \
   fuse-libs \
-  htop
+  btop
