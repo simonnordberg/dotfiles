@@ -80,9 +80,21 @@ if [[ -d "$NVM_DIR" ]]; then
 fi
 
 # --- Aliases ---
+alias open='xdg-open'
 alias dokku="ssh -t dokku@dokku --"
 
 # --- Functions ---
+# Yazi wrapper: cd to navigated directory on exit
+y() {
+  local tmp
+  tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
+  yazi "$@" --cwd-file="$tmp"
+  if cwd="$(cat -- "$tmp")" && [[ -n "$cwd" && "$cwd" != "$PWD" ]]; then
+    builtin cd -- "$cwd"
+  fi
+  rm -f -- "$tmp"
+}
+
 wsudo() {
   sudo -E env \
     WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \

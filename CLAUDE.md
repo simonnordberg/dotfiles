@@ -14,7 +14,7 @@ Base (installed first): `base`, `shell`
 
 Default: `1password`, `chromium`, `claude-code`, `desktop`, `discord`, `docker`, `flatpak`, `ghostty`, `git`, `neovim`, `niri`, `nvm`, `obsidian`, `signal`, `spotify`, `ssh`, `steam`, `syncthing`, `tailscale`
 
-Optional: `audio`, `bin`, `calibre`, `code`, `cursor`, `flatseal`, `fonts`, `github`, `golang`, `lazygit`, `nfs`, `printing`, `pyenv`, `rust`, `tmux`, `tracker`
+Optional: `audio`, `bin`, `calibre`, `code`, `cursor`, `flatseal`, `fonts`, `github`, `golang`, `lazygit`, `nfs`, `printing`, `pyenv`, `rust`, `tmux`, `tracker`, `yazi`
 
 ## Conventions
 
