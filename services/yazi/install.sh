@@ -4,7 +4,8 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 sudo dnf install -y file poppler-utils ffmpegthumbnailer fd-find ripgrep fzf zoxide imagemagick
 
 # Install yazi via cargo
-cargo install --locked yazi-fm yazi-cli
+cargo install --force yazi-build
+yazi-build
 
 # Config
 mkdir -p $HOME/.config/yazi
