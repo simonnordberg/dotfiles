@@ -10,12 +10,7 @@ source "$ZINIT_HOME/zinit.zsh"
 zinit wait lucid light-mode for \
   atinit"zicompinit; zicdreplay" zsh-users/zsh-syntax-highlighting \
   zsh-users/zsh-autosuggestions \
-  zsh-users/zsh-completions \
-  atload"bindkey '^[[A' history-substring-search-up; \
-         bindkey '^[[B' history-substring-search-down; \
-         bindkey -M vicmd 'k' history-substring-search-up; \
-         bindkey -M vicmd 'j' history-substring-search-down" \
-  zsh-users/zsh-history-substring-search
+  zsh-users/zsh-completions
 
 # --- Completion ---
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
@@ -35,10 +30,10 @@ setopt APPEND_HISTORY
 setopt AUTO_CD
 setopt NO_BEEP
 
-# --- Vi mode ---
-bindkey -v
-export KEYTIMEOUT=1
-bindkey '^R' history-incremental-search-backward
+# --- fzf ---
+if command -v fzf &>/dev/null; then
+  source <(fzf --zsh)
+fi
 
 # --- PATH ---
 path=("$HOME/.cargo/bin" "$HOME/.local/bin" $path)

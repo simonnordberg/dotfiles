@@ -1,6 +1,6 @@
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
-sudo dnf install -y zsh
+sudo dnf install -y zsh fzf
 sudo chsh -s $(which zsh) $USER
 
 curl -sS https://starship.rs/install.sh | sh -s -- -y
