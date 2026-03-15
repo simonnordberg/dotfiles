@@ -11,6 +11,10 @@ zinit wait lucid light-mode for \
   atinit"zicompinit; zicdreplay" zsh-users/zsh-syntax-highlighting \
   zsh-users/zsh-autosuggestions \
   zsh-users/zsh-completions \
+  atload"bindkey '^[[A' history-substring-search-up; \
+         bindkey '^[[B' history-substring-search-down; \
+         bindkey -M vicmd 'k' history-substring-search-up; \
+         bindkey -M vicmd 'j' history-substring-search-down" \
   zsh-users/zsh-history-substring-search
 
 # --- Completion ---
@@ -34,10 +38,6 @@ setopt NO_BEEP
 # --- Vi mode ---
 bindkey -v
 export KEYTIMEOUT=1
-bindkey '^[[A' history-substring-search-up
-bindkey '^[[B' history-substring-search-down
-bindkey -M vicmd 'k' history-substring-search-up
-bindkey -M vicmd 'j' history-substring-search-down
 
 # --- PATH ---
 path=("$HOME/.cargo/bin" "$HOME/.local/bin" $path)
