@@ -38,6 +38,7 @@ setopt NO_BEEP
 # --- Vi mode ---
 bindkey -v
 export KEYTIMEOUT=1
+bindkey '^R' history-incremental-search-backward
 
 # --- PATH ---
 path=("$HOME/.cargo/bin" "$HOME/.local/bin" $path)
