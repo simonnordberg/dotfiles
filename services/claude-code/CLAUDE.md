@@ -25,6 +25,7 @@
 
 - Commit after each completed feature or bugfix — don't wait to be asked.
 - One logical change per commit.
+- Use Conventional Commits: `type: lowercase description` (feat, fix, refactor, chore, docs, test, ci, perf, style).
 - Never push to remote without asking.
 
 ## Tech Preferences
