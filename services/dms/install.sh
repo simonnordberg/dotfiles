@@ -1,30 +1,43 @@
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-SETTINGS="$HOME/.config/DankMaterialShell/settings.json"
 CHASSIS="$(hostnamectl chassis 2>/dev/null || echo "desktop")"
 
-if [ ! -f "$SETTINGS" ]; then
-  echo "DMS settings.json not found, skipping patches"
-  exit 0
-fi
+apply_patches() {
+  local target="$1"
+  local patch_dir="$2"
 
-declare -A patches
-for f in "$SCRIPT_DIR"/patches/*.jq; do
-  [ -f "$f" ] || continue
-  patches["$(basename "$f")"]="$f"
-done
-if [ -d "$SCRIPT_DIR/patches.$CHASSIS" ]; then
-  for f in "$SCRIPT_DIR/patches.$CHASSIS"/*.jq; do
+  if [ ! -f "$target" ]; then
+    echo "  $target not found, skipping"
+    return
+  fi
+
+  declare -A patches
+  for f in "$patch_dir"/*.jq; do
     [ -f "$f" ] || continue
     patches["$(basename "$f")"]="$f"
   done
-fi
+  if [ -d "$patch_dir.$CHASSIS" ]; then
+    for f in "$patch_dir.$CHASSIS"/*.jq; do
+      [ -f "$f" ] || continue
+      patches["$(basename "$f")"]="$f"
+    done
+  fi
 
-tmp="$(mktemp)"
-cp "$SETTINGS" "$tmp"
-for name in $(printf '%s\n' "${!patches[@]}" | sort); do
-  jq -f "${patches[$name]}" "$tmp" > "$tmp.out" && mv "$tmp.out" "$tmp"
-done
-cp "$tmp" "$SETTINGS"
-rm -f "$tmp" "$tmp.out"
+  if [ ${#patches[@]} -eq 0 ]; then
+    return
+  fi
 
-echo "Applied ${#patches[@]} DMS patches (chassis: $CHASSIS)"
+  local tmp
+  tmp="$(mktemp)"
+  cp "$target" "$tmp"
+  for name in $(printf '%s\n' "${!patches[@]}" | sort); do
+    jq -f "${patches[$name]}" "$tmp" > "$tmp.out" && mv "$tmp.out" "$tmp"
+  done
+  cp "$tmp" "$target"
+  rm -f "$tmp" "$tmp.out"
+
+  echo "  Applied ${#patches[@]} patches to $(basename "$target")"
+}
+
+echo "Patching DMS config (chassis: $CHASSIS)..."
+apply_patches "$HOME/.config/DankMaterialShell/settings.json" "$SCRIPT_DIR/settings"
+apply_patches "$HOME/.local/state/DankMaterialShell/session.json" "$SCRIPT_DIR/session"
