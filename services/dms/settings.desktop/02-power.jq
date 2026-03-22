@@ -1,7 +1,7 @@
-# Desktop: suspend after 30min, no hibernate
+# Desktop: no suspend, no hibernate
 .acMonitorTimeout = 600
 | .acLockTimeout = 300
-| .acSuspendTimeout = 1800
+| .acSuspendTimeout = 0
 | .acSuspendBehavior = 0
 | .lockBeforeSuspend = true
 | .fadeToLockEnabled = true
