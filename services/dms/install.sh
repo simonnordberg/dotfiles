@@ -6,8 +6,8 @@ apply_patches() {
   local patch_dir="$2"
 
   if [ ! -f "$target" ]; then
-    echo "  $target not found, skipping"
-    return
+    mkdir -p "$(dirname "$target")"
+    echo '{}' > "$target"
   fi
 
   declare -A patches
