@@ -36,7 +36,7 @@ if command -v fzf &>/dev/null; then
 fi
 
 # --- PATH ---
-path=("$HOME/.cargo/bin" "$HOME/.local/bin" $path)
+path=("$HOME/.cargo/bin" "$HOME/.local/bin" "$HOME/.local/share/fnm" $path)
 typeset -U path
 
 # --- Environment ---
