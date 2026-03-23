@@ -93,10 +93,13 @@
       "Bash(docker-compose *)",
       "Bash(podman *)",
 
+      "Bash(unfunction *)",
       "Bash(node *)",
       "Bash(npm *)",
       "Bash(npx *)",
       "Bash(pnpm *)",
+      "Bash(fnm *)",
+      "Bash(corepack *)",
       "Bash(bun *)",
       "Bash(bunx *)",
       "Bash(vitest *)",
