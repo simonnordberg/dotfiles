@@ -62,17 +62,9 @@ if [[ -d "$HOME/.pyenv" ]]; then
   eval "$(pyenv init -)"
 fi
 
-# --- NVM (lazy-loaded) ---
-export NVM_DIR="$HOME/.nvm"
-if [[ -d "$NVM_DIR" ]]; then
-  _nvm_lazy_load() {
-    unfunction nvm node npm npx 2>/dev/null
-    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-  }
-  nvm()  { _nvm_lazy_load; nvm "$@" }
-  node() { _nvm_lazy_load; node "$@" }
-  npm()  { _nvm_lazy_load; npm "$@" }
-  npx()  { _nvm_lazy_load; npx "$@" }
+# --- fnm ---
+if command -v fnm &>/dev/null; then
+  eval "$(fnm env --use-on-cd --corepack-enabled)"
 fi
 
 # --- Aliases ---
