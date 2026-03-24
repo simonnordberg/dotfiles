@@ -8,7 +8,9 @@
     "allow": [
       "Edit",
       "Write",
-      "Bash(*)"
+      "Bash(*)",
+      "WebSearch",
+      "WebFetch"
     ]
   }
 }
