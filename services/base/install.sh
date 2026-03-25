@@ -1,3 +1,5 @@
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+
 mkdir -p $HOME/.config
 mkdir -p $HOME/.local/bin
 mkdir -p $HOME/.local/share/applications
