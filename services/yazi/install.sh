@@ -3,17 +3,9 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # Dependencies for previews
 sudo dnf install -y file poppler-utils ffmpegthumbnailer fd-find ripgrep fzf zoxide imagemagick
 
-# Install/update yazi-build tool (fast if already current)
-CARGO_OUTPUT=$(cargo install yazi-build 2>&1)
-echo "$CARGO_OUTPUT"
-UPDATED=$(echo "$CARGO_OUTPUT" | grep -c "Installing\|Compiling")
-
-# Rebuild only if a new version was installed
-if [ "$UPDATED" -gt 0 ]; then
-  yazi-build
-else
-  echo "yazi: already up to date"
-fi
+# Install yazi via cargo (rebuilds only when a new version is available)
+cargo install yazi-build
+yazi-build
 
 # Config
 mkdir -p $HOME/.config/yazi
