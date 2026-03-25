@@ -3,7 +3,7 @@ mkdir -p $HOME/.local/bin
 mkdir -p $HOME/.local/share/applications
 mkdir -p $HOME/logs
 
-# Extend sudo timeout to 8 hours (invalidated on screen lock)
+# Extend sudo timeout to 12 hours (invalidated on screen lock)
 sudo cp $SCRIPT_DIR/sudo-timeout /etc/sudoers.d/timeout
 sudo chmod 440 /etc/sudoers.d/timeout
 
