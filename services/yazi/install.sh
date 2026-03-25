@@ -8,14 +8,11 @@ CARGO_OUTPUT=$(cargo install yazi-build 2>&1)
 echo "$CARGO_OUTPUT"
 UPDATED=$(echo "$CARGO_OUTPUT" | grep -c "Installing\|Compiling")
 
-# Rebuild if new version detected or not built in the last 24 hours
-STAMP="$HOME/.cache/yazi-build-stamp"
-if [ "$UPDATED" -gt 0 ] || [ ! -f "$STAMP" ] || [ $(($(date +%s) - $(cat "$STAMP"))) -gt 86400 ]; then
+# Rebuild only if a new version was installed
+if [ "$UPDATED" -gt 0 ]; then
   yazi-build
-  mkdir -p "$(dirname "$STAMP")"
-  date +%s > "$STAMP"
 else
-  echo "yazi: skipping build (last build <24h ago)"
+  echo "yazi: already up to date"
 fi
 
 # Config
