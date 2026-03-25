@@ -3,6 +3,17 @@ mkdir -p $HOME/.local/bin
 mkdir -p $HOME/.local/share/applications
 mkdir -p $HOME/logs
 
+# Extend sudo timeout to 8 hours (invalidated on screen lock)
+sudo cp $SCRIPT_DIR/sudo-timeout /etc/sudoers.d/timeout
+sudo chmod 440 /etc/sudoers.d/timeout
+
+# Invalidate sudo credentials on screen lock
+mkdir -p $HOME/.config/systemd/user
+cp $SCRIPT_DIR/sudo-invalidate-on-lock $HOME/.local/bin/sudo-invalidate-on-lock
+cp $SCRIPT_DIR/sudo-invalidate-on-lock.service $HOME/.config/systemd/user/sudo-invalidate-on-lock.service
+systemctl --user daemon-reload
+systemctl --user enable --now sudo-invalidate-on-lock.service
+
 # Extend root partition to fill the disk
 if command -v lvs >/dev/null 2>&1; then
   ROOT_LV=$(sudo lvs --noheadings -o lv_path | grep -E '/root$' | tr -d ' ')
