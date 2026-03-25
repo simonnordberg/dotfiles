@@ -3,9 +3,16 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # Dependencies for previews
 sudo dnf install -y file poppler-utils ffmpegthumbnailer fd-find ripgrep fzf zoxide imagemagick
 
-# Install yazi via cargo
-cargo install --force yazi-build
-yazi-build
+# Install yazi via cargo (skip if built within the last 24 hours)
+STAMP="$HOME/.cache/yazi-build-stamp"
+if [ ! -f "$STAMP" ] || [ $(($(date +%s) - $(cat "$STAMP"))) -gt 86400 ]; then
+  cargo install yazi-build
+  yazi-build
+  mkdir -p "$(dirname "$STAMP")"
+  date +%s > "$STAMP"
+else
+  echo "yazi: skipping build (last build <24h ago)"
+fi
 
 # Config
 mkdir -p $HOME/.config/yazi
