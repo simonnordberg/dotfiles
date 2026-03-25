@@ -3,3 +3,6 @@ if ! command -v tailscale &> /dev/null; then
 else
     echo "Tailscale is already installed"
 fi
+
+# Allow local network access when using an exit node (e.g. Mullvad VPN)
+sudo tailscale set --exit-node-allow-lan-access
