@@ -1,0 +1,9 @@
+[Unit]
+Description=Invalidate sudo credentials on screen lock
+
+[Service]
+ExecStart=%h/.local/bin/sudo-invalidate-on-lock
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
