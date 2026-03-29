@@ -7,3 +7,6 @@ systemctl --user add-wants niri.service dms
 
 mkdir -p $HOME/.config/niri
 cp $SCRIPT_DIR/config.kdl $HOME/.config/niri/config.kdl
+
+mkdir -p $HOME/.config/fuzzel
+cp $SCRIPT_DIR/fuzzel.ini $HOME/.config/fuzzel/fuzzel.ini
