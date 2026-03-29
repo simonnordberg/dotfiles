@@ -1,7 +1,7 @@
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 # Dependencies for previews
-sudo dnf install -y file poppler-utils ffmpegthumbnailer fd-find ripgrep fzf zoxide imagemagick
+sudo dnf install -y file poppler-utils ffmpegthumbnailer fd-find ripgrep fzf zoxide ImageMagick
 
 # Install yazi via cargo (rebuilds only when a new version is available)
 cargo install yazi-build
