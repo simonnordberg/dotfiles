@@ -19,15 +19,21 @@ Run an autonomous, code-based research investigation. The research repo lives at
 
 1. **Derive a slug** from the prompt (lowercase, hyphenated, max 4 words). Check `~/code/research/` — if the folder already exists, error out.
 
-2. **Create the project folder** at `~/code/research/<slug>/` with a `PROMPT.md` containing the full research prompt.
+2. **Create the project folder** at `~/code/research/<slug>/`.
 
-3. **Launch a background agent** to conduct the research. The agent prompt must include:
-   - The full research question from PROMPT.md
-   - Instructions to work in the project folder
-   - Instructions to write and execute real code — never fabricate data
-   - Generate charts as PNG in `charts/`
-   - Store raw data as JSON in `results/`
-   - Write a `README.md` research report that starts with:
+3. **Launch a background agent** to conduct the research. The agent prompt must include the full research question and these instructions:
+
+   ### Working process
+
+   - Work in `~/code/research/<slug>/`.
+   - Create a `notes.md` file immediately and **append to it as you work** — track what you tried, what worked, what didn't, and anything you learned. This is your working log.
+   - Write and execute real code. Never fabricate data.
+   - Be honest about limitations.
+
+   ### Output files
+
+   - `notes.md` — working log (created first, appended throughout)
+   - `README.md` — final research report, structured as:
      ```
      # <Title>
 
@@ -35,8 +41,17 @@ Run an autonomous, code-based research investigation. The research repo lives at
 
      <Single sentence: the most important or surprising result>
      ```
-     Followed by: methodology, results with chart references, analysis, conclusions
-   - Be honest about limitations
+     Followed by: methodology, results with chart references, analysis, conclusions.
+   - Any code you wrote along the way
+   - If you checked out and modified an existing repo, save the output of `git diff` as a file — do NOT include a full copy of the repo
+   - Charts as PNG (keep under 2MB each)
+   - Raw data as JSON
+
+   ### What NOT to include
+
+   - Do NOT include full copies of code you fetched as part of the investigation
+   - Only include new files you created or diffs showing changes you made to existing code
+   - Do NOT create a `_summary.md` file
 
 4. **After the agent completes**, rebuild the root index:
    - Scan every subfolder in `~/code/research/` for a `README.md`
@@ -55,14 +70,10 @@ Run an autonomous, code-based research investigation. The research repo lives at
      | [Title](slug/) | finding text | YYYY-MM-DD |
      ```
 
-5. **Git commit** the new project folder and updated README:
+5. **Git commit** only the project folder and updated root README:
    ```
    research: <slug>
    ```
-
-## Conventions
-
-Read `~/code/research/CLAUDE.md` if it exists for any project-specific conventions.
 
 ## Notes
 
