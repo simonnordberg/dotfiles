@@ -26,7 +26,7 @@
 
 - Commit after each completed feature or bugfix — don't wait to be asked.
 - One logical change per commit.
-- Use Conventional Commits: `type: lowercase description` (feat, fix, refactor, chore, docs, test, ci, perf, style).
+- Use Conventional Commits: `type: lowercase description` (feat, fix, refactor, chore, docs, test, ci, perf, style). If the project's CLAUDE.md or recent git history uses a different commit format, follow that instead.
 - Never push to remote without asking.
 
 ## Tech Preferences
@@ -79,6 +79,13 @@
 - NEVER edit files in `~/.claude/` directly. Edit the source in the dotfiles repo, then run `bash install.sh services/claude-code` from `~/code/dotfiles/` to install.
 - This applies to: CLAUDE.md, settings.json, .mcp.json, and anything under skills/.
 - This rule also applies to other dotfiles (shell, git, etc.) — the source is always `~/code/dotfiles/services/<name>/`.
+
+## Cross-Project Knowledge
+
+- `~/code/knowledge/` is a git repo of reusable knowledge (TILs, decisions, bookmarks).
+- When you learn something reusable, make a non-obvious decision, or find a useful reference — add a markdown file there following its CLAUDE.md conventions.
+- When looking for past decisions, patterns, or learnings — check there first.
+- Don't duplicate what's already in a project's own CLAUDE.md — knowledge/ is for cross-cutting things.
 
 ## Learning
 
