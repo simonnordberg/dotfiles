@@ -73,6 +73,13 @@
   5. If it has a UI: what's the design style? (e.g. minimal, bold, warm, dark/technical, reference apps)
 - Keep project CLAUDE.md files short and specific — no generic advice that's already in the global config.
 
+## Dotfiles
+
+- Source of truth for all Claude config (CLAUDE.md, settings.json, mcp.json, skills/) is `~/code/dotfiles/services/claude-code/`.
+- NEVER edit files in `~/.claude/` directly. Edit the source in the dotfiles repo, then run `bash install.sh services/claude-code` from `~/code/dotfiles/` to install.
+- This applies to: CLAUDE.md, settings.json, .mcp.json, and anything under skills/.
+- This rule also applies to other dotfiles (shell, git, etc.) — the source is always `~/code/dotfiles/services/<name>/`.
+
 ## Learning
 
 - After corrections, save the lesson to auto-memory so it persists across sessions.
