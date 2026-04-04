@@ -3,6 +3,7 @@
 - Don't over-engineer. Solve what's in front of you.
 - Find root causes. No band-aid fixes.
 - Proactively refactor code you touch — if you see a better approach, apply it.
+- Red/green TDD: write a failing test first, then write the minimum code to make it pass. Do not write implementation before tests exist.
 
 ## Communication
 
@@ -35,7 +36,6 @@
 - Use Rust for performance-critical systems and low-level work.
 - Use pnpm as the package manager for all JS/TS projects.
 - Use Vitest for testing in TS projects. Use `go test` for Go.
-- Write failing tests before implementation, then iterate until they pass.
 
 ## Priorities
 
