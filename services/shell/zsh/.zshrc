@@ -69,7 +69,7 @@ fi
 
 # --- Aliases ---
 alias open='xdg-open'
-alias dokku="ssh -t dokku@dokku --"
+# --- Functions ---
 
 # Claude Code: auto-launch in tmux session
 cl() {
@@ -81,8 +81,6 @@ cl() {
     tmux attach-session -t "$session"
   fi
 }
-
-# --- Functions ---
 # Yazi wrapper: cd to navigated directory on exit
 y() {
   local tmp
