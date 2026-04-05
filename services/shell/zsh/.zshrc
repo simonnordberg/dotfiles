@@ -29,6 +29,7 @@ setopt APPEND_HISTORY
 # --- Navigation ---
 setopt AUTO_CD
 setopt NO_BEEP
+bindkey -e
 
 # --- fzf ---
 if command -v fzf &>/dev/null; then
