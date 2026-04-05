@@ -62,6 +62,7 @@
 - Use Biome for all TypeScript projects (formatting + linting in one tool).
 - Use golangci-lint for Go projects.
 - If a project is missing lint/format config, set it up when you first touch the project.
+- Extract recurring patterns into well-defined, reusable modules. If something appears twice, make it a component or utility. Don't duplicate — modularize.
 
 ## Project Setup
 
