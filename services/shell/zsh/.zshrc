@@ -72,7 +72,7 @@ alias open='xdg-open'
 alias dokku="ssh -t dokku@dokku --"
 
 # Claude Code: auto-launch in tmux session
-cc() {
+cl() {
   if [[ -n "$TMUX" ]]; then
     command claude "$@"
   else
