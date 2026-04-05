@@ -8,35 +8,73 @@ This skill guides creation of distinctive, production-grade frontend interfaces 
 
 The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.
 
-## Design Thinking
+## 1. Understand Before Designing
 
-Before coding, understand the context and commit to a BOLD aesthetic direction:
-- **Purpose**: What problem does this interface solve? Who uses it?
-- **Tone**: Pick an extreme: brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian, etc. There are so many flavors to choose from. Use these for inspiration but design one that is true to the aesthetic direction.
-- **Constraints**: Technical requirements (framework, performance, accessibility).
-- **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember?
+Before writing any code, build a clear picture of what you're designing for:
 
-**CRITICAL**: Choose a clear conceptual direction and execute it with precision. Bold maximalism and refined minimalism both work - the key is intentionality, not intensity.
+- **Purpose**: What problem does this solve? What's the core user action?
+- **Audience**: Who uses this? What do they expect? What context are they in?
+- **Constraints**: Existing design system, framework, performance budget, accessibility needs.
+- **Tone**: What feeling should this evoke? Match the aesthetic to the context — a developer tool feels different from a consumer app, a dashboard feels different from a landing page.
 
-Then implement working code (HTML/CSS/JS, React, Vue, etc.) that is:
-- Production-grade and functional
-- Visually striking and memorable
-- Cohesive with a clear aesthetic point-of-view
-- Meticulously refined in every detail
+If the project has a design system or component library, use it. Don't reinvent what exists — extend it thoughtfully.
 
-## Frontend Aesthetics Guidelines
+## 2. Explore Multiple Directions
 
-Focus on:
-- **Typography**: Choose fonts that are beautiful, unique, and interesting. Avoid generic fonts like Arial and Inter; opt instead for distinctive choices that elevate the frontend's aesthetics; unexpected, characterful font choices. Pair a distinctive display font with a refined body font.
-- **Color & Theme**: Commit to a cohesive aesthetic. Use CSS variables for consistency. Dominant colors with sharp accents outperform timid, evenly-distributed palettes.
-- **Motion**: Use animations for effects and micro-interactions. Prioritize CSS-only solutions for HTML. Use Motion library for React when available. Focus on high-impact moments: one well-orchestrated page load with staggered reveals (animation-delay) creates more delight than scattered micro-interactions. Use scroll-triggering and hover states that surprise.
-- **Spatial Composition**: Unexpected layouts. Asymmetry. Overlap. Diagonal flow. Grid-breaking elements. Generous negative space OR controlled density.
-- **Backgrounds & Visual Details**: Create atmosphere and depth rather than defaulting to solid colors. Add contextual effects and textures that match the overall aesthetic. Apply creative forms like gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, custom cursors, and grain overlays.
+The best design comes from exploring options, not committing to the first idea. Before implementing, briefly describe 2-3 distinct aesthetic directions — not variations on a theme, but genuinely different approaches. For example:
 
-NEVER use generic AI-generated aesthetics like overused font families (Inter, Roboto, Arial, system fonts), cliched color schemes (particularly purple gradients on white backgrounds), predictable layouts and component patterns, and cookie-cutter design that lacks context-specific character.
+- **Direction A**: Minimal, editorial — generous whitespace, restrained palette, typography-driven hierarchy
+- **Direction B**: Dense, data-rich — compact layout, subtle color coding, information-forward
+- **Direction C**: Warm, approachable — rounded forms, soft gradients, friendly micro-interactions
 
-Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same. Vary between light and dark themes, different fonts, different aesthetics. NEVER converge on common choices (Space Grotesk, for example) across generations.
+State which direction you recommend and why, then implement it. If the user has a clear preference or the project has an established style, skip exploration and match it.
 
-**IMPORTANT**: Match implementation complexity to the aesthetic vision. Maximalist designs need elaborate code with extensive animations and effects. Minimalist or refined designs need restraint, precision, and careful attention to spacing, typography, and subtle details. Elegance comes from executing the vision well.
+## 3. Design Principles
 
-Remember: Claude is capable of extraordinary creative work. Don't hold back, show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
+Every decision should have a reason. Apply these principles:
+
+- **Intentionality over intensity**: A restrained, precise design can be as powerful as a bold one. The key is that every choice — color, spacing, type — serves the design's purpose.
+- **Hierarchy is everything**: The user should know exactly where to look first, second, third. Size, weight, color, and space all create hierarchy. If everything is loud, nothing is.
+- **Cohesion over novelty**: A design that feels unified and considered beats one with many flashy elements that don't relate. Pick a clear direction and execute it with discipline.
+- **Context-appropriate craft**: A SaaS dashboard needs clarity and efficiency. A portfolio needs personality and delight. A landing page needs persuasion and flow. Match the level of expressiveness to what the interface actually needs.
+
+## 4. Visual Craft
+
+### Typography
+Choose fonts that have character and suit the context. Avoid defaults (Inter, Roboto, Arial, system-ui) — they signal "no one made a decision here." Pair a distinctive display font with a legible body font. Use scale, weight, and spacing to create clear hierarchy. Type alone can carry an entire design.
+
+### Color & Theme
+Commit to a cohesive palette. Use CSS variables for consistency. A dominant color with sharp accents outperforms a timid, evenly-distributed palette. Dark and light themes are both valid — choose based on context, not habit. Avoid the cliché purple-gradient-on-white that marks AI-generated design.
+
+### Layout & Space
+Use space with intention. Generous negative space creates calm and focus. Controlled density creates efficiency and power. Asymmetry, overlap, and grid-breaking elements add energy — but only when they serve the design. Don't add visual complexity for its own sake.
+
+### Motion & Interaction
+Prioritize high-impact moments over scattered micro-interactions. A well-orchestrated page entrance with staggered reveals creates more delight than random hover effects. Use CSS transitions and animations by default; reach for Motion (Framer Motion) in React when interaction complexity demands it. Every animation should feel purposeful — it either guides attention, provides feedback, or creates continuity.
+
+### Surface & Texture
+Go beyond flat solid colors when the design calls for it. Gradient meshes, noise textures, subtle shadows, layered transparencies — these create depth and atmosphere. But restraint matters: a clean, flat design with perfect spacing can feel more crafted than one drowning in effects.
+
+## 5. Anti-Patterns (AI Slop Indicators)
+
+These signal "AI generated this, no human cared":
+- Default font stacks with no typographic opinion
+- Purple/blue gradients on white as the default "modern" look
+- Evenly-spaced, evenly-sized elements with no hierarchy
+- Generic placeholder copy ("Welcome to our platform")
+- Decorative elements that don't relate to the content
+- Same layout and aesthetic regardless of context
+- Animations on everything with no purpose
+- Converging on the same "safe" choices (Space Grotesk, indigo-500, rounded-2xl cards) across every generation
+
+## 6. Polish Pass
+
+After the main implementation, do a dedicated polish pass:
+- Check spacing consistency and alignment
+- Verify typographic hierarchy reads correctly
+- Test interactive states (hover, focus, active, disabled)
+- Ensure color contrast meets accessibility standards
+- Review transitions — do they feel smooth and purposeful?
+- Look for "uncanny valley" moments where something feels almost right but off
+
+Ship code that feels like a designer was involved, because one was.
