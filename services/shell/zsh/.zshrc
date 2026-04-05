@@ -71,6 +71,17 @@ fi
 alias open='xdg-open'
 alias dokku="ssh -t dokku@dokku --"
 
+# Claude Code: auto-launch in tmux session
+cc() {
+  if [[ -n "$TMUX" ]]; then
+    command claude "$@"
+  else
+    local session="claude-$$"
+    tmux new-session -s "$session" -d "claude $*; zsh" 2>/dev/null
+    tmux attach-session -t "$session"
+  fi
+}
+
 # --- Functions ---
 # Yazi wrapper: cd to navigated directory on exit
 y() {
