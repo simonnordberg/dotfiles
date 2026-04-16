@@ -1,6 +1,10 @@
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 CHASSIS="$(hostnamectl chassis 2>/dev/null || echo "desktop")"
 
+sudo dnf copr enable avengemedia/dms -y
+sudo dnf install dms -y
+systemctl --user add-wants niri.service dms
+
 apply_patches() {
   local target="$1"
   local patch_dir="$2"
