@@ -27,7 +27,8 @@
 - Commit after each completed feature or bugfix — don't wait to be asked.
 - One logical change per commit.
 - Use Conventional Commits: `type: lowercase description` (feat, fix, refactor, chore, docs, test, ci, perf, style). If the project's CLAUDE.md or recent git history uses a different commit format, follow that instead.
-- Never push to remote without asking.
+- Pre-authorized without confirmation: status, diff, log, blame, show, add, commit, branch create/checkout/switch, stash, fetch, pull, merge (ff or non-ff), rebase (non-interactive), tag, push (any branch, including `main`/`master`, non-force), PR create/comment/review via `gh`.
+- Still require explicit confirmation: force-push (any branch), `reset --hard`, `clean -f`, `branch -D` on unmerged work, rewriting published history, deleting remote branches.
 
 ## Tech Preferences
 

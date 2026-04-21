@@ -3,14 +3,51 @@
     "commit": "",
     "pr": ""
   },
-  "defaultMode": "acceptEdits",
   "permissions": {
+    "defaultMode": "auto",
     "allow": [
       "Edit",
       "Write",
       "Bash(*)",
       "WebSearch",
       "WebFetch"
+    ],
+    "ask": [
+      "Bash(rm -rf*)",
+      "Bash(rm -fr*)",
+      "Bash(sudo*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git push -f)",
+      "Bash(git push --force-with-lease*)",
+      "Bash(git push --delete*)",
+      "Bash(git push * :*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(git clean -df*)",
+      "Bash(git clean -fd*)",
+      "Bash(git branch -D*)",
+      "Bash(git rebase -i*)",
+      "Bash(git filter-branch*)",
+      "Bash(git update-ref -d*)",
+      "Bash(gh repo delete*)",
+      "Bash(gh pr close*)",
+      "Bash(gh release delete*)",
+      "Bash(dd *)",
+      "Bash(mkfs*)",
+      "Bash(chmod -R*)",
+      "Bash(chown -R*)",
+      "Bash(:(){*"
+    ]
+  },
+  "autoMode": {
+    "allow": [
+      "Normal (non-force) git pushes to any branch including main/master are allowed without confirmation. Only force-pushes (--force, -f, --force-with-lease) and branch deletions via push require confirmation.",
+      "All git read/inspection commands (status, diff, log, blame, show, reflog), local history operations (add, commit, stash, tag), branch management (create/checkout/switch), syncing (fetch, pull, merge, non-interactive rebase) are allowed without confirmation.",
+      "All gh CLI commands for creating and reading (gh pr create/view/list/checkout/comment/review, gh issue create/view/list/comment, gh run view, gh api for GET) are allowed without confirmation.",
+      "Standard non-destructive shell commands (ls, cat, head, tail, find, grep, rg, wc, sort, uniq, diff, file, which, ps, df, du, date, env, echo, printf, jq, yq, curl for reads, wget for reads) are allowed without confirmation.",
+      "Package manager read/install commands (npm/pnpm/yarn/bun install/add/run/test, cargo build/test/check, go build/test/run/mod, pip install, brew install) are allowed without confirmation.",
+      "Build, test, lint, format commands are allowed without confirmation."
     ]
   }
 }
