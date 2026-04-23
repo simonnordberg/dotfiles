@@ -8,7 +8,7 @@ invocation: /spark
 
 # Spark
 
-Look at the current state of work — the plan, codebase, conversation history, and goals — and answer this question:
+Look at the current state of work; the plan, codebase, conversation history, and goals; and answer this question:
 
 **What's the single smartest, most radically innovative, accretive, useful, and compelling addition you could make right now?**
 
@@ -19,8 +19,8 @@ Look at the current state of work — the plan, codebase, conversation history, 
 
 ## Guidelines
 
-- Be bold. This isn't about incremental polish — it's about the one thing that would make someone say "why didn't we think of that sooner?"
+- Be bold. This isn't about incremental polish; it's about the one thing that would make someone say "why didn't we think of that sooner?"
 - Ground it in reality. The suggestion must be implementable with the current stack, skills, and constraints.
 - Explain the leverage: why this one addition creates disproportionate value.
 - Keep it to one suggestion. If you hedge with three ideas, you've missed the point.
-- Be specific. Name the files, APIs, patterns, or features involved — not just the concept.
+- Be specific. Name the files, APIs, patterns, or features involved; not just the concept.
