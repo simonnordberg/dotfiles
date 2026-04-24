@@ -42,6 +42,31 @@ apply_patches() {
   echo "  Applied ${#patches[@]} patches to $(basename "$target")"
 }
 
+install_plugins() {
+  local src="$SCRIPT_DIR/plugins"
+  local dst="$HOME/.config/DankMaterialShell/plugins"
+  [ -d "$src" ] || return
+
+  mkdir -p "$dst"
+  for dir in "$src"/*/; do
+    [ -d "$dir" ] || continue
+    local name
+    name="$(basename "$dir")"
+    rm -rf "$dst/$name"
+    cp -r "$dir" "$dst/$name"
+    local pid
+    pid="$(jq -r '.id' "$dir/plugin.json" 2>/dev/null)"
+    echo "  Installed plugin: $name (id: ${pid:-?})"
+    if [ -n "$pid" ] && [ "$pid" != "null" ]; then
+      dms ipc call plugins reload "$pid" >/dev/null 2>&1 || true
+    fi
+  done
+}
+
+echo "Installing DMS plugins..."
+install_plugins
+
 echo "Patching DMS config (chassis: $CHASSIS)..."
 apply_patches "$HOME/.config/DankMaterialShell/settings.json" "$SCRIPT_DIR/settings"
+apply_patches "$HOME/.config/DankMaterialShell/plugin_settings.json" "$SCRIPT_DIR/plugin-settings"
 apply_patches "$HOME/.local/state/DankMaterialShell/session.json" "$SCRIPT_DIR/session"

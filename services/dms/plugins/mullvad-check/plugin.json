@@ -1,0 +1,12 @@
+{
+  "id": "mullvadCheck",
+  "name": "Mullvad Check",
+  "description": "Verifies Mullvad VPN status against am.i.mullvad.net. Green if behind Mullvad, amber on IPv6 leak, red if exposed. Ground truth from outside the tunnel, not daemon state.",
+  "version": "0.1.0",
+  "author": "Simon Nordberg",
+  "icon": "gpp_good",
+  "type": "widget",
+  "component": "./MullvadCheckWidget.qml",
+  "settings": "./MullvadCheckSettings.qml",
+  "permissions": ["settings_read", "settings_write"]
+}
