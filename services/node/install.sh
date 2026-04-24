@@ -6,6 +6,9 @@ fi
 # Install latest LTS Node
 fnm install --lts
 
+mkdir -p "$HOME/.zsh/completions"
+fnm completions --shell zsh > "$HOME/.zsh/completions/_fnm"
+
 # Remove nvm if present
 if [[ -d "$HOME/.nvm" ]]; then
   echo "Removing legacy nvm installation..."
