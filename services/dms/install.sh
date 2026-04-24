@@ -48,6 +48,7 @@ install_plugins() {
   [ -d "$src" ] || return
 
   mkdir -p "$dst"
+  local needs_restart=false
   for dir in "$src"/*/; do
     [ -d "$dir" ] || continue
     local name
@@ -58,9 +59,19 @@ install_plugins() {
     pid="$(jq -r '.id' "$dir/plugin.json" 2>/dev/null)"
     echo "  Installed plugin: $name (id: ${pid:-?})"
     if [ -n "$pid" ] && [ "$pid" != "null" ]; then
-      dms ipc call plugins reload "$pid" >/dev/null 2>&1 || true
+      # reload only works for plugins already in availablePlugins; the
+      # FolderListModel watcher misses brand-new dirs added while the shell
+      # is running, so fall back to a full restart in that case.
+      if ! dms ipc call plugins reload "$pid" 2>&1 | grep -q "^PLUGIN_RELOAD_SUCCESS"; then
+        needs_restart=true
+      fi
     fi
   done
+
+  if [ "$needs_restart" = true ] && systemctl --user is-active --quiet dms; then
+    echo "  Restarting dms to load new plugins..."
+    systemctl --user restart dms
+  fi
 }
 
 echo "Installing DMS plugins..."
