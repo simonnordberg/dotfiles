@@ -6,6 +6,9 @@ if [[ ! -d "$ZINIT_HOME" ]]; then
 fi
 source "$ZINIT_HOME/zinit.zsh"
 
+# --- Custom completions ---
+fpath=($HOME/.zsh/completions $fpath)
+
 # --- Plugins ---
 zinit wait lucid light-mode for \
   atinit"zicompinit; zicdreplay" zsh-users/zsh-syntax-highlighting \
