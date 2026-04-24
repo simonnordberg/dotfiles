@@ -8,7 +8,7 @@ import Quickshell.Io
 PluginComponent {
     id: root
 
-    property int refreshInterval: pluginData.refreshInterval || 60
+    property int refreshInterval: pluginData.refreshInterval || 30
     property bool checkIpv6: pluginData.checkIpv6 !== undefined ? pluginData.checkIpv6 : true
     property bool paranoidMode: pluginData.paranoidMode || false
 
@@ -156,7 +156,7 @@ PluginComponent {
                     ? root.exitHostname + " · IPv6 leak"
                     : "IPv6 leak";
             case "exposed":
-                return root.country || root.city || "Exposed";
+                return "Exposed";
             case "offline":
                 return "Offline";
             default:
