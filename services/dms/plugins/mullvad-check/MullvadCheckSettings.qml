@@ -27,7 +27,7 @@ PluginSettings {
         settingKey: "refreshInterval"
         label: "Refresh interval"
         description: "How often to poll am.i.mullvad.net. IPv6 check only fires when IPv4 is behind Mullvad."
-        defaultValue: 60
+        defaultValue: 30
         minimum: 10
         maximum: 600
         unit: "sec"
