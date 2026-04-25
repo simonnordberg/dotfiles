@@ -9,6 +9,10 @@
       "type": "stdio",
       "command": "npx",
       "args": ["@playwright/mcp@latest"]
+    },
+    "fastmail": {
+      "type": "sse",
+      "url": "https://api.fastmail.com/mcp"
     }
   }
 }
