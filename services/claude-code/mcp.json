@@ -13,6 +13,10 @@
     "fastmail": {
       "type": "sse",
       "url": "https://api.fastmail.com/mcp"
+    },
+    "linear": {
+      "type": "http",
+      "url": "https://mcp.linear.app/mcp"
     }
   }
 }
