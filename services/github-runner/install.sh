@@ -17,10 +17,10 @@ RUNNER_VERSION="${RUNNER_VERSION:-2.334.0}"
 # stores long-lived credentials under $APP_DIR/.credentials.
 if ! sudo test -f "$APP_DIR/.runner"; then
   if [ -z "${GITHUB_URL:-}" ]; then
-    read -r -p "GitHub URL (e.g. https://github.com/hackerman-co): " GITHUB_URL
+    read -r -p "GitHub URL (e.g. https://github.com/hackerman-co): " GITHUB_URL </dev/tty
   fi
   if [ -z "${RUNNER_TOKEN:-}" ]; then
-    read -r -s -p "Runner registration token: " RUNNER_TOKEN
+    read -r -s -p "Runner registration token: " RUNNER_TOKEN </dev/tty
     echo
   fi
   if [ -z "$GITHUB_URL" ] || [ -z "$RUNNER_TOKEN" ]; then
