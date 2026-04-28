@@ -36,7 +36,7 @@ set -euo pipefail
 
 RUNNER_USER=github-runner
 
-dnf install -y libicu tar curl policycoreutils-python-utils
+dnf install -y libicu tar curl policycoreutils-python-utils podman
 
 if ! id -u "$RUNNER_USER" >/dev/null 2>&1; then
   useradd --system --create-home --home-dir "$APP_DIR" --shell /bin/bash "$RUNNER_USER"
@@ -47,6 +47,14 @@ fi
 if getent group docker >/dev/null && ! id -nG "$RUNNER_USER" | grep -qw docker; then
   usermod -aG docker "$RUNNER_USER"
 fi
+
+# Workflows install packages and write to /usr/local/bin, so give the runner
+# user passwordless sudo. Same trust boundary as docker group membership.
+SUDOERS_TMP=$(mktemp)
+echo "$RUNNER_USER ALL=(ALL) NOPASSWD:ALL" > "$SUDOERS_TMP"
+chmod 0440 "$SUDOERS_TMP"
+visudo -c -f "$SUDOERS_TMP" >/dev/null
+mv "$SUDOERS_TMP" /etc/sudoers.d/github-runner
 
 mkdir -p "$APP_DIR"
 chown "$RUNNER_USER:$RUNNER_USER" "$APP_DIR"
