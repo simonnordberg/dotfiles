@@ -48,6 +48,15 @@ if getent group docker >/dev/null && ! id -nG "$RUNNER_USER" | grep -qw docker; 
   usermod -aG docker "$RUNNER_USER"
 fi
 
+# Rootless podman needs subordinate UID/GID ranges; `useradd --system` does
+# not allocate them by default on Fedora. Without this, jobs that pull
+# container images via rootless podman fail with "no subuid ranges found
+# for user". Idempotent.
+if ! grep -q "^${RUNNER_USER}:" /etc/subuid; then
+  usermod --add-subuids 100000-165535 --add-subgids 100000-165535 "$RUNNER_USER"
+  sudo -u "$RUNNER_USER" -- podman system migrate || true
+fi
+
 # Workflows install packages and write to /usr/local/bin, so give the runner
 # user passwordless sudo. Same trust boundary as docker group membership.
 SUDOERS_TMP=$(mktemp)
