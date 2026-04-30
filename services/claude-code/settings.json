@@ -49,5 +49,7 @@
       "Package manager read/install commands (npm/pnpm/yarn/bun install/add/run/test, cargo build/test/check, go build/test/run/mod, pip install, brew install) are allowed without confirmation.",
       "Build, test, lint, format commands are allowed without confirmation."
     ]
-  }
+  },
+  "model": "claude-opus-4-6[1m]",
+  "effort": "max"
 }
