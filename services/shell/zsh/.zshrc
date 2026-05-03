@@ -32,11 +32,13 @@ setopt APPEND_HISTORY
 # --- Navigation ---
 setopt AUTO_CD
 setopt NO_BEEP
-bindkey -e
+bindkey -v
+export KEYTIMEOUT=1
 
 # --- fzf ---
 if command -v fzf &>/dev/null; then
   source <(fzf --zsh)
+  export FZF_DEFAULT_OPTS='--bind "ctrl-j:down,ctrl-k:up"'
 fi
 
 # --- PATH ---
