@@ -79,7 +79,7 @@ alias open='xdg-open'
 
 # Claude Code: auto-launch in tmux session
 cl() {
-  local args=(--model claude-opus-4-6[1m] --effort max "$@")
+  local args=(--model 'claude-opus-4-6[1m]' --effort max "$@")
   if [[ -n "$TMUX" ]]; then
     command claude "${args[@]}"
   else
