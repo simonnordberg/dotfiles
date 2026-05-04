@@ -460,8 +460,8 @@ binds {
     //Mod+BracketLeft  { consume-or-expel-window-left; }
     //Mod+BracketRight { consume-or-expel-window-right; }
 
-    Mod+Comma  { consume-or-expel-window-left; }
-    Mod+Period { consume-or-expel-window-right; }
+    Mod+BracketLeft  { consume-or-expel-window-left; }
+    Mod+BracketRight { consume-or-expel-window-right; }
 
     Mod+R { switch-preset-column-width; }
     // Cycling through the presets in reverse order is also possible.
