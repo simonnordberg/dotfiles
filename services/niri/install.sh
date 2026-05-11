@@ -1,17 +1,10 @@
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 sudo dnf copr enable yalter/niri -y
-sudo dnf install niri brightnessctl qalculate -y
+sudo dnf install niri brightnessctl -y
 
 mkdir -p $HOME/.config/niri
 cp $SCRIPT_DIR/config.kdl $HOME/.config/niri/config.kdl
 
 mkdir -p $HOME/.config/fuzzel
 cp $SCRIPT_DIR/fuzzel.ini $HOME/.config/fuzzel/fuzzel.ini
-
-mkdir -p $HOME/.local/bin
-cp $SCRIPT_DIR/fuzzel-calc.sh $HOME/.local/bin/fuzzel-calc
-chmod +x $HOME/.local/bin/fuzzel-calc
-
-mkdir -p $HOME/.local/share/applications
-cp $SCRIPT_DIR/fuzzel-calc.desktop $HOME/.local/share/applications/fuzzel-calc.desktop

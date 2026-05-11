@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=Calculator
-GenericName=Calculator
-Exec=/home/simon/.local/bin/fuzzel-calc
-Icon=accessories-calculator
-Terminal=false
-Type=Application
-Categories=Utility;Calculator;
