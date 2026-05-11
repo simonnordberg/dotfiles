@@ -1,4 +1,5 @@
 #!/bin/bash
+sleep 0.2
 result=""
 while true; do
     if [ -n "$result" ]; then
