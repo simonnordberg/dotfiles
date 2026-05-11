@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Calculator
+GenericName=Calculator
+Exec=fuzzel-calc
+Icon=accessories-calculator
+Terminal=false
+Type=Application
+Categories=Utility;Calculator;
