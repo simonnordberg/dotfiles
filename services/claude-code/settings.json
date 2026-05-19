@@ -37,7 +37,7 @@
       "Bash(mkfs*)",
       "Bash(chmod -R*)",
       "Bash(chown -R*)",
-      "Bash(:(){*"
+      "Bash(:()*)"
     ]
   },
   "autoMode": {
