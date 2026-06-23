@@ -8,15 +8,26 @@
     "playwright": {
       "type": "stdio",
       "command": "npx",
-      "args": ["@playwright/mcp@latest"]
-    },
-    "fastmail": {
-      "type": "sse",
-      "url": "https://api.fastmail.com/mcp"
+      "args": [
+        "@playwright/mcp@latest",
+        "--headless",
+        "--no-sandbox",
+        "--executable-path",
+        "/home/simon/.cache/ms-playwright/chromium-1223/chrome-linux64/chrome"
+      ]
     },
     "linear": {
       "type": "http",
       "url": "https://mcp.linear.app/mcp"
+    },
+    "forgejo": {
+      "type": "stdio",
+      "command": "/home/simon/go/bin/forgejo-mcp",
+      "args": [
+        "--transport", "stdio",
+        "--url", "https://codebahn.net",
+        "--token", "3bacc606dc75bfeb5d2a03627864700adb6ba1fd"
+      ]
     }
   }
 }
