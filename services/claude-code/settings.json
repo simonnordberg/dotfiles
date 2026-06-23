@@ -37,8 +37,8 @@
     ],
     "deny": [
       "Bash(git push --force:*)",
-      "Bash(git push:* main)",
-      "Bash(git push:* master)"
+      "Bash(git push * main)",
+      "Bash(git push * master)"
     ]
   },
   "worktree": {
