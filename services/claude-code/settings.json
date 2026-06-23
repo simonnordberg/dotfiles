@@ -12,12 +12,7 @@
       "WebSearch",
       "WebFetch",
       "mcp__linear-server__*",
-      "mcp__claude_ai_Google_Drive__search_files",
-      "mcp__claude_ai_Google_Drive__list_recent_files",
-      "mcp__claude_ai_Google_Drive__get_file_metadata",
-      "mcp__claude_ai_Google_Drive__get_file_permissions",
-      "mcp__claude_ai_Google_Drive__read_file_content",
-      "mcp__claude_ai_Google_Drive__download_file_content"
+      "mcp__claude_ai_Google_Drive__*"
     ],
     "ask": [
       "Bash(rm -rf*)",
