@@ -91,7 +91,7 @@
 
 - Source of truth for all Claude config (CLAUDE.md, settings.json, mcp.json, skills/) is `~/code/dotfiles/services/claude-code/`.
 - NEVER edit files in `~/.claude/` directly. Edit the source in the dotfiles repo, then run `bash install.sh services/claude-code` from `~/code/dotfiles/` to install.
-- This applies to: CLAUDE.md, settings.json, .mcp.json, and anything under skills/.
+- This applies to: CLAUDE.md, settings.json, .mcp.json, and anything under hooks/, agents/, or skills/.
 - This rule also applies to other dotfiles (shell, git, etc.): the source is always `~/code/dotfiles/services/<name>/`.
 
 ## Cross-Project Knowledge
