@@ -3,13 +3,15 @@
 - Don't over-engineer. Solve what's in front of you.
 - Find root causes. No band-aid fixes.
 - Proactively refactor code you touch. If you see a better approach, apply it.
-- Red/green TDD: write a failing test first, then write the minimum code to make it pass. Do not write implementation before tests exist.
+- TDD: no production code without a failing test first. Show the test fail for the right reason, then write the minimal code to pass, then refactor with tests green.
 
 ## Communication
 
 - Be concise. Don't explain what you did unless asked.
 - No preamble, no filler.
 - When presenting options, state your recommendation and why.
+- Show evidence (command + output), not claims.
+- When you finish a step, state explicitly whether more work remains, list what's left and name the next step, or say the feature is complete. Never end ambiguously.
 - Never use em dashes (—). They read as AI output. Use a period, semicolon, comma, colon, or parentheses. Applies to chat, code, comments, commit messages, docs, and UI copy.
 
 ## Workflow
@@ -19,17 +21,25 @@
 - Distinguish between "I'm stuck" and "I need a decision".
 - Prefer editing existing files over creating new ones.
 - When requirements are ambiguous, make a reasonable decision and move on. Only ask if the decision is contested or has significant trade-offs.
+- One feature = one worktree = one branch = one PR.
+- Reuse before writing: search for an existing function, helper, or pattern first. Use or extend it rather than duplicating.
 - For non-trivial tasks, enter plan mode first. Break work into independent subtasks that can run in parallel.
 - Use worktrees for parallel work streams that touch the same repo to avoid conflicts.
 - Maximize use of subagents: run independent tasks concurrently, not sequentially.
 
 ## Git
 
+- Never commit to the default branch. Always use a feature branch/worktree.
+- Never build on a stale default. A new worktree branches from the freshly-fetched origin/HEAD; if a branch is behind, run /rebase before continuing.
 - Commit after each completed feature or bugfix. Don't wait to be asked.
-- One logical change per commit.
+- Commits small and reviewable (one task each); the PR tells the feature's whole story.
 - Use Conventional Commits: `type: lowercase description` (feat, fix, refactor, chore, docs, test, ci, perf, style). If the project's CLAUDE.md or recent git history uses a different commit format, follow that instead.
-- Pre-authorized without confirmation: status, diff, log, blame, show, add, commit, branch create/checkout/switch, stash, fetch, pull, merge (ff or non-ff), rebase (non-interactive), tag, push (any branch, including `main`/`master`, non-force), PR create/comment/review via `gh`.
-- Still require explicit confirmation: force-push (any branch), `reset --hard`, `clean -f`, `branch -D` on unmerged work, rewriting published history, deleting remote branches.
+- Pre-authorized without confirmation: status, diff, log, blame, show, add, commit, branch create/checkout/switch, stash, fetch, pull, merge (ff or non-ff), rebase (non-interactive), tag, push (any non-default branch, non-force), PR create/comment/review via `gh`.
+- Still require explicit confirmation: force-push (any branch), push to main/master, `reset --hard`, `clean -f`, `branch -D` on unmerged work, rewriting published history, deleting remote branches.
+
+## Code Review
+
+- Code review reports findings by severity. Fix only Blockers/Majors, triage false positives (push back, don't contort code), and defer or drop nits. Never "fix all review comments"; it grows the diff and loops.
 
 ## Tech Preferences
 
@@ -57,6 +67,7 @@
 - Minimize dependencies. Don't add a library for something you can write in a few lines.
 - Never swallow errors. Surface them explicitly: log, return, or throw. No silent failures.
 - Use semantic HTML, proper labels, and keyboard navigation by default. Accessibility is not optional.
+- If a project has i18n configured, user-facing strings go through it, never hardcoded.
 
 ## Code Quality
 
