@@ -74,6 +74,9 @@ install_plugins() {
   fi
 }
 
+mkdir -p "$HOME/.config/DankMaterialShell"
+cp "$SCRIPT_DIR/monokai-theme.json" "$HOME/.config/DankMaterialShell/monokai-theme.json"
+
 echo "Installing DMS plugins..."
 install_plugins
 
