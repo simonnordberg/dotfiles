@@ -1,1 +1,48 @@
-# Use defaults — override here as needed
+[mgr]
+border_style = { fg = "#75715E" }
+cwd = { fg = "#66D9EF", bold = true }
+
+[mgr.count_selected]
+fg = "#272822"
+bg = "#FD971F"
+bold = true
+
+[mgr.count_copied]
+fg = "#272822"
+bg = "#AE81FF"
+
+[tabs.active]
+fg = "#272822"
+bg = "#A6E22E"
+bold = true
+
+[tabs.inactive]
+fg = "#75715E"
+
+[status]
+sep_left = { fg = "#75715E" }
+sep_right = { fg = "#75715E" }
+
+[mode.normal_main]
+fg = "#272822"
+bg = "#A6E22E"
+bold = true
+
+[mode.select_main]
+fg = "#272822"
+bg = "#F92672"
+bold = true
+
+[mode.unset_main]
+fg = "#272822"
+bg = "#AE81FF"
+bold = true
+
+[[filetype.rules]]
+url = "*/"
+fg = "#66D9EF"
+bold = true
+
+[[filetype.rules]]
+url = "*"
+fg = "#F8F8F2"

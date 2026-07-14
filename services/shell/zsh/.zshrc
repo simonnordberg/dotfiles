@@ -38,7 +38,7 @@ export KEYTIMEOUT=1
 # --- fzf ---
 if command -v fzf &>/dev/null; then
   source <(fzf --zsh)
-  export FZF_DEFAULT_OPTS='--bind "ctrl-j:down,ctrl-k:up"'
+  export FZF_DEFAULT_OPTS='--bind "ctrl-j:down,ctrl-k:up" --color=bg+:#49483E,bg:#272822,fg:#F8F8F2,fg+:#F8F8F2,hl:#F92672,hl+:#F92672,info:#A6E22E,marker:#A6E22E,pointer:#66D9EF,prompt:#66D9EF,spinner:#AE81FF,header:#75715E'
 fi
 
 # --- PATH ---
