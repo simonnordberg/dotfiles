@@ -2,7 +2,10 @@ return {
 	{
 		"LazyVim/LazyVim",
 		opts = {
-			colorscheme = "tokyonight",
+			colorscheme = "monokai",
 		},
+	},
+	{
+		"tanvirtin/monokai.nvim",
 	},
 }
