@@ -1,7 +1,6 @@
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
-sudo dnf copr enable yalter/niri -y
-sudo dnf install niri brightnessctl -y
+sudo dnf install -y niri brightnessctl
 
 mkdir -p $HOME/.config/niri
 cp $SCRIPT_DIR/config.kdl $HOME/.config/niri/config.kdl
