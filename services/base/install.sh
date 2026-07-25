@@ -35,7 +35,6 @@ sudo dnf install -y \
   curl \
   git \
   openssl-devel \
-  dnf-plugins-core \
   fuse \
   fuse-libs \
   btop
