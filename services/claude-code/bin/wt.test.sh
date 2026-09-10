@@ -261,4 +261,34 @@ expect_has "run single rc" "rc=0" "$out"
 expect "run single ticked" 2 "$(grep -c '^- \[x\]' "$wss/solo/.plans/feat-s/solo/plan.md")"
 expect "run single worktree" feat-s "$(git -C "$wss/solo/.worktrees/feat-s" branch --show-current)"
 
+# --- progress output during run ---
+wsg=$TMP/g2; mkdir -p "$wsg/.plans/feat-g"; mkrepo "$wsg/api"; mkrepo "$wsg/web"
+printf 'Merge order: api, web\n' >"$wsg/.plans/feat-g/order.md"
+out=$(cd "$wsg" && PATH="$TMP/bin:$PATH" "$WT" run feat-g; echo "rc=$?")
+expect_has "progress plan started" "[plan] api: started" "$out"
+expect_has "progress plan done" "[plan] api: done" "$out"
+expect_has "progress tdd starting" "[tdd] api: starting (2 steps)" "$out"
+expect_has "progress tdd step" "[tdd] api: step 1" "$out"
+expect_has "progress tdd done" "[tdd] api: done (2/2)" "$out"
+expect_has "progress ship started" "[ship] api: started" "$out"
+expect_has "progress ship done" "[ship] api: done" "$out"
+expect_has "progress web plan" "[plan] web: started" "$out"
+expect_has "progress web tdd" "[tdd] web: starting (2 steps)" "$out"
+expect_has "progress web ship" "[ship] web: done" "$out"
+
+# progress: plan already exists -> skip
+wsg2=$TMP/g3; mkdir -p "$wsg2/.plans/feat-g2"; mkrepo "$wsg2/api"
+printf 'Merge order: api\n' >"$wsg2/.plans/feat-g2/order.md"
+mkdir -p "$wsg2/.plans/feat-g2/api"
+printf -- '- [ ] one. Test: t1\n' >"$wsg2/.plans/feat-g2/api/plan.md"
+out=$(cd "$wsg2" && PATH="$TMP/bin:$PATH" "$WT" run feat-g2 tdd; echo "rc=$?")
+expect_has "progress tdd no plan phase" "[tdd] api: starting (1 steps)" "$out"
+expect_lacks "progress skip plan" "[plan]" "$out"
+
+# progress: blocked shows reason
+wsbl=$TMP/bl; mkdir -p "$wsbl/.plans/feat-bl"; mkrepo "$wsbl/api"
+printf 'Merge order: api\n' >"$wsbl/.plans/feat-bl/order.md"
+out=$(cd "$wsbl" && FAKE_BLOCK=BLOCKME PATH="$TMP/bin:$PATH" "$WT" run feat-bl; echo "rc=$?")
+expect_has "progress blocked" "[tdd] api: BLOCKED: what now?" "$out"
+
 if [ "$fails" -eq 0 ]; then echo "all wt tests passed"; else echo "$fails failing"; exit 1; fi
