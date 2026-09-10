@@ -9,8 +9,8 @@ effort: max
 
 If the existing plan above has any `- [x]`, stop: it is in progress; edit it by hand instead.
 
-1. Dispatch an Explore subagent for the files the spec names in this repo; it returns
-   file:line refs only.
+1. Dispatch an Explore subagent, with model `sonnet`, for the files the spec names in this
+   repo; it returns file:line refs only. Don't read the codebase into this conversation.
 2. If this repo's CLAUDE.md names a directory for specs, copy the spec there and commit it as
    `docs: add spec for <slug>`. Otherwise skip; the PR body carries it.
 3. Write the plan at the path above: a `- [ ]` list, one behavior per item, each naming the

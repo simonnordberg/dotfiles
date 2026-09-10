@@ -21,8 +21,12 @@ Each phase's model is explicit in its skill's frontmatter (`model:` and `effort:
 `skills/<name>/SKILL.md`) and applies whether the skill runs headlessly or by hand; it
 overrides `--model`. Defaults: `/steps` and `/ship` on `claude-opus-4-6[1m]` at max effort,
 `/tdd` on `claude-sonnet-5` at medium. To change one, edit that frontmatter and reinstall.
-`/spec` has none (a multi-turn interview follows the session's model, `cl()`). The reviewer
-subagent inherits the model of the phase that calls it.
+`/spec` has none: a multi-turn interview follows the session's model, so launch it with
+`cl --model 'claude-fable-5-1[1m]'` when the feature deserves the strongest model (the
+later flag wins). Reading the codebase is delegated to Explore subagents on `sonnet` in
+`/spec` and `/steps`, so the session model only ever sees a digest plus the spec. The
+reviewer (`agents/reviewer.md`) runs on `claude-fable-5-1` at high effort: its input is
+just the spec and a diff or plan, and it runs once per repo.
 
 ## The flow
 
