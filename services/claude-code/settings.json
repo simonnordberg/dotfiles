@@ -73,7 +73,7 @@
       "All gh CLI commands for creating and reading PRs, issues, and runs."
     ]
   },
-  "model": "claude-opus-4-6[1m]",
+  "model": "claude-fable-5-1[1m]",
   "effort": "max",
   "skipAutoPermissionPrompt": true,
   "agentPushNotifEnabled": true
