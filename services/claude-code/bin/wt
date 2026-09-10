@@ -16,6 +16,7 @@ usage: wt <command> [args]
   create <slug> [repo]         find or create the slug's worktree; prints its path
   remove <slug>                remove the slug's worktrees and branches if clean and merged
   run <slug> [phase] [repo]    headless plan|tdd|ship|all (default all), per repo in merge order
+models per phase come from each skill's frontmatter (skills/steps, tdd, ship)
 EOF
 }
 
@@ -303,7 +304,7 @@ run_tdd() {
   [ -f "$plan" ] || return 1
   while [ "$i" -lt "$MAX_STEPS" ] && has_unchecked "$plan" && ! is_blocked "$plan"; do
     i=$((i + 1))
-    run_step "$1" "step-$(printf '%02d' "$i")" "/tdd" --model sonnet || return 1
+    run_step "$1" "step-$(printf '%02d' "$i")" "/tdd" || return 1
   done
   ! has_unchecked "$plan" && ! is_blocked "$plan"
 }

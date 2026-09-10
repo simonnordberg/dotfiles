@@ -2,6 +2,8 @@
 name: steps
 description: Write this repo's plan.md from the spec as a red/green/refactor checklist
 disable-model-invocation: true
+model: claude-opus-4-6[1m]
+effort: max
 ---
 !`"$HOME/.claude/bin/wt" plan-ctx`
 

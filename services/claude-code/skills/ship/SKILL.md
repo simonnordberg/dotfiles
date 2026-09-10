@@ -2,6 +2,8 @@
 name: ship
 description: Gate against the spec, audit the methodology, review, and open a PR
 disable-model-invocation: true
+model: claude-opus-4-6[1m]
+effort: max
 ---
 !`"$HOME/.claude/bin/wt" ship`
 

@@ -2,7 +2,7 @@
 name: tdd
 description: Implement the next unchecked plan step, red/green/refactor
 disable-model-invocation: true
-model: sonnet
+model: claude-sonnet-5
 effort: medium
 ---
 !`"$HOME/.claude/bin/wt" tdd`

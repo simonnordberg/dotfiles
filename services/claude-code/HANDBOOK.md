@@ -15,6 +15,15 @@ per step, driven by files on disk. Nothing depends on a conversation staying ali
 `bash install.sh services/claude-code` (skills, `~/.claude/bin/wt`, hooks, the reviewer
 agent) and `bash install.sh services/shell` (`wt` on PATH, the `work` function).
 
+## Models
+
+Each phase's model is explicit in its skill's frontmatter (`model:` and `effort:` in
+`skills/<name>/SKILL.md`) and applies whether the skill runs headlessly or by hand; it
+overrides `--model`. Defaults: `/steps` and `/ship` on `claude-opus-4-6[1m]` at max effort,
+`/tdd` on `claude-sonnet-5` at medium. To change one, edit that frontmatter and reinstall.
+`/spec` has none (a multi-turn interview follows the session's model, `cl()`). The reviewer
+subagent inherits the model of the phase that calls it.
+
 ## The flow
 
 Start one session at the root that holds the repos (a workspace like `~/code/codebahn`, or
