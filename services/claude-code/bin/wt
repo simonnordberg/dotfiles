@@ -280,10 +280,17 @@ has_unchecked() { grep -q '^- \[ \]' "$1" 2>/dev/null; }
 is_blocked() { grep -q '^ *BLOCKED:' "$1" 2>/dev/null; }
 
 run_step() { # run_step <repo> <label> <prompt> [claude args...]: one headless session
-  local repo=$1 label=$2 prompt=$3 dir log; shift 3
+  local repo=$1 label=$2 prompt=$3 dir base rc; shift 3
   dir=$(find_or_create_wt "$RUN_SLUG" "$repo" "$(repo_dir "$RUN_WS" "$repo")" "$RUN_WS" "$RUN_PLANSROOT") || return 1
-  log=$RUN_PLANS/$repo/log/$label.log; mkdir -p "$(dirname "$log")"
-  (cd "$dir" && claude -p "$prompt" --add-dir "$RUN_PLANS" "$@" </dev/null >"$log" 2>&1)
+  base=$RUN_PLANS/$repo/log/$label; mkdir -p "$(dirname "$base")"
+  # .jsonl is the full transcript (every tool call and result); .log is the final message
+  (cd "$dir" && claude -p "$prompt" --add-dir "$RUN_PLANS" --output-format stream-json --verbose "$@" </dev/null >"$base.jsonl" 2>"$base.err")
+  rc=$?
+  { jq -r 'select(.type == "result") | .result // empty' "$base.jsonl" 2>/dev/null
+    [ -s "$base.err" ] && { echo "stderr:"; cat "$base.err"; }
+  } >"$base.log"
+  rm -f "$base.err"
+  return $rc
 }
 
 run_plan() {

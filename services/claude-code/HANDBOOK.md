@@ -47,7 +47,8 @@ codebahn-docs` (one phase, one repo). Every rerun resumes from the first unfinis
   order.md           first line: `Merge order: repo1, repo2`; then seam notes
   state.md           `<repo> <PR URL> open`, appended by /ship
   <repo>/plan.md     `- [ ] behavior. Test: ...` becomes `- [x] ... (commits: a b c)`
-  <repo>/log/        plan.log, step-01.log, ..., ship.log: every headless transcript
+  <repo>/log/        per headless step: <step>.jsonl (full transcript, every tool call and
+                     result) and <step>.log (the final message); plan, step-01, ..., ship
 <root>/.worktrees/<slug>/<repo>/   the feature's worktrees, together
 ```
 
@@ -75,7 +76,8 @@ delete the line, and `/build <slug>` again, or take over by hand:
 
 `wt audit` (also the first gate in `/ship`) checks every ticked step: commits recorded, all
 on the branch, first commit is a `test:` commit followed by a green commit (a `Check:` step
-needs one commit). The step logs show the red run. `wt ctx` shows what a directory resolves
+needs one commit). The `.jsonl` transcripts show the red run (`grep -c FAIL
+.plans/<slug>/<repo>/log/step-01.jsonl`). `wt ctx` shows what a directory resolves
 to; `wt tdd` and `wt ship` print exactly what the skills see.
 
 ## Layouts
