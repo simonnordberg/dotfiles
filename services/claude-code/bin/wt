@@ -279,6 +279,7 @@ plans_for_slug() { # plans_for_slug <slug>: the .plans/<slug> dir for this cwd
 
 has_unchecked() { grep -q '^- \[ \]' "$1" 2>/dev/null; }
 is_blocked() { grep -q '^ *BLOCKED:' "$1" 2>/dev/null; }
+progress() { printf '[%s] %s: %s\n' "$1" "$2" "$3"; }
 
 run_step() { # run_step <repo> <label> <prompt> [claude args...]: one headless session
   local repo=$1 label=$2 prompt=$3 dir base rc; shift 3
@@ -295,18 +296,28 @@ run_step() { # run_step <repo> <label> <prompt> [claude args...]: one headless s
 }
 
 run_plan() {
-  [ -f "$RUN_PLANS/$1/plan.md" ] && return 0
-  run_step "$1" plan "/steps"
+  [ -f "$RUN_PLANS/$1/plan.md" ] && { progress plan "$1" "exists, skipping"; return 0; }
+  progress plan "$1" started
+  run_step "$1" plan "/steps" && { progress plan "$1" done; return 0; }
+  progress plan "$1" FAILED; return 1
 }
 
 run_tdd() {
-  local plan=$RUN_PLANS/$1/plan.md i=0
+  local plan=$RUN_PLANS/$1/plan.md i=0 total done_count
   [ -f "$plan" ] || return 1
+  total=$(grep -c '^- \[[ x]\]' "$plan" 2>/dev/null || echo 0)
+  progress tdd "$1" "starting ($total steps)"
   while [ "$i" -lt "$MAX_STEPS" ] && has_unchecked "$plan" && ! is_blocked "$plan"; do
     i=$((i + 1))
-    run_step "$1" "step-$(printf '%02d' "$i")" "/tdd" || return 1
+    progress tdd "$1" "step $i"
+    run_step "$1" "step-$(printf '%02d' "$i")" "/tdd" || { progress tdd "$1" "FAILED at step $i"; return 1; }
   done
-  ! has_unchecked "$plan" && ! is_blocked "$plan"
+  if is_blocked "$plan"; then
+    progress tdd "$1" "BLOCKED: $(sed -n 's/^ *BLOCKED: *//p' "$plan" | head -1)"
+    return 1
+  fi
+  done_count=$(grep -c '^- \[x\]' "$plan" 2>/dev/null || echo 0)
+  progress tdd "$1" "done ($done_count/$total)"
 }
 
 run_phase_parallel() { # run_phase_parallel <fn> <repos...>
@@ -356,7 +367,12 @@ cmd_run() {
     if [ "$rc" -eq 0 ]; then
       for repo in "${repos[@]}"; do
         has_unchecked "$RUN_PLANS/$repo/plan.md" || is_blocked "$RUN_PLANS/$repo/plan.md" && { rc=1; break; }
-        run_step "$repo" ship "/ship" || { rc=1; break; }
+        progress ship "$repo" started
+        if run_step "$repo" ship "/ship"; then
+          progress ship "$repo" done
+        else
+          progress ship "$repo" FAILED; rc=1; break
+        fi
       done
     fi ;;
   esac
