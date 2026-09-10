@@ -42,7 +42,7 @@ if command -v fzf &>/dev/null; then
 fi
 
 # --- PATH ---
-path=("$HOME/.cargo/bin" "$HOME/.local/bin" "$HOME/.local/share/fnm" $path)
+path=("$HOME/.cargo/bin" "$HOME/.local/bin" "$HOME/.local/share/fnm" "$HOME/.claude/bin" $path)
 typeset -U path
 
 # --- Environment ---
@@ -88,6 +88,13 @@ cl() {
     tmux new-session -s "$session" -d "claude --model '${model}' --effort '${effort}' $*; zsh" 2>/dev/null
     tmux attach-session -t "$session"
   fi
+}
+# Spec chain: open the slug's worktree for a repo in Claude (see services/claude-code/HANDBOOK.md)
+work() {  # work <slug> [repo]
+  local dir plans
+  dir=$(wt create "$@") || return 1
+  plans=$(cd "$dir" && wt ctx | sed -n 's/^plans=//p')
+  (cd "$dir" && cl --add-dir "$plans")
 }
 # Yazi wrapper: cd to navigated directory on exit
 y() {
