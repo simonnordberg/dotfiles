@@ -198,11 +198,14 @@ expect_has "ship shows blocked" "BLOCKED: which color?" "$(cd "$wt" && "$WT" shi
 mkdir -p "$TMP/bin"
 cat >"$TMP/bin/claude" <<'EOF'
 #!/usr/bin/env bash
-prompt=; add=
-while [ $# -gt 0 ]; do case $1 in -p) prompt=$2; shift;; --add-dir) add=$2; shift;; esac; shift; done
+prompt=; add=; fmt=text
+while [ $# -gt 0 ]; do case $1 in -p) prompt=$2; shift;; --add-dir) add=$2; shift;; --output-format) fmt=$2; shift;; esac; shift; done
 repo=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
 plan="$add/$repo/plan.md"
-echo "fake claude: $prompt in $PWD"
+if [ "$fmt" = stream-json ]; then
+  printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"go test"}}]}}\n'
+  printf '{"type":"result","result":"fake claude: %s in %s"}\n' "$prompt" "$PWD"
+else echo "fake claude: $prompt in $PWD"; fi
 case $prompt in
   /steps) printf -- '- [ ] one. Test: t1\n- [ ] two%s. Test: t2\n' "$FAKE_BLOCK" >"$plan" ;;
   /tdd)
@@ -221,7 +224,9 @@ out=$(cd "$wsr" && PATH="$TMP/bin:$PATH" "$WT" run feat-r; echo "rc=$?")
 expect_has "run rc" "rc=0" "$out"
 expect "run api plan ticked" 2 "$(grep -c '^- \[x\]' "$wsr/.plans/feat-r/api/plan.md")"
 expect "run web plan ticked" 2 "$(grep -c '^- \[x\]' "$wsr/.plans/feat-r/web/plan.md")"
-expect "run logs" yes "$([ -f "$wsr/.plans/feat-r/api/log/plan.log" ] && [ -f "$wsr/.plans/feat-r/api/log/step-02.log" ] && [ -f "$wsr/.plans/feat-r/api/log/ship.log" ] && echo yes)"
+expect "run logs" yes "$([ -f "$wsr/.plans/feat-r/api/log/plan.log" ] && [ -f "$wsr/.plans/feat-r/api/log/step-02.log" ] && [ -f "$wsr/.plans/feat-r/api/log/ship.log" ] && [ -f "$wsr/.plans/feat-r/api/log/step-02.jsonl" ] && echo yes)"
+expect_has "run log holds the final message" "fake claude: /tdd" "$(cat "$wsr/.plans/feat-r/api/log/step-02.log" 2>/dev/null)"
+expect_has "run jsonl holds the transcript" '"tool_use"' "$(cat "$wsr/.plans/feat-r/api/log/step-02.jsonl" 2>/dev/null)"
 expect "run state" 2 "$(grep -c open "$wsr/.plans/feat-r/state.md")"
 expect_has "run summary api" "api: 2/2 steps done, PR https://example/pr/1" "$out"
 expect_has "run summary web" "web: 2/2 steps done, PR https://example/pr/1" "$out"
