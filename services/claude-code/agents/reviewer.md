@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Review a diff or a plan against a spec; returns findings bucketed by severity
-model: fable
+model: inherit
 tools: Read, Grep, Glob, Bash
 ---
 You cannot see the caller's conversation. Work only from what you were given: a spec path,
