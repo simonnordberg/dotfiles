@@ -1,0 +1,384 @@
+#!/usr/bin/env bash
+# wt: resolve where a feature lives (workspace, repo, slug, plans dir) from any
+# worktree layout, and drive the spec -> plan -> tdd -> ship chain headlessly.
+set -u
+
+MAX_STEPS=40
+
+usage() {
+  cat <<'EOF'
+usage: wt <command> [args]
+  ctx                          workspace/repo/slug/plans for the current directory
+  here                         workspace root (lists repos) or repo, for /spec
+  slug                         the resolved slug, or nothing
+  tdd | ship | plan-ctx        context blocks for the skills; always exit 0
+  audit                        check ticked plan steps for the red/green commit shape
+  create <slug> [repo]         find or create the slug's worktree; prints its path
+  remove <slug>                remove the slug's worktrees and branches if clean and merged
+  run <slug> [phase] [repo]    headless plan|tdd|ship|all (default all), per repo in merge order
+models per phase come from each skill's frontmatter (skills/steps, tdd, ship)
+EOF
+}
+
+die() { printf 'wt: %s\n' "$*" >&2; exit 1; }
+
+# --- resolution -------------------------------------------------------------
+
+# Sets toplevel, main, repo, workspace, branch. Fails outside git.
+resolve_git() {
+  toplevel=$(git rev-parse --show-toplevel 2>/dev/null) || return 1
+  local common
+  common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+  if [ "$(basename "$common")" = .git ]; then
+    main=$(dirname "$common")
+    repo=$(basename "$main")
+  else # bare repo: <ws>/<repo>.git
+    main=$common
+    repo=$(basename "$common" .git)
+  fi
+  workspace=$(dirname "$main")
+  branch=$(git branch --show-current 2>/dev/null)
+}
+
+plans_roots() { # candidate .plans roots, highest priority first
+  if [ -n "${WORKSPACE:-}" ]; then printf '%s\n' "$WORKSPACE/.plans"; return; fi
+  printf '%s\n%s\n' "$main/.plans" "$workspace/.plans"
+}
+
+slug_candidates() { # keys a worktree layout could have used, most specific first
+  printf '%s\n' "$(basename "$toplevel")" "$(basename "$(dirname "$toplevel")")"
+  if [ -n "$branch" ]; then
+    local b=${branch#worktree-}
+    printf '%s\n%s\n' "${b//\//-}" "${b##*/}"
+  fi
+}
+
+# Sets slug, plans, plandir, tried (plus resolve_git's vars). Fails outside git.
+resolve() {
+  slug= plans= plandir= tried=
+  resolve_git || return 1
+  local roots=() r c
+  mapfile -t roots < <(plans_roots)
+  if [ -n "${WT_SLUG:-}" ]; then
+    slug=$WT_SLUG
+    for r in "${roots[@]}"; do [ -d "$r/$slug" ] && { plans=$r/$slug; break; }; done
+    [ -n "$plans" ] || plans=${roots[0]}/$slug
+  else
+    while IFS= read -r c; do
+      [ -n "$c" ] || continue
+      tried="$tried${tried:+, }$c"
+      for r in "${roots[@]}"; do
+        [ -d "$r/$c" ] && { slug=$c; plans=$r/$c; break 2; }
+      done
+    done < <(slug_candidates)
+  fi
+  [ -n "$plans" ] && plandir=$plans/$repo
+  return 0
+}
+
+default_branch() { # default_branch <repodir>
+  local d
+  d=$(git -C "$1" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)
+  if [ -z "$d" ]; then
+    git -C "$1" remote set-head origin -a >/dev/null 2>&1
+    d=$(git -C "$1" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)
+  fi
+  if [ -z "$d" ]; then # remote HEAD undeterminable: take the conventional names if they exist
+    local b
+    for b in main master; do
+      git -C "$1" show-ref --verify -q "refs/remotes/origin/$b" && { d=origin/$b; break; }
+    done
+  fi
+  printf '%s\n' "${d#origin/}"
+}
+
+repo_dir() { # repo_dir <ws> <repo>: the repo's main checkout (or bare dir), never a linked worktree
+  if [ -d "$1/$2/.git" ]; then printf '%s\n' "$1/$2"
+  elif [ -d "$1/$2.git" ]; then printf '%s\n' "$1/$2.git"
+  else return 1
+  fi
+}
+
+workspace_repos() { # workspace_repos <ws>: git repos directly under ws
+  local d
+  for d in "$1"/*/; do
+    d=${d%/}
+    [ -d "$d/.git" ] && printf '%s\n' "$(basename "$d")"
+  done
+}
+
+find_wt() { # find_wt <slug> <repo> <repodir> <ws>: existing worktree path, if any
+  local slug=$1 repo=$2 repodir=$3 ws=$4 p
+  for p in "$ws/.worktrees/$slug/$repo" "$repodir/.claude/worktrees/$slug" "$repodir/.worktrees/$slug"; do
+    [ -d "$p" ] && { printf '%s\n' "$p"; return 0; }
+  done
+  git -C "$repodir" worktree list --porcelain 2>/dev/null | awk -v b="refs/heads/$slug" '
+    /^worktree /{p=substr($0,10)} /^branch /{if($2==b){print p; exit}}' | grep . && return 0
+  return 1
+}
+
+# find_or_create_wt <slug> <repo> <repodir> <ws> <plansroot>: prints the worktree path
+find_or_create_wt() {
+  local slug=$1 repo=$2 repodir=$3 ws=$4 plansroot=$5 target def
+  mkdir -p "$plansroot/$slug/$repo"
+  find_wt "$slug" "$repo" "$repodir" "$ws" && return 0
+  if [ "$plansroot" = "$repodir/.plans" ]; then target=$repodir/.worktrees/$slug; else target=$ws/.worktrees/$slug/$repo; fi
+  git -C "$repodir" fetch -q origin 2>/dev/null || true
+  def=$(default_branch "$repodir")
+  [ -n "$def" ] || die "cannot determine the default branch of $repodir"
+  mkdir -p "$(dirname "$target")"
+  if git -C "$repodir" show-ref --verify -q "refs/heads/$slug"; then
+    git -C "$repodir" worktree add -q "$target" "$slug" || die "worktree add failed for $repo"
+  else
+    git -C "$repodir" worktree add -q "$target" -b "$slug" "origin/$def" || die "worktree add failed for $repo"
+  fi
+  printf '%s\n' "$target"
+}
+
+# Sets ws and plansroot from the cwd; plans are repo-local when <main>/.plans/<slug> exists.
+locate() {
+  if resolve_git; then
+    ws=$workspace
+    if [ -d "$main/.plans/${1:-}" ]; then plansroot=$main/.plans; else plansroot=$ws/.plans; fi
+  else
+    ws=$PWD; plansroot=$ws/.plans
+  fi
+}
+
+# --- context blocks ----------------------------------------------------------
+
+show_file() { # show_file <path> <fallback>
+  if [ -f "$1" ]; then cat "$1"; else printf '%s\n' "$2"; fi
+}
+
+header() {
+  if [ -n "$slug" ]; then printf 'Slug: %s\nRepo: %s\nPlan: %s\n' "$slug" "$repo" "$plandir/plan.md"
+  else printf 'Slug: unknown (tried: %s)\nRepo: %s\nPlan: NO PLAN FOUND (tried: %s)\n' "$tried" "$repo" "$tried"
+  fi
+}
+
+cmd_ctx() {
+  resolve || { printf 'cwd=%s\n' "$PWD"; return 0; }
+  printf 'workspace=%s\nrepo=%s\nslug=%s\nplans=%s\nplandir=%s\nmain=%s\ntoplevel=%s\nbranch=%s\ntried=%s\n' \
+    "$workspace" "$repo" "$slug" "$plans" "$plandir" "$main" "$toplevel" "$branch" "$tried"
+}
+
+cmd_here() {
+  if resolve_git; then
+    printf 'mode=repo\nroot=%s\nrepo=%s\nworkspace=%s\n' "$main" "$repo" "$workspace"
+  else
+    printf 'mode=workspace\nroot=%s\nworkspace=%s\nrepos=%s\n' "$PWD" "$PWD" "$(workspace_repos "$PWD" | paste -sd ' ')"
+  fi
+}
+
+cmd_slug() { resolve 2>/dev/null && printf '%s\n' "$slug"; return 0; }
+
+cmd_tdd() {
+  resolve || { echo "Not in a git repository: $PWD"; return 0; }
+  header
+  if [ -n "$slug" ]; then show_file "$plandir/plan.md" "NO PLAN FOUND at $plandir/plan.md"; fi
+  printf 'Recent commits:\n%s\nWorking tree:\n%s\n' \
+    "$(git log --oneline -5 2>/dev/null || echo none)" "$(git status --short 2>/dev/null | grep . || echo clean)"
+}
+
+cmd_plan_ctx() {
+  resolve || { echo "Not in a git repository: $PWD"; return 0; }
+  header
+  printf 'Spec:\n%s\nMerge order:\n%s\nExisting plan:\n%s\n' \
+    "$(show_file "$plans/spec.md" "NO SPEC")" "$(show_file "$plans/order.md" "single repo")" \
+    "$(show_file "$plandir/plan.md" none)"
+}
+
+cmd_ship() {
+  resolve || { echo "Not in a git repository: $PWD"; return 0; }
+  header
+  printf 'Spec:\n%s\nMerge order:\n%s\nState:\n%s\n' \
+    "$(show_file "$plans/spec.md" "NO SPEC")" "$(show_file "$plans/order.md" "single repo")" \
+    "$(show_file "$plans/state.md" none)"
+  printf 'Unchecked steps (this repo): %s\n' "$(grep -c '^- \[ \]' "$plandir/plan.md" 2>/dev/null || echo 0)"
+  grep '^ *BLOCKED:' "$plandir/plan.md" 2>/dev/null
+  cmd_audit
+  local def base
+  def=$(default_branch "$main"); [ -n "$def" ] || def=main
+  base=$(git merge-base HEAD "origin/$def" 2>/dev/null || git merge-base HEAD "$def" 2>/dev/null)
+  printf 'Base: origin/%s\nDiff:\n%s\nRemote: %s\n' "$def" \
+    "$( [ -n "$base" ] && git diff --stat "$base..HEAD" 2>/dev/null || echo "(no merge base with origin/$def)")" \
+    "$(git remote get-url origin 2>/dev/null || echo none)"
+}
+
+cmd_audit() {
+  resolve || { echo "Methodology audit: not in a git repository"; return 0; }
+  local plan=$plandir/plan.md
+  [ -f "$plan" ] || { echo "Methodology audit: no plan at $plan"; return 0; }
+  local n=0 checked=0 line shas sha first violations=
+  v() { violations="$violations$(printf '\n  step %s: %s' "$n" "$1")"; }
+  while IFS= read -r line; do
+    case $line in '- [ ]'*|'- [x]'*) n=$((n + 1)) ;; *) continue ;; esac
+    [ "${line:0:5}" = '- [x]' ] || continue
+    checked=$((checked + 1))
+    shas=$(printf '%s' "$line" | sed -n 's/.*(commits: *\([0-9a-f ]*\)).*/\1/p')
+    [ -n "$shas" ] || { v "no commits recorded"; continue; }
+    for sha in $shas; do
+      git merge-base --is-ancestor "$sha" HEAD 2>/dev/null || v "commit $sha is not on this branch"
+    done
+    case $line in *Check:*) continue ;; esac
+    [ "$(printf '%s\n' $shas | wc -l)" -ge 2 ] || { v "needs a test commit and a green commit"; continue; }
+    first=${shas%% *}
+    git log -1 --format=%s "$first" 2>/dev/null | grep -Eq '^test(\(.*\))?:' || v "first commit is not a test: commit"
+  done <"$plan"
+  if [ -z "$violations" ]; then echo "Methodology audit: OK ($checked steps)"
+  else printf 'Methodology audit: VIOLATIONS%s\n' "$violations"
+  fi
+}
+
+# --- worktree lifecycle --------------------------------------------------------
+
+cmd_create() {
+  local slug=${1:-} repo=${2:-} repodir
+  [ -n "$slug" ] || die "usage: wt create <slug> [repo]"
+  locate "$slug"
+  if [ -z "$repo" ]; then
+    [ -n "${main:-}" ] || die "usage: wt create <slug> <repo> (not inside a repo)"
+    repo=$(basename "$main" .git)
+  fi
+  repodir=$(repo_dir "$ws" "$repo") || die "no repo '$repo' in $ws"
+  find_or_create_wt "$slug" "$repo" "$repodir" "$ws" "$plansroot"
+}
+
+cmd_remove() {
+  local slug=${1:-} repo repodir wt def found=() problems=
+  [ -n "$slug" ] || die "usage: wt remove <slug>"
+  locate "$slug"
+  while IFS= read -r repo; do
+    repodir=$(repo_dir "$ws" "$repo") || continue
+    wt=$(find_wt "$slug" "$repo" "$repodir" "$ws") || continue
+    found+=("$repo:$repodir:$wt")
+    [ -z "$(git -C "$wt" status --porcelain 2>/dev/null)" ] || problems="$problems\n  $repo: uncommitted changes in $wt"
+    def=$(default_branch "$repodir")
+    git -C "$repodir" merge-base --is-ancestor "$slug" "origin/$def" 2>/dev/null || problems="$problems\n  $repo: branch $slug is unmerged into origin/$def"
+  done < <(workspace_repos "$ws")
+  [ "${#found[@]}" -gt 0 ] || die "no worktrees for $slug under $ws"
+  [ -z "$problems" ] || die "refusing to remove $slug:$(printf '%b' "$problems")"
+  local entry
+  for entry in "${found[@]}"; do
+    repo=${entry%%:*}; entry=${entry#*:}; repodir=${entry%%:*}; wt=${entry#*:}
+    git -C "$repodir" worktree remove "$wt" && git -C "$repodir" branch -q -d "$slug" && echo "removed $wt"
+  done
+  rmdir "$ws/.worktrees/$slug" 2>/dev/null || true
+}
+
+# --- headless run ----------------------------------------------------------------
+
+plans_for_slug() { # plans_for_slug <slug>: the .plans/<slug> dir for this cwd
+  local c
+  for c in "$PWD/.plans/$1" "${main:+$main/.plans/$1}" "${workspace:+$workspace/.plans/$1}" "${WORKSPACE:+$WORKSPACE/.plans/$1}"; do
+    [ -n "$c" ] && [ -d "$c" ] && { printf '%s\n' "$c"; return 0; }
+  done
+  return 1
+}
+
+has_unchecked() { grep -q '^- \[ \]' "$1" 2>/dev/null; }
+is_blocked() { grep -q '^ *BLOCKED:' "$1" 2>/dev/null; }
+
+run_step() { # run_step <repo> <label> <prompt> [claude args...]: one headless session
+  local repo=$1 label=$2 prompt=$3 dir base rc; shift 3
+  dir=$(find_or_create_wt "$RUN_SLUG" "$repo" "$(repo_dir "$RUN_WS" "$repo")" "$RUN_WS" "$RUN_PLANSROOT") || return 1
+  base=$RUN_PLANS/$repo/log/$label; mkdir -p "$(dirname "$base")"
+  # .jsonl is the full transcript (every tool call and result); .log is the final message
+  (cd "$dir" && claude -p "$prompt" --add-dir "$RUN_PLANS" --output-format stream-json --verbose "$@" </dev/null >"$base.jsonl" 2>"$base.err")
+  rc=$?
+  { jq -r 'select(.type == "result") | .result // empty' "$base.jsonl" 2>/dev/null
+    [ -s "$base.err" ] && { echo "stderr:"; cat "$base.err"; }
+  } >"$base.log"
+  rm -f "$base.err"
+  return $rc
+}
+
+run_plan() {
+  [ -f "$RUN_PLANS/$1/plan.md" ] && return 0
+  run_step "$1" plan "/steps"
+}
+
+run_tdd() {
+  local plan=$RUN_PLANS/$1/plan.md i=0
+  [ -f "$plan" ] || return 1
+  while [ "$i" -lt "$MAX_STEPS" ] && has_unchecked "$plan" && ! is_blocked "$plan"; do
+    i=$((i + 1))
+    run_step "$1" "step-$(printf '%02d' "$i")" "/tdd" || return 1
+  done
+  ! has_unchecked "$plan" && ! is_blocked "$plan"
+}
+
+run_phase_parallel() { # run_phase_parallel <fn> <repos...>
+  local fn=$1 pids=() rc=0 pid; shift
+  for repo in "$@"; do "$fn" "$repo" & pids+=($!); done
+  for pid in "${pids[@]}"; do wait "$pid" || rc=1; done
+  return $rc
+}
+
+run_summary() {
+  local repo plan done total blocked pr line
+  for repo in "$@"; do
+    plan=$RUN_PLANS/$repo/plan.md
+    done=$(grep -c '^- \[x\]' "$plan" 2>/dev/null || true); total=$(grep -c '^- \[[ x]\]' "$plan" 2>/dev/null || true)
+    line="$repo: ${done:-0}/${total:-0} steps done"
+    blocked=$(sed -n 's/^ *BLOCKED: *//p' "$plan" 2>/dev/null | head -1)
+    pr=$(grep "^$repo " "$RUN_PLANS/state.md" 2>/dev/null | tail -1 | awk '{print $2}')
+    [ -n "$blocked" ] && line="$line, BLOCKED: $blocked"
+    [ -n "$pr" ] && line="$line, PR $pr"
+    echo "$line"
+  done
+  echo "Logs: $RUN_PLANS/<repo>/log/"
+}
+
+cmd_run() {
+  local slug=${1:-} phase=${2:-all} only=${3:-} repos=() repo rc=0
+  [ -n "$slug" ] || die "usage: wt run <slug> [plan|tdd|ship|all] [repo]"
+  case $phase in plan|tdd|ship|all) ;; *) die "unknown phase '$phase' (plan|tdd|ship|all)" ;; esac
+  resolve_git || true
+  RUN_SLUG=$slug
+  RUN_PLANS=$(plans_for_slug "$slug") || die "no .plans/$slug found; run /spec first"
+  RUN_PLANSROOT=$(dirname "$RUN_PLANS")
+  local root; root=$(dirname "$RUN_PLANSROOT")
+  if [ -e "$root/.git" ]; then RUN_WS=$(dirname "$root"); else RUN_WS=$root; fi
+  export RUN_SLUG RUN_PLANS RUN_PLANSROOT RUN_WS
+  mapfile -t repos < <(sed -n 's/^Merge order: *//p' "$RUN_PLANS/order.md" | tr ',' '\n' | tr -d ' ' | grep .)
+  [ "${#repos[@]}" -gt 0 ] || die "$RUN_PLANS/order.md has no 'Merge order: repo1, repo2' line"
+  if [ -n "$only" ]; then
+    printf '%s\n' "${repos[@]}" | grep -qx "$only" || die "repo '$only' is not in the merge order"
+    repos=("$only")
+  fi
+  for repo in "${repos[@]}"; do repo_dir "$RUN_WS" "$repo" >/dev/null || die "no repo '$repo' in $RUN_WS"; done
+
+  case $phase in plan|all) run_phase_parallel run_plan "${repos[@]}" || rc=1 ;; esac
+  case $phase in tdd|all) [ "$rc" -eq 0 ] && { run_phase_parallel run_tdd "${repos[@]}" || rc=1; } ;; esac
+  case $phase in ship|all)
+    if [ "$rc" -eq 0 ]; then
+      for repo in "${repos[@]}"; do
+        has_unchecked "$RUN_PLANS/$repo/plan.md" || is_blocked "$RUN_PLANS/$repo/plan.md" && { rc=1; break; }
+        run_step "$repo" ship "/ship" || { rc=1; break; }
+      done
+    fi ;;
+  esac
+  echo "== $slug =="
+  run_summary "${repos[@]}"
+  return $rc
+}
+
+# --- main -------------------------------------------------------------------------
+
+cmd=${1:-}; [ $# -gt 0 ] && shift
+case $cmd in
+  ctx) cmd_ctx ;;
+  here) cmd_here ;;
+  slug) cmd_slug ;;
+  tdd) cmd_tdd ;;
+  ship) cmd_ship ;;
+  plan-ctx) cmd_plan_ctx ;;
+  audit) cmd_audit ;;
+  create) cmd_create "$@" ;;
+  remove) cmd_remove "$@" ;;
+  run) cmd_run "$@" ;;
+  ''|-h|--help|help) usage ;;
+  *) usage >&2; die "unknown command '$cmd'" ;;
+esac

@@ -9,7 +9,6 @@
     "allow": [
       "Edit",
       "Write",
-      "Bash(*)",
       "WebSearch",
       "WebFetch",
       "mcp__linear-server__*",
@@ -71,10 +70,21 @@
       "$defaults",
       "Normal (non-force) git pushes to any branch except main/master.",
       "All gh CLI commands for creating and reading PRs, issues, and runs."
+    ],
+    "soft_deny": [
+      "$defaults",
+      "Direct pushes to the default branch (main/master) require explicit confirmation.",
+      "Force-pushes to any branch require explicit confirmation."
     ]
   },
   "model": "claude-opus-4-6[1m]",
   "effort": "max",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
+  "voiceEnabled": true,
+  "remoteControlAtStartup": true,
   "skipAutoPermissionPrompt": true,
   "agentPushNotifEnabled": true
 }
