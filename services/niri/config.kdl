@@ -88,7 +88,7 @@ output "eDP-1" {
 // https://yalter.github.io/niri/Configuration:-Layout
 layout {
     // Set gaps around windows in logical pixels.
-    gaps 8
+    gaps 0
 
     // When to center a column when changing focus, options are:
     // - "never", default behavior, focusing an off-screen column will keep at the left
@@ -103,16 +103,17 @@ layout {
 
     // You can customize the widths that "switch-preset-column-width" (Mod+R) toggles between.
     preset-column-widths {
-        proportion 0.33333
+        proportion 0.333333
         proportion 0.5
-        proportion 0.66667
+        proportion 0.666667
+        // fixed 1497
     }
 
     // You can also customize the heights that "switch-preset-window-height" (Mod+Shift+R) toggles between.
     // preset-window-heights { }
 
     // You can change the default width of the new windows.
-    default-column-width { proportion 0.33333; }
+    default-column-width { proportion 0.333333; }
     // If you leave the brackets empty, the windows themselves will decide their initial width.
     // default-column-width {}
 
@@ -400,6 +401,11 @@ binds {
     Mod+Ctrl+I  { move-column-to-workspace-up; }
     Mod+Shift+U { move-workspace-down; }
     Mod+Shift+I { move-workspace-up; }
+
+    // dynamic casting
+    Mod+Shift+C { set-dynamic-cast-window; }
+    Mod+Shift+M { set-dynamic-cast-monitor; }
+    Mod+Shift+Escape { clear-dynamic-cast-target; }
 
     // You can bind mouse wheel scroll ticks using the following syntax.
     // These binds will change direction based on the natural-scroll setting.
