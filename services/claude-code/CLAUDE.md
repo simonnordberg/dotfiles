@@ -26,6 +26,9 @@
 - For non-trivial tasks, enter plan mode first. Break work into independent subtasks that can run in parallel.
 - Use worktrees for parallel work streams that touch the same repo to avoid conflicts.
 - Maximize use of subagents: run independent tasks concurrently, not sequentially.
+- Fork multi-file reads and research; consume the summary, not the raw output. The main context is for reasoning, not I/O.
+- Route I/O-only subagents (Explore, bulk reads, context gathering) to sonnet or haiku.
+- Before reading a file into this context, decide: will I edit it? If not, delegate to a subagent.
 
 ## Git
 
