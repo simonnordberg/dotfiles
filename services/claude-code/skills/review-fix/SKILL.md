@@ -9,6 +9,8 @@ args: "<level> <target>"
 arg_description: >
   level: review effort (low, medium, high, max). Defaults to medium.
   target: PR URL, branch name, or file path to review. Defaults to current branch diff.
+model: claude-sonnet-5
+effort: high
 ---
 
 # Review-Fix Loop

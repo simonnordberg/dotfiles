@@ -2,6 +2,8 @@
 name: cleanup
 description: Clean up the design of a large change, or a whole codebase.
 license: CC0-1.0
+model: claude-sonnet-5
+effort: high
 ---
 
 # Cleanup
