@@ -2,6 +2,8 @@
 name: rebase
 description: Bring the current branch up to date on the latest default branch
 disable-model-invocation: true
+model: claude-sonnet-5
+effort: medium
 ---
 Fetch origin. Resolve the default branch (origin/HEAD). If the working tree is dirty, stop and
 ask me to commit or stash first. Rebase the current branch onto origin/<default>. On conflicts,
