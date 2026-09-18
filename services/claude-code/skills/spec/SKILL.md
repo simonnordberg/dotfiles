@@ -10,6 +10,15 @@ Here: !`"$HOME/.claude/bin/wt" here`
 Pick a short kebab-case slug; it becomes a branch and a directory name in every repo touched.
 Write everything under <root>/.plans/<slug>/ (root is shown above).
 
+If `.plans/<slug>/map.md` exists, this is a map-to-spec synthesis. Skip steps 1-2 and instead:
+- Read the map's decisions, all resolved ticket files under `.plans/<slug>/tickets/`, and
+  any research findings under `.plans/<slug>/research/`.
+- Ask one confirmation round with AskUserQuestion: "Anything the map missed or that needs
+  adjustment?" (max 3 questions, 1 round).
+- Proceed to step 3 with the map's decisions as input.
+
+Otherwise, follow the normal interview path:
+
 1. Dispatch one Explore subagent per repo this touches, with model `sonnet`, to find
    existing functions, helpers, and patterns to reuse or extend. It returns file:line refs
    only. Don't read the codebase into this conversation yourself.
