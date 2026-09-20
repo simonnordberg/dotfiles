@@ -37,4 +37,5 @@ sudo dnf install -y \
   openssl-devel \
   fuse \
   fuse-libs \
-  btop
+  btop \
+  ncdu
