@@ -1,6 +1,6 @@
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
-sudo dnf install -y pipx python3-devel
+sudo dnf install -y pipx python3-devel gcc-gfortran openblas-devel
 
 if ! command -v aider &> /dev/null; then
     pipx install aider-chat
