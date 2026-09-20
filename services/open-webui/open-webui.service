@@ -6,6 +6,9 @@ Type=simple
 ExecStartPre=-/usr/bin/podman rm -f open-webui
 ExecStart=/usr/bin/podman run --rm --name open-webui --network host \
   -e OLLAMA_BASE_URL=http://localhost:11434 \
+  -e ENABLE_WEB_SEARCH=True \
+  -e WEB_SEARCH_ENGINE=searxng \
+  -e SEARXNG_QUERY_URL=http://localhost:8888/search?q=<query> \
   -v open-webui:/app/backend/data \
   ghcr.io/open-webui/open-webui:main
 ExecStop=/usr/bin/podman stop open-webui

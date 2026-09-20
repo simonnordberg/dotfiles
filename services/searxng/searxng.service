@@ -1,0 +1,12 @@
+[Unit]
+Description=SearXNG meta-search engine
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/podman rm -f searxng
+ExecStart=/usr/bin/podman run --rm --name searxng \
+  -p 8888:8080 \
+  -v %h/.config/searxng:/etc/searxng:Z \
+  docker.io/searxng/searxng:latest
+ExecStop=/usr/bin/podman stop searxng
+Restart=on-failure
