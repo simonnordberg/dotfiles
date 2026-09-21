@@ -303,21 +303,57 @@ run_plan() {
 }
 
 run_tdd() {
-  local plan=$RUN_PLANS/$1/plan.md i=0 total done_count
+  local plan=$RUN_PLANS/$1/plan.md total done_count
   [ -f "$plan" ] || return 1
   total=$(grep -c '^- \[[ x]\]' "$plan" 2>/dev/null || echo 0)
-  progress tdd "$1" "starting ($total steps)"
+  progress tdd "$1" "starting ($total steps, mode=${WT_TDD_MODE:-step})"
+  case ${WT_TDD_MODE:-step} in
+    loop) run_tdd_loop "$1" "$plan" "$total" ;;
+    step) run_tdd_step "$1" "$plan" "$total" ;;
+    *) die "WT_TDD_MODE must be 'step' or 'loop', got '${WT_TDD_MODE}'" ;;
+  esac
+}
+
+run_tdd_step() { # one claude session per step (current default)
+  local repo=$1 plan=$2 total=$3 i=0 done_count
   while [ "$i" -lt "$MAX_STEPS" ] && has_unchecked "$plan" && ! is_blocked "$plan"; do
     i=$((i + 1))
-    progress tdd "$1" "step $i"
-    run_step "$1" "step-$(printf '%02d' "$i")" "/tdd" || { progress tdd "$1" "FAILED at step $i"; return 1; }
+    progress tdd "$repo" "step $i"
+    run_step "$repo" "step-$(printf '%02d' "$i")" "/tdd" || { progress tdd "$repo" "FAILED at step $i"; return 1; }
   done
   if is_blocked "$plan"; then
-    progress tdd "$1" "BLOCKED: $(sed -n 's/^ *BLOCKED: *//p' "$plan" | head -1)"
+    progress tdd "$repo" "BLOCKED: $(sed -n 's/^ *BLOCKED: *//p' "$plan" | head -1)"
     return 1
   fi
   done_count=$(grep -c '^- \[x\]' "$plan" 2>/dev/null || echo 0)
-  progress tdd "$1" "done ($done_count/$total)"
+  progress tdd "$repo" "done ($done_count/$total)"
+}
+
+run_tdd_loop() { # single claude session loops /tdd internally
+  local repo=$1 plan=$2 total=$3 done_count
+  local prompt="Run /tdd for the first unchecked step. When it completes, run /tdd again for the next. Repeat until all steps are done or you hit a BLOCKED step. After each step, say which step you completed and what's next."
+
+  # monitor plan.md in background; emit progress when steps get checked off
+  ( prev=$(grep -c '^- \[x\]' "$plan" 2>/dev/null || echo 0)
+    while sleep 5; do
+      [ -f "$plan" ] || break
+      curr=$(grep -c '^- \[x\]' "$plan" 2>/dev/null || echo 0)
+      [ "$curr" -gt "$prev" ] && { progress tdd "$repo" "step $curr/$total done"; prev=$curr; }
+    done
+  ) &
+  local monitor_pid=$!
+
+  run_step "$repo" "tdd-loop" "$prompt"
+  local rc=$?
+  kill "$monitor_pid" 2>/dev/null; wait "$monitor_pid" 2>/dev/null
+
+  if [ "$rc" -ne 0 ]; then progress tdd "$repo" "FAILED"; return 1; fi
+  if is_blocked "$plan"; then
+    progress tdd "$repo" "BLOCKED: $(sed -n 's/^ *BLOCKED: *//p' "$plan" | head -1)"
+    return 1
+  fi
+  done_count=$(grep -c '^- \[x\]' "$plan" 2>/dev/null || echo 0)
+  progress tdd "$repo" "done ($done_count/$total)"
 }
 
 run_phase_parallel() { # run_phase_parallel <fn> <repos...>
