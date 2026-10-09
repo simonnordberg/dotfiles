@@ -7,8 +7,3 @@ display-name = "Simon Nordberg"
 server = "imap://127.0.0.1:1143"
 sasl.plain.username = "simon@simonnordberg.com"
 sasl.plain.password.command = "op read op://Private/proton-bridge/password"
-
-[accounts.proton.smtp]
-server = "smtp://127.0.0.1:1025"
-sasl.plain.username = "simon@simonnordberg.com"
-sasl.plain.password.command = "op read op://Private/proton-bridge/password"
