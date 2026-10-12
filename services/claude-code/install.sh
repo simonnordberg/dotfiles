@@ -6,7 +6,11 @@ mkdir -p $HOME/.claude/hooks $HOME/.claude/agents $HOME/.claude/bin
 
 cp $SCRIPT_DIR/settings.json $HOME/.claude/settings.json
 cp $SCRIPT_DIR/CLAUDE.md $HOME/.claude/CLAUDE.md
-cp $SCRIPT_DIR/mcp.json $HOME/.claude/.mcp.json
+# MCP servers (user scope, available in all projects)
+rm -f "$HOME/.claude/.mcp.json"
+claude mcp get playwright >/dev/null 2>&1 || claude mcp add --scope user playwright -- npx -y @playwright/mcp@latest
+claude mcp get linear >/dev/null 2>&1 || claude mcp add --scope user --transport http linear https://mcp.linear.app/mcp
+claude mcp get codebahn >/dev/null 2>&1 || claude mcp add --scope user --transport http codebahn https://codebahn.net/mcp
 
 cp $SCRIPT_DIR/hooks/*.sh $HOME/.claude/hooks/
 chmod +x $HOME/.claude/hooks/*.sh
