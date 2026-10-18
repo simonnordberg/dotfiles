@@ -11,6 +11,7 @@ rm -f "$HOME/.claude/.mcp.json"
 claude mcp get playwright >/dev/null 2>&1 || claude mcp add --scope user playwright -- npx -y @playwright/mcp@latest
 claude mcp get linear >/dev/null 2>&1 || claude mcp add --scope user --transport http linear https://mcp.linear.app/mcp
 claude mcp get codebahn >/dev/null 2>&1 || claude mcp add --scope user --transport http codebahn https://codebahn.net/mcp
+claude mcp get codebahn-staging >/dev/null 2>&1 || claude mcp add --scope user --transport http codebahn-staging https://staging.codebahn.net/mcp
 
 cp $SCRIPT_DIR/hooks/*.sh $HOME/.claude/hooks/
 chmod +x $HOME/.claude/hooks/*.sh
@@ -25,6 +26,6 @@ cp -r "$SCRIPT_DIR/skills" "$HOME/.claude/skills"
 
 # Global gitignore patterns
 for pattern in '.claude/worktrees/' '.claude/.env-ready' '.plans/' '.worktrees/'; do
-  grep -qxF "$pattern" "$HOME/.gitignore" 2>/dev/null || echo "$pattern" >> "$HOME/.gitignore"
+  grep -qxF "$pattern" "$HOME/.gitignore" 2>/dev/null || echo "$pattern" >>"$HOME/.gitignore"
 done
 git config --global core.excludesfile "$HOME/.gitignore"

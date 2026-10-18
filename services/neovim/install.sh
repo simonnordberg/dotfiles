@@ -10,3 +10,4 @@ fi
 rm -rf $HOME/.config/nvim/lua/plugins
 rsync -r --delete $SCRIPT_DIR/config/lua/plugins/ $HOME/.config/nvim/lua/plugins/
 cp $SCRIPT_DIR/config/lua/config/keymaps.lua $HOME/.config/nvim/lua/config/keymaps.lua
+cp $SCRIPT_DIR/config/lua/config/options.lua $HOME/.config/nvim/lua/config/options.lua
