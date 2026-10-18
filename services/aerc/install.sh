@@ -1,4 +1,4 @@
-sudo dnf install -y aerc w3m
+sudo dnf install -y aerc w3m libsecret
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
