@@ -14,7 +14,7 @@ Base (installed first): `base`, `shell`
 
 Default: `1password`, `chromium`, `claude-code`, `discord`, `dms`, `docker`, `fingerprint`, `flatpak`, `gdm`, `ghostty`, `git`, `hibernate`, `neovim`, `niri`, `node`, `obsidian`, `proton-mail`, `signal`, `slack`, `spotify`, `ssh`, `steam`, `syncthing`, `tailscale`
 
-Optional: `audio`, `calibre`, `flatseal`, `github`, `golang`, `himalaya`, `lazygit`, `printing`, `pyenv`, `rust`, `scaleway`, `scripts`, `terraform`, `tmux`, `tracker`, `vscode`, `yazi`, `zathura`
+Optional: `audio`, `calibre`, `flatseal`, `fonts`, `github`, `golang`, `himalaya`, `lazygit`, `printing`, `pyenv`, `rust`, `scaleway`, `scripts`, `terraform`, `tmux`, `tracker`, `vscode`, `yazi`, `zathura`
 
 ## Conventions
 
