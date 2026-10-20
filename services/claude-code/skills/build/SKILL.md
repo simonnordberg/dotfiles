@@ -1,19 +1,16 @@
 ---
 name: build
-description: Plan, implement, and ship a spec'd slug headlessly, per repo in merge order
+description: Plan, implement, and ship a spec'd slug in the background, per repo in merge order
 argument-hint: <slug> [plan|tdd|ship|all] [repo]
 disable-model-invocation: true
 ---
-Run `"$HOME/.claude/bin/wt" run $ARGUMENTS` with the Monitor tool (not background Bash).
-Set `persistent: true` and timeout to 3600000. Use description "build <slug>" (fill in the
-actual slug). Each stdout line is a progress notification that surfaces in this session:
-phase starts/ends, step counts, BLOCKs, and failures.
+!`"$HOME/.claude/bin/wt" build $ARGUMENTS 2>&1`
 
-Tell me it's running. Detailed logs are at .plans/<slug>/<repo>/log/.
+Relay the output above in two or three lines. If it started: it runs detached, so this session
+can close; `wt status` lists every feature, `wt watch <slug>` follows this one live, and a
+desktop notification arrives when it blocks, fails, or finishes. A BLOCKED repo is resolved by
+answering the question in that repo's plan.md, deleting the BLOCKED line, and running
+`/build <slug>` again, or `/work <slug> <repo>` to continue by hand.
 
-When it finishes, report the summary (the `== <slug> ==` block at the end) verbatim: per
-repo, steps done, BLOCKED questions, PR URLs. For a BLOCKED repo, tell me to answer the
-question in that plan.md, delete the BLOCKED line, and run `/build <slug>` again, or
-`/work <slug> <repo>` to continue by hand.
-
-Do not run /steps, /tdd, or /ship yourself in this session.
+If it says the slug is already running or has no plans, say so and stop. Do not run /steps,
+/tdd, or /ship yourself in this session.

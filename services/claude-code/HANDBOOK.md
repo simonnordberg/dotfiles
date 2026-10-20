@@ -36,10 +36,11 @@ the repo itself for single-repo work):
 ```
 cd ~/code/codebahn && cl
 /spec rate-limit git pushes per tenant     # max 2 rounds of questions, then spec.md + order.md
-/build git-ratelimit                        # background; reports when done
+/build git-ratelimit                        # detached; notifies you when it needs you
 ```
 
-`/build` runs `wt run <slug>`, which for each repo in `order.md`:
+`/build` runs `wt build <slug>`: `wt run <slug>` detached under systemd, one run per feature
+at a time. For each repo in `order.md` it:
 
 1. creates `.worktrees/<slug>/<repo>` on branch `<slug>` from fresh `origin/HEAD`, and runs
    `/steps` to write `plan.md` from the spec (checked by the reviewer against the spec);
@@ -51,6 +52,18 @@ cd ~/code/codebahn && cl
 
 Useful variants: `/build <slug> plan` (stop after the plans, read them), `/build <slug> tdd
 codebahn-docs` (one phase, one repo). Every rerun resumes from the first unfinished item.
+
+## Watching a run
+
+`wt status` lists every feature that has run (running, blocked, failed, done) with its latest
+progress line; `wt status <slug>` adds steps and PRs per repo, sessions, time, and cost.
+`wt watch <slug>` follows `run.log`: progress lines plus one line per action of every session.
+A desktop notification arrives when a run blocks, fails, or finishes; `wt stop <slug>` cancels
+it. Each session is told its slug (`WT_SLUG`), so a stale plan directory can't capture it.
+
+A step session that ends without ticking its step (it asked a question, or did nothing)
+blocks the plan with the session's last words. The runner never reruns a session that made no
+progress, and `/steps` or `/ship` ending without a plan or a PR fails the run the same way.
 
 ## Done means green
 
@@ -68,6 +81,8 @@ formatted by the repo's own Biome (else its Prettier) and gofmt, which is what C
   spec.md            what and why; frozen acceptance criteria for the reviewer
   order.md           first line: `Merge order: repo1, repo2`; then seam notes
   state.md           `<repo> <PR URL> open`, appended by /ship
+  run.log            progress, plus one line per session action (`wt watch`)
+  sessions.tsv       per session: time, repo, label, exit code, turns, seconds, cost, peak context
   <repo>/plan.md     `- [ ] behavior. Test: ...` becomes `- [x] ... (commits: a b c)`
   <repo>/log/        per headless step: <step>.jsonl (full transcript, every tool call and
                      result) and <step>.log (the final message); plan, step-01, ..., ship
@@ -83,7 +98,7 @@ CLAUDE.md names a spec directory; plans never do.
 ## When a step blocks
 
 A headless step that hits something the spec doesn't answer writes `  BLOCKED: <question>`
-under the step and the run stops; `/build`'s summary shows it. Either answer it in `plan.md`,
+under the step; the run stops and notifies you, and `wt status` shows the question. Either answer it in `plan.md`,
 delete the line, and `/build <slug>` again, or take over by hand:
 
 ```
