@@ -52,6 +52,15 @@ cd ~/code/codebahn && cl
 Useful variants: `/build <slug> plan` (stop after the plans, read them), `/build <slug> tdd
 codebahn-docs` (one phase, one repo). Every rerun resumes from the first unfinished item.
 
+## Done means green
+
+Each repo with CI has an executable `.claude/check`: the commands its CI runs, in the same
+order (`--quick` is a fast subset for iterating). `wt check` runs it from the repo root,
+refuses `go.mod` replaces that point outside the repo (CI has no such path), and remembers a
+green full check per tree, so pushing right after it costs nothing. The `check-push.sh` hook
+blocks any `git push` from Claude unless the tree is clean and `wt check` is green. Edits are
+formatted by the repo's own Biome (else its Prettier) and gofmt, which is what CI checks.
+
 ## Files
 
 ```
@@ -116,4 +125,5 @@ worktrees are reused by `wt create`, never duplicated.
 - `wt run` says `no repo 'x'`: `order.md` names a directory that isn't a git checkout
   directly under the workspace.
 - Frontmatter check: `claude plugin validate --strict ~/.claude/skills`.
-- Tests for `wt`: `bash services/claude-code/bin/wt.test.sh`.
+- Tests: `bash services/claude-code/bin/wt.test.sh` (wt) and
+  `bash services/claude-code/test/hooks.test.sh` (hooks).

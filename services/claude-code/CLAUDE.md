@@ -17,6 +17,7 @@
 ## Workflow
 
 - Just fix bugs. Point at logs, errors, failing tests, then resolve them.
+- Done means `wt check` is green: it runs the repo's `.claude/check`, the same commands as CI (`wt check --quick` while iterating). A push from Claude is blocked until it passes on a clean tree.
 - If you've tried 3 approaches without progress, stop and say what you tried and your best hypothesis.
 - Distinguish between "I'm stuck" and "I need a decision".
 - Prefer editing existing files over creating new ones.
@@ -78,6 +79,7 @@
 - Use Biome for all TypeScript projects (formatting + linting in one tool).
 - Use golangci-lint for Go projects.
 - If a project is missing lint/format config, set it up when you first touch the project.
+- Every repo with CI has an executable `.claude/check` that runs exactly what CI runs, plus a fast `--quick` subset. If one is missing, write it from the CI config when you first touch the repo.
 - Extract recurring patterns into well-defined, reusable modules. If something appears twice, make it a component or utility. Don't duplicate; modularize.
 
 ## Project Setup
