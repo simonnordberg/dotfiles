@@ -5,6 +5,8 @@ set -u
 
 MAX_STEPS=40
 WT_CHECK_TIMEOUT=${WT_CHECK_TIMEOUT:-1500}
+WT_SELF=$(realpath "${BASH_SOURCE[0]}")
+STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/wt
 
 usage() {
   cat <<'EOF'
@@ -18,6 +20,10 @@ usage: wt <command> [args]
   create <slug> [repo]         find or create the slug's worktree; prints its path
   remove <slug>                remove the slug's worktrees and branches if clean and merged
   run <slug> [phase] [repo]    headless plan|tdd|ship|all (default all), per repo in merge order
+  build <slug> [phase] [repo]  the same run, detached under systemd; notifies when it needs you
+  status [slug]                every feature that has run, or one feature in detail
+  watch <slug>                 follow a run live: progress plus one line per session action
+  stop <slug>                  stop a detached run
 models per phase come from each skill's frontmatter (skills/steps, tdd, ship)
 EOF
 }
@@ -47,12 +53,13 @@ plans_roots() { # candidate .plans roots, highest priority first
   printf '%s\n%s\n' "$main/.plans" "$workspace/.plans"
 }
 
-slug_candidates() { # keys a worktree layout could have used, most specific first
-  printf '%s\n' "$(basename "$toplevel")" "$(basename "$(dirname "$toplevel")")"
-  if [ -n "$branch" ]; then
-    local b=${branch#worktree-}
-    printf '%s\n%s\n' "${b//\//-}" "${b##*/}"
-  fi
+slug_candidates() { # keys a worktree layout could have used, most specific first; never the repo's name
+  { printf '%s\n' "$(basename "$toplevel")" "$(basename "$(dirname "$toplevel")")"
+    if [ -n "$branch" ]; then
+      local b=${branch#worktree-}
+      printf '%s\n%s\n' "${b//\//-}" "${b##*/}"
+    fi
+  } | grep -vxF -- "$repo"
 }
 
 # Sets slug, plans, plandir, tried (plus resolve_git's vars). Fails outside git.
@@ -197,7 +204,7 @@ cmd_ship() {
   printf 'Spec:\n%s\nMerge order:\n%s\nState:\n%s\n' \
     "$(show_file "$plans/spec.md" "NO SPEC")" "$(show_file "$plans/order.md" "single repo")" \
     "$(show_file "$plans/state.md" none)"
-  printf 'Unchecked steps (this repo): %s\n' "$(grep -c '^- \[ \]' "$plandir/plan.md" 2>/dev/null || echo 0)"
+  printf 'Unchecked steps (this repo): %s\n' "$(count '^- \[ \]' "$plandir/plan.md")"
   grep '^ *BLOCKED:' "$plandir/plan.md" 2>/dev/null
   cmd_audit
   local def base
@@ -321,83 +328,138 @@ plans_for_slug() { # plans_for_slug <slug>: the .plans/<slug> dir for this cwd
   return 1
 }
 
+count() { local n; n=$(grep -c -- "$1" "$2" 2>/dev/null); printf '%s\n' "${n:-0}"; } # count <regex> <file>
 has_unchecked() { grep -q '^- \[ \]' "$1" 2>/dev/null; }
 is_blocked() { grep -q '^ *BLOCKED:' "$1" 2>/dev/null; }
-progress() { printf '[%s] %s: %s\n' "$1" "$2" "$3"; }
+blocked_reason() { sed -n 's/^ *BLOCKED: *//p' "$1" 2>/dev/null | head -1; }
+first_open() { awk '/^- \[[ x]\]/ {n++} /^- \[ \]/ {print n; exit}' "$1"; } # index of the first unchecked step
+order_repos() { sed -n 's/^Merge order: *//p' "$1/order.md" 2>/dev/null | tr ',' '\n' | tr -d ' ' | grep .; }
+pr_count() { [ -f "$1/state.md" ] && awk -v r="$2" '$1 == r {n++} END {print n + 0}' "$1/state.md" || echo 0; }
+
+block_step() { # block_step <plan> <reason>: a BLOCKED line under the first unchecked step
+  BLOCK_REASON=$2 awk '!done && /^- \[ \]/ {print; print "  BLOCKED: " ENVIRON["BLOCK_REASON"]; done = 1; next} {print}' \
+    "$1" >"$1.tmp" && mv "$1.tmp" "$1"
+}
+
+progress() { # progress <phase> <repo> <message>: stdout and the feature's run.log
+  local line
+  printf -v line '%(%H:%M:%S)T [%s] %s: %s' -1 "$1" "$2" "$3"
+  printf '%s\n' "$line"
+  [ -z "${RUN_PLANS:-}" ] || printf '%s\n' "$line" >>"$RUN_PLANS/run.log"
+}
+notify() { # notify <message> [urgency]: a desktop notification, best effort
+  command -v notify-send >/dev/null 2>&1 && notify-send -a wt -u "${2:-normal}" "wt: $RUN_SLUG" "$1" >/dev/null 2>&1
+  return 0
+}
+fail() { progress "$1" "$2" "FAILED: $3"; notify "$2: $1 FAILED: $3" critical; }
+block() { progress "$1" "$2" "BLOCKED: $3"; notify "$2: BLOCKED: $3" critical; }
+
+last_words() { # last_words <repo> <label>: the end of a session's final message, on one line
+  local t
+  t=$(tr -s '[:space:]' ' ' <"$RUN_PLANS/$1/log/$2.log" 2>/dev/null)
+  t=${t# }; t=${t% }
+  [ "${#t}" -le 300 ] || t="...${t: -300}"
+  printf '%s\n' "${t:-no final message}"
+}
+
+next_label() { # next_label <repo> <label>: <label>, or <label>-2, -3... when a rerun would overwrite its log
+  local n=1 l=$2
+  while [ -e "$RUN_PLANS/$1/log/$l.jsonl" ]; do n=$((n + 1)); l=$2-$n; done
+  printf '%s\n' "$l"
+}
+
+ACTIVITY_JQ='
+def one(s): (s | tostring | gsub("\\s+"; " "))[0:120];
+fromjson? |
+if .type == "assistant" then
+  (if .parent_tool_use_id then "  sub " else "" end) as $who
+  | .message.content[]?
+  | if .type == "tool_use" then
+      "\($who)\(.name) \(one(.input.description // .input.command // .input.file_path // .input.pattern // .input.prompt // .input))"
+    elif .type == "text" and $who == "" then "says: \(one(.text))"
+    else empty end
+elif .type == "result" then
+  "result: \(.subtype // "?") \((.duration_ms // 0) / 1000 | floor)s \(.num_turns // 0) turns $\(.total_cost_usd // 0)"
+else empty end'
+
+activity() { # activity <who>: one timestamped line per action of a stream-json transcript on stdin
+  local line
+  jq --unbuffered -Rr "$ACTIVITY_JQ" | while IFS= read -r line; do
+    printf '%(%H:%M:%S)T   %s  %s\n' -1 "$1" "$line"
+  done
+}
+
+session_stats() { # session_stats <repo> <label> <rc> <jsonl>: a sessions.tsv row; sets LAST_STATS
+  local stats
+  stats=$(jq -R 'fromjson?' "$4" 2>/dev/null | jq -rs '
+    ([.[] | select(.type == "result")] | last // {}) as $r
+    | ([.[] | select(.type == "assistant" and (.parent_tool_use_id | not)) | .message.usage
+        | (.input_tokens // 0) + (.cache_read_input_tokens // 0) + (.cache_creation_input_tokens // 0)]
+       | max // 0) as $ctx
+    | [($r.num_turns // 0), (($r.duration_ms // 0) / 1000 | floor), ($r.total_cost_usd // 0), $ctx] | @tsv')
+  [ -n "$stats" ] || stats=$(printf '0\t0\t0\t0')
+  printf '%(%F %T)T\t%s\t%s\t%s\t%s\n' -1 "$1" "$2" "$3" "$stats" >>"$RUN_PLANS/sessions.tsv"
+  LAST_STATS=$(awk -F'\t' '{printf "%ds, $%.2f, %dk ctx", $2, $3, ($4 + 500) / 1000}' <<<"$stats")
+}
 
 run_step() { # run_step <repo> <label> <prompt> [claude args...]: one headless session
   local repo=$1 label=$2 prompt=$3 dir base rc; shift 3
   dir=$(find_or_create_wt "$RUN_SLUG" "$repo" "$(repo_dir "$RUN_WS" "$repo")" "$RUN_WS" "$RUN_PLANSROOT") || return 1
   base=$RUN_PLANS/$repo/log/$label; mkdir -p "$(dirname "$base")"
-  # .jsonl is the full transcript (every tool call and result); .log is the final message
-  (cd "$dir" && claude -p "$prompt" --add-dir "$RUN_PLANS" --output-format stream-json --verbose "$@" </dev/null >"$base.jsonl" 2>"$base.err")
+  # .jsonl is the full transcript (every tool call and result), .log the final message, and
+  # run.log gets one line per action. The session is told its slug: never re-derived.
+  (cd "$dir" && WT_SLUG=$RUN_SLUG WORKSPACE=$RUN_ROOT \
+    claude -p "$prompt" --add-dir "$RUN_PLANS" --output-format stream-json --verbose "$@" \
+      </dev/null 2>"$base.err" 9>&- | tee -p "$base.jsonl" | activity "$repo/$label" >>"$RUN_PLANS/run.log"
+    exit "${PIPESTATUS[0]}")
   rc=$?
   { jq -r 'select(.type == "result") | .result // empty' "$base.jsonl" 2>/dev/null
     [ -s "$base.err" ] && { echo "stderr:"; cat "$base.err"; }
   } >"$base.log"
   rm -f "$base.err"
+  session_stats "$repo" "$label" "$rc" "$base.jsonl"
   return $rc
 }
 
 run_plan() {
-  [ -f "$RUN_PLANS/$1/plan.md" ] && { progress plan "$1" "exists, skipping"; return 0; }
-  progress plan "$1" started
-  run_step "$1" plan "/steps" && { progress plan "$1" done; return 0; }
-  progress plan "$1" FAILED; return 1
+  local repo=$1 plan=$RUN_PLANS/$1/plan.md label
+  [ -f "$plan" ] && { progress plan "$repo" "exists, skipping"; return 0; }
+  progress plan "$repo" started
+  label=$(next_label "$repo" plan)
+  run_step "$repo" "$label" "/steps" || { fail plan "$repo" "session failed: $(last_words "$repo" "$label")"; return 1; }
+  if is_blocked "$plan"; then block plan "$repo" "$(blocked_reason "$plan")"; return 1; fi
+  has_unchecked "$plan" || { fail plan "$repo" "no plan written: $(last_words "$repo" "$label")"; return 1; }
+  progress plan "$repo" "done ($(count '^- \[ \]' "$plan") steps; $LAST_STATS)"
 }
 
-run_tdd() {
-  local plan=$RUN_PLANS/$1/plan.md total done_count
-  [ -f "$plan" ] || return 1
-  total=$(grep -c '^- \[[ x]\]' "$plan" 2>/dev/null || echo 0)
-  progress tdd "$1" "starting ($total steps, mode=${WT_TDD_MODE:-step})"
-  case ${WT_TDD_MODE:-step} in
-    loop) run_tdd_loop "$1" "$plan" "$total" ;;
-    step) run_tdd_step "$1" "$plan" "$total" ;;
-    *) die "WT_TDD_MODE must be 'step' or 'loop', got '${WT_TDD_MODE}'" ;;
-  esac
-}
-
-run_tdd_step() { # one claude session per step (current default)
-  local repo=$1 plan=$2 total=$3 i=0 done_count
+run_tdd() { # one session per step; a session that ticks nothing blocks the plan with its last words
+  local repo=$1 plan=$RUN_PLANS/$1/plan.md i=0 before label
+  [ -f "$plan" ] || { fail tdd "$repo" "no plan"; return 1; }
+  progress tdd "$repo" "starting ($(count '^- \[[ x]\]' "$plan") steps)"
   while [ "$i" -lt "$MAX_STEPS" ] && has_unchecked "$plan" && ! is_blocked "$plan"; do
-    i=$((i + 1))
+    i=$((i + 1)); before=$(count '^- \[x\]' "$plan")
+    label=$(next_label "$repo" "step-$(printf '%02d' "$(first_open "$plan")")")
     progress tdd "$repo" "step $i"
-    run_step "$repo" "step-$(printf '%02d' "$i")" "/tdd" || { progress tdd "$repo" "FAILED at step $i"; return 1; }
+    run_step "$repo" "$label" "/tdd" || { fail tdd "$repo" "step $i: session failed: $(last_words "$repo" "$label")"; return 1; }
+    if ! is_blocked "$plan" && [ "$(count '^- \[x\]' "$plan")" -le "$before" ]; then
+      block_step "$plan" "step not finished; the session said: $(last_words "$repo" "$label")"
+    fi
+    is_blocked "$plan" || progress tdd "$repo" "step $i done ($LAST_STATS)"
   done
-  if is_blocked "$plan"; then
-    progress tdd "$repo" "BLOCKED: $(sed -n 's/^ *BLOCKED: *//p' "$plan" | head -1)"
-    return 1
-  fi
-  done_count=$(grep -c '^- \[x\]' "$plan" 2>/dev/null || echo 0)
-  progress tdd "$repo" "done ($done_count/$total)"
+  if is_blocked "$plan"; then block tdd "$repo" "$(blocked_reason "$plan")"; return 1; fi
+  has_unchecked "$plan" && { fail tdd "$repo" "stopped after $MAX_STEPS sessions with steps left"; return 1; }
+  progress tdd "$repo" "done ($(count '^- \[x\]' "$plan")/$(count '^- \[[ x]\]' "$plan"))"
 }
 
-run_tdd_loop() { # single claude session loops /tdd internally
-  local repo=$1 plan=$2 total=$3 done_count
-  local prompt="Run /tdd for the first unchecked step. When it completes, run /tdd again for the next. Repeat until all steps are done or you hit a BLOCKED step. After each step, say which step you completed and what's next."
-
-  # monitor plan.md in background; emit progress when steps get checked off
-  ( prev=$(grep -c '^- \[x\]' "$plan" 2>/dev/null || echo 0)
-    while sleep 5; do
-      [ -f "$plan" ] || break
-      curr=$(grep -c '^- \[x\]' "$plan" 2>/dev/null || echo 0)
-      [ "$curr" -gt "$prev" ] && { progress tdd "$repo" "step $curr/$total done"; prev=$curr; }
-    done
-  ) &
-  local monitor_pid=$!
-
-  run_step "$repo" "tdd-loop" "$prompt"
-  local rc=$?
-  kill "$monitor_pid" 2>/dev/null; wait "$monitor_pid" 2>/dev/null
-
-  if [ "$rc" -ne 0 ]; then progress tdd "$repo" "FAILED"; return 1; fi
-  if is_blocked "$plan"; then
-    progress tdd "$repo" "BLOCKED: $(sed -n 's/^ *BLOCKED: *//p' "$plan" | head -1)"
-    return 1
-  fi
-  done_count=$(grep -c '^- \[x\]' "$plan" 2>/dev/null || echo 0)
-  progress tdd "$repo" "done ($done_count/$total)"
+run_ship() {
+  local repo=$1 plan=$RUN_PLANS/$1/plan.md before label
+  if has_unchecked "$plan" || is_blocked "$plan"; then fail ship "$repo" "the plan has unfinished or blocked steps"; return 1; fi
+  progress ship "$repo" started
+  before=$(pr_count "$RUN_PLANS" "$repo")
+  label=$(next_label "$repo" ship)
+  run_step "$repo" "$label" "/ship" || { fail ship "$repo" "session failed: $(last_words "$repo" "$label")"; return 1; }
+  [ "$(pr_count "$RUN_PLANS" "$repo")" -gt "$before" ] || { fail ship "$repo" "no PR opened: $(last_words "$repo" "$label")"; return 1; }
+  progress ship "$repo" "done ($LAST_STATS)"
 }
 
 run_phase_parallel() { # run_phase_parallel <fn> <repos...>
@@ -407,20 +469,25 @@ run_phase_parallel() { # run_phase_parallel <fn> <repos...>
   return $rc
 }
 
-run_summary() {
-  local repo plan done total blocked pr line
+repo_lines() { # repo_lines <plans> <repos...>: steps done, BLOCKED question, PR per repo
+  local plans=$1 repo plan blocked pr line; shift
   for repo in "$@"; do
-    plan=$RUN_PLANS/$repo/plan.md
-    done=$(grep -c '^- \[x\]' "$plan" 2>/dev/null || true); total=$(grep -c '^- \[[ x]\]' "$plan" 2>/dev/null || true)
-    line="$repo: ${done:-0}/${total:-0} steps done"
-    blocked=$(sed -n 's/^ *BLOCKED: *//p' "$plan" 2>/dev/null | head -1)
-    pr=$(grep "^$repo " "$RUN_PLANS/state.md" 2>/dev/null | tail -1 | awk '{print $2}')
+    plan=$plans/$repo/plan.md
+    line="$repo: $(count '^- \[x\]' "$plan")/$(count '^- \[[ x]\]' "$plan") steps done"
+    blocked=$(blocked_reason "$plan")
+    pr=$(awk -v r="$repo" '$1 == r {u = $2} END {print u}' "$plans/state.md" 2>/dev/null)
     [ -n "$blocked" ] && line="$line, BLOCKED: $blocked"
     [ -n "$pr" ] && line="$line, PR $pr"
     echo "$line"
   done
-  echo "Logs: $RUN_PLANS/<repo>/log/"
 }
+
+register() { # remember a feature's plans dir, so wt status finds it from anywhere
+  mkdir -p "$STATE_DIR"
+  grep -qxF -- "$1" "$STATE_DIR/runs" 2>/dev/null || printf '%s\n' "$1" >>"$STATE_DIR/runs"
+}
+
+is_running() { [ -f "$1/.run.lock" ] && ! flock -n "$1/.run.lock" true; } # is_running <plans>
 
 cmd_run() {
   local slug=${1:-} phase=${2:-all} only=${3:-} repos=() repo rc=0
@@ -430,35 +497,123 @@ cmd_run() {
   RUN_SLUG=$slug
   RUN_PLANS=$(plans_for_slug "$slug") || die "no .plans/$slug found; run /spec first"
   RUN_PLANSROOT=$(dirname "$RUN_PLANS")
-  local root; root=$(dirname "$RUN_PLANSROOT")
-  if [ -e "$root/.git" ]; then RUN_WS=$(dirname "$root"); else RUN_WS=$root; fi
-  export RUN_SLUG RUN_PLANS RUN_PLANSROOT RUN_WS
-  mapfile -t repos < <(sed -n 's/^Merge order: *//p' "$RUN_PLANS/order.md" | tr ',' '\n' | tr -d ' ' | grep .)
+  RUN_ROOT=$(dirname "$RUN_PLANSROOT")
+  if [ -e "$RUN_ROOT/.git" ]; then RUN_WS=$(dirname "$RUN_ROOT"); else RUN_WS=$RUN_ROOT; fi
+  export RUN_SLUG RUN_PLANS RUN_PLANSROOT RUN_ROOT RUN_WS
+  mapfile -t repos < <(order_repos "$RUN_PLANS")
   [ "${#repos[@]}" -gt 0 ] || die "$RUN_PLANS/order.md has no 'Merge order: repo1, repo2' line"
   if [ -n "$only" ]; then
-    printf '%s\n' "${repos[@]}" | grep -qx "$only" || die "repo '$only' is not in the merge order"
+    printf '%s\n' "${repos[@]}" | grep -qxF -- "$only" || die "repo '$only' is not in the merge order"
     repos=("$only")
   fi
   for repo in "${repos[@]}"; do repo_dir "$RUN_WS" "$repo" >/dev/null || die "no repo '$repo' in $RUN_WS"; done
+
+  exec 9>>"$RUN_PLANS/.run.lock"
+  flock -n 9 || die "$slug is already running; wt status $slug"
+  echo $$ >"$RUN_PLANS/run.pid"
+  if [ -n "${WT_UNIT:-}" ]; then echo "$WT_UNIT" >"$RUN_PLANS/run.unit"; else rm -f "$RUN_PLANS/run.unit"; fi
+  unset WT_UNIT
+  register "$RUN_PLANS"
+  progress run "$slug" "started ($phase${only:+, $only})"
 
   case $phase in plan|all) run_phase_parallel run_plan "${repos[@]}" || rc=1 ;; esac
   case $phase in tdd|all) [ "$rc" -eq 0 ] && { run_phase_parallel run_tdd "${repos[@]}" || rc=1; } ;; esac
   case $phase in ship|all)
     if [ "$rc" -eq 0 ]; then
-      for repo in "${repos[@]}"; do
-        has_unchecked "$RUN_PLANS/$repo/plan.md" || is_blocked "$RUN_PLANS/$repo/plan.md" && { rc=1; break; }
-        progress ship "$repo" started
-        if run_step "$repo" ship "/ship"; then
-          progress ship "$repo" done
-        else
-          progress ship "$repo" FAILED; rc=1; break
-        fi
-      done
+      for repo in "${repos[@]}"; do run_ship "$repo" || { rc=1; break; }; done
     fi ;;
   esac
+  if [ "$rc" -eq 0 ]; then
+    progress run "$slug" "finished $phase"
+    notify "finished $phase: $(repo_lines "$RUN_PLANS" "${repos[@]}" | paste -sd ';' | sed 's/;/; /g')"
+  else
+    progress run "$slug" stopped
+  fi
   echo "== $slug =="
-  run_summary "${repos[@]}"
+  repo_lines "$RUN_PLANS" "${repos[@]}"
+  echo "Live log: $RUN_PLANS/run.log; transcripts: $RUN_PLANS/<repo>/log/"
   return $rc
+}
+
+env_flags() { # systemd-run -E flags: the caller's environment, minus a Claude session's own
+  local v
+  for v in $(compgen -e); do
+    case $v in CLAUDECODE|CLAUDE_CODE_*|CLAUDE_ENV_FILE|CLAUDE_PROJECT_DIR|WT_UNIT|PWD|OLDPWD|SHLVL|_|TMUX|TMUX_PANE) continue ;; esac
+    [[ ${!v} == *$'\n'* ]] && continue
+    printf -- '-E\n%s\n' "$v"
+  done
+}
+
+cmd_build() { # the same run, detached: survives this terminal or Claude session
+  local slug=${1:-} plans unit flags=()
+  [ -n "$slug" ] || die "usage: wt build <slug> [plan|tdd|ship|all] [repo]"
+  resolve_git || true
+  plans=$(plans_for_slug "$slug") || die "no .plans/$slug found; run /spec first"
+  is_running "$plans" && die "$slug is already running; wt status $slug"
+  unit=wt-$slug-$(printf '%s' "$plans" | md5sum | cut -c1-4)
+  mapfile -t flags < <(env_flags)
+  systemd-run --user --collect --quiet --same-dir --unit="$unit" --description="wt run $*" \
+    "${flags[@]}" -E "WT_UNIT=$unit" -- "$WT_SELF" run "$@" || die "systemd-run could not start $unit"
+  printf 'started %s in the background (unit %s)\n  wt watch %s    follow it live\n  wt status          every feature\n  wt stop %s     cancel it\n' \
+    "$slug" "$unit" "$slug" "$slug"
+}
+
+feature_state() { # feature_state <plans>: running, blocked, failed, done (every PR open) or idle
+  local plans=$1 p r repos=()
+  is_running "$plans" && { echo running; return; }
+  for p in "$plans"/*/plan.md; do is_blocked "$p" && { echo blocked; return; }; done
+  last_progress "$plans" 1 | grep -q 'FAILED' && { echo failed; return; }
+  mapfile -t repos < <(order_repos "$plans")
+  [ "${#repos[@]}" -gt 0 ] || { echo idle; return; }
+  for r in "${repos[@]}"; do [ "$(pr_count "$plans" "$r")" -gt 0 ] || { echo idle; return; }; done
+  echo done
+}
+last_progress() { grep -E '^[0-9:]{8} \[' "$1/run.log" 2>/dev/null | grep -v '^[0-9:]* \[run\]' | tail -n "${2:-1}"; }
+
+cmd_status() {
+  local slug=${1:-} plans state repos=()
+  resolve_git || true
+  if [ -z "$slug" ]; then
+    [ -f "$STATE_DIR/runs" ] || { echo "no runs yet"; return 0; }
+    while IFS= read -r plans; do
+      [ -f "$plans/run.log" ] || continue
+      state=$(feature_state "$plans")
+      printf '%-28s %-8s %s\n' "$(basename "$plans")" "$state" "$(last_progress "$plans" 1)"
+    done <"$STATE_DIR/runs"
+    return 0
+  fi
+  plans=$(plans_for_slug "$slug") || die "no .plans/$slug found"
+  mapfile -t repos < <(order_repos "$plans")
+  printf '%s: %s (%s)\n' "$slug" "$(feature_state "$plans")" "$plans"
+  repo_lines "$plans" "${repos[@]}"
+  awk -F'\t' '{n++; s += $6; c += $7} END {if (n) printf "%d sessions, %dm%02ds, $%.2f\n", n, s / 60, s % 60, c}' \
+    "$plans/sessions.tsv" 2>/dev/null
+  last_progress "$plans" 5
+  is_running "$plans" && printf 'now: %s\n' "$(grep -E '^[0-9:]{8}   ' "$plans/run.log" | tail -1)"
+  return 0
+}
+
+cmd_watch() {
+  local slug=${1:-} plans pid
+  [ -n "$slug" ] || die "usage: wt watch <slug>"
+  resolve_git || true
+  plans=$(plans_for_slug "$slug") || die "no .plans/$slug found"
+  [ -f "$plans/run.log" ] || die "$slug has not run yet"
+  if is_running "$plans" && pid=$(cat "$plans/run.pid" 2>/dev/null) && [ -n "$pid" ]; then
+    tail -n 40 -F --pid="$pid" "$plans/run.log"
+  else
+    tail -n 40 "$plans/run.log"
+  fi
+}
+
+cmd_stop() {
+  local slug=${1:-} plans
+  [ -n "$slug" ] || die "usage: wt stop <slug>"
+  resolve_git || true
+  plans=$(plans_for_slug "$slug") || die "no .plans/$slug found"
+  is_running "$plans" || { echo "$slug is not running"; return 0; }
+  [ -f "$plans/run.unit" ] || die "$slug runs in a terminal, not under systemd; stop it there"
+  systemctl --user stop "$(cat "$plans/run.unit")"
 }
 
 # --- main -------------------------------------------------------------------------
@@ -476,6 +631,10 @@ case $cmd in
   create) cmd_create "$@" ;;
   remove) cmd_remove "$@" ;;
   run) cmd_run "$@" ;;
+  build) cmd_build "$@" ;;
+  status) cmd_status "$@" ;;
+  watch) cmd_watch "$@" ;;
+  stop) cmd_stop "$@" ;;
   ''|-h|--help|help) usage ;;
   *) usage >&2; die "unknown command '$cmd'" ;;
 esac
