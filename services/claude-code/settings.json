@@ -45,6 +45,12 @@
     "baseRef": "fresh"
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "$HOME/.claude/hooks/check-push.sh", "timeout": 1800 }]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
