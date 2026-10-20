@@ -11,7 +11,7 @@
       "Write",
       "WebSearch",
       "WebFetch",
-      "mcp__linear-server__*",
+      "mcp__linear__*",
       "mcp__claude_ai_Google_Drive__*"
     ],
     "ask": [
