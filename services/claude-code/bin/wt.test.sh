@@ -194,6 +194,54 @@ expect_has "audit check step" "Methodology audit: OK (1 steps)" "$(cd "$wt" && "
 printf -- '- [ ] first thing\n  BLOCKED: which color?\n' >"$pd/plan.md"
 expect_has "ship shows blocked" "BLOCKED: which color?" "$(cd "$wt" && "$WT" ship)"
 
+# --- check: the repo's .claude/check, run from its root; local go.mod replaces refused ---
+wsc=$TMP/c; mkrepo "$wsc/api"; mkrepo "$wsc/web"; mkdir -p "$wsc/api/.claude" "$wsc/api/sub/deep"
+cat >"$wsc/api/.claude/check" <<'EOF'
+#!/usr/bin/env bash
+[ -n "${CHECK_SLEEP:-}" ] && sleep "$CHECK_SLEEP"
+echo "ran ${1:-full} in $PWD" >>"$CHECK_LOG"
+echo "check output line"
+[ ! -f "$CHECK_FAIL" ]
+EOF
+chmod +x "$wsc/api/.claude/check"; commit "$wsc/api" "chore: check" .claude/keep >/dev/null
+export CHECK_LOG=$TMP/check.log CHECK_FAIL=$TMP/check.fail
+out=$(cd "$wsc/api/sub/deep" && "$WT" check; echo "rc=$?")
+expect_has "check green rc" "rc=0" "$out"
+expect "check runs from the repo root" "ran full in $wsc/api" "$(tail -1 "$CHECK_LOG")"
+out=$(cd "$wsc/api" && "$WT" check; echo "rc=$?")
+expect_has "check trusts a tree already green" "already green" "$out"
+expect "check did not rerun for the same tree" 1 "$(grep -c 'ran full' "$CHECK_LOG")"
+(cd "$wsc/api" && "$WT" check --quick >/dev/null)
+expect "check --quick passes the flag" "ran --quick in $wsc/api" "$(tail -1 "$CHECK_LOG")"
+touch "$CHECK_FAIL"; commit "$wsc/api" "feat: change" f >/dev/null
+out=$(cd "$wsc/api" && "$WT" check 2>&1; echo "rc=$?")
+expect_has "check red rc" "rc=1" "$out"
+expect_has "check red shows the output" "check output line" "$out"
+expect "check reran after a commit" 2 "$(grep -c 'ran full' "$CHECK_LOG")"
+rm "$CHECK_FAIL"; echo x >"$wsc/api/untracked"
+(cd "$wsc/api" && "$WT" check >/dev/null; "$WT" check >/dev/null)
+expect "check never trusts a dirty tree" 4 "$(grep -c 'ran full' "$CHECK_LOG")"
+rm "$wsc/api/untracked"
+out=$(cd "$wsc/api" && CHECK_SLEEP=3 WT_CHECK_TIMEOUT=1 "$WT" check --quick 2>&1; echo "rc=$?")
+expect_has "check timeout rc" "rc=1" "$out"
+expect_has "check timeout says so" "timed out after 1s" "$out"
+out=$(cd "$wsc/web" && "$WT" check; echo "rc=$?")
+expect_has "check without a script passes" "rc=0" "$out"
+expect_has "check without a script says so" "no .claude/check" "$out"
+out=$(cd "$TMP" && "$WT" check 2>&1; echo "rc=$?")
+expect_has "check outside git fails" "rc=1" "$out"
+mkdir -p "$wsc/web/tools"
+printf 'module x\n\ngo 1.22\n\nreplace example.com/a => ./internal/a\n\nreplace example.com/b v1.0.0 => example.com/c v1.1.0\n' >"$wsc/web/go.mod"
+printf 'module x/tools\n\ngo 1.22\n\nreplace x => ../\n' >"$wsc/web/tools/go.mod"
+commit "$wsc/web" "chore: modules" f >/dev/null
+expect_has "check allows replaces inside the repo" "rc=0" "$(cd "$wsc/web" && "$WT" check; echo "rc=$?")"
+printf 'replace (\n\texample.com/d => ../sibling\n\texample.com/e v1.2.0 => /abs/path\n)\n' >>"$wsc/web/go.mod"
+commit "$wsc/web" "chore: local replace" f >/dev/null
+out=$(cd "$wsc/web" && "$WT" check 2>&1; echo "rc=$?")
+expect_has "check refuses a sibling replace rc" "rc=1" "$out"
+expect_has "check names the sibling replace" "go.mod: example.com/d => ../sibling" "$out"
+expect_has "check names the absolute replace" "go.mod: example.com/e => /abs/path" "$out"
+
 # --- run, with a fake claude on PATH ---
 mkdir -p "$TMP/bin"
 cat >"$TMP/bin/claude" <<'EOF'
