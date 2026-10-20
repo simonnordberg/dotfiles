@@ -35,11 +35,8 @@ if [ -n "$dirty" ]; then
   exit 2
 fi
 
-log=$(git rev-parse --path-format=absolute --git-path wt-check.log)
-"$WT_BIN" check >"$log" 2>&1 && exit 0
-{ echo "Push blocked: wt check failed in $top. Fix it, commit, and push again. Full output: $log"
-  grep -E -A 8 -m 10 -e '^--- FAIL|^FAIL|^panic:' "$log" | head -n 60
-  echo "Last lines:"
-  tail -n 25 "$log"
+out=$("$WT_BIN" check 2>&1) && exit 0
+{ echo "Push blocked: wt check failed in $top. Fix it, commit, and push again."
+  tail -n 60 <<<"$out"
 } >&2
 exit 2
