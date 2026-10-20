@@ -22,5 +22,5 @@ If the step needs a decision the spec doesn't cover, don't guess: add a line
 
 End with exactly one of:
 - "Step done. Next: <text of the next unchecked step>."
-- "Last step done. Ready to /ship."
+- "Last step done."
 - "BLOCKED: <question>."
