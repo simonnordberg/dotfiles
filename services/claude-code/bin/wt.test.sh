@@ -203,8 +203,9 @@ expect "check runs from the repo root" "ran full in $wsc/api" "$(tail -1 "$CHECK
 out=$(cd "$wsc/api" && "$WT" check; echo "rc=$?")
 expect_has "check trusts a tree already green" "already green" "$out"
 expect "check did not rerun for the same tree" 1 "$(grep -c 'ran full' "$CHECK_LOG")"
+# full green covers --quick: no rerun needed
 (cd "$wsc/api" && "$WT" check --quick >/dev/null)
-expect "check --quick passes the flag" "ran --quick in $wsc/api" "$(tail -1 "$CHECK_LOG")"
+expect "a full green covers --quick" 1 "$(grep -c ran "$CHECK_LOG")"
 touch "$CHECK_FAIL"; commit "$wsc/api" "feat: change" f >/dev/null
 out=$(cd "$wsc/api" && "$WT" check 2>&1; echo "rc=$?")
 expect_has "check red rc" "rc=1" "$out"
@@ -218,6 +219,13 @@ rm "$wsc/api/untracked"
 out=$(cd "$wsc/api" && CHECK_SLEEP=3 WT_CHECK_TIMEOUT=1 "$WT" check --quick 2>&1; echo "rc=$?")
 expect_has "check timeout rc" "rc=1" "$out"
 expect_has "check timeout says so" "timed out after 1s" "$out"
+# --quick has its own stamp: two quick runs rerun only once
+: >"$CHECK_LOG"; rm "$CHECK_FAIL"; commit "$wsc/api" "feat: more" f >/dev/null
+(cd "$wsc/api" && "$WT" check --quick >/dev/null; "$WT" check --quick >/dev/null)
+expect "check --quick trusts a quick-green tree" 1 "$(grep -c 'ran --quick' "$CHECK_LOG")"
+# but a full check reruns even after a quick stamp
+(cd "$wsc/api" && "$WT" check >/dev/null)
+expect "a quick stamp does not cover a full check" 1 "$(grep -c 'ran full' "$CHECK_LOG")"
 out=$(cd "$wsc/web" && "$WT" check; echo "rc=$?")
 expect_has "check without a script passes" "rc=0" "$out"
 expect_has "check without a script says so" "no .claude/check" "$out"
@@ -247,7 +255,7 @@ plan="$add/$repo/plan.md"
 echo "$repo ${WT_SLUG:-unset} $("$WT_UNDER_TEST" slug)" >>"$add/seen.log"
 echo "$repo $agent ${prompt%%$'\n'*}" >>"$add/prompts.log"
 say() { jq -cn --arg t "$1" '{type: "result", subtype: "success", result: $t, num_turns: 3, duration_ms: 4200, total_cost_usd: 0.25}'; }
-printf '%s\n' '{"type":"assistant","parent_tool_use_id":null,"message":{"usage":{"input_tokens":5,"cache_read_input_tokens":40000,"cache_creation_input_tokens":2000},"content":[{"type":"tool_use","name":"Bash","input":{"command":"go test ./..."}}]}}'
+printf '{"type":"assistant","parent_tool_use_id":null,"message":{"usage":{"input_tokens":5,"cache_read_input_tokens":%s,"cache_creation_input_tokens":2000},"content":[{"type":"tool_use","name":"Bash","input":{"command":"go test ./..."}}]}}\n' "${FAKE_CTX:-40000}"
 if [ "$agent" = reviewer ]; then
   case $prompt in
     Re-review*) say "${FAKE_REREVIEW:-$'## Findings\nNone.'}" ;;
@@ -268,7 +276,7 @@ case $prompt in
     sed -i "${n}s/^- \[ \] \(.*\)$/- [x] \1 (commits: $a $b)/" "$plan"; say "Step done." ;;
   "/fix check")
     [ -n "${FAKE_FIX_BLOCK:-}" ] && { say "BLOCKED: $FAKE_FIX_BLOCK"; exit 0; }
-    touch fixed-check; git add -A; git commit -qm "fix: make the check green"; say "Fixed: 1 fixed, 0 false positives." ;;
+    echo "$RANDOM" >>fixed-check; git add -A; git commit -qm "fix: make the check green"; say "Fixed: 1 fixed, 0 false positives." ;;
   "/fix review")
     [ -n "${FAKE_FIX_BLOCK:-}" ] && { say "BLOCKED: $FAKE_FIX_BLOCK"; exit 0; }
     echo f >>fix.go; git add -A; git commit -qm "fix: the finding"
@@ -319,12 +327,12 @@ out=$(cd "$wsr" && PATH=$P "$WT" run feat-r; echo "rc=$?")
 expect_has "run rc" "rc=0" "$out"
 expect "run api plan ticked" 2 "$(grep -c '^- \[x\]' "$wsr/.plans/feat-r/api/plan.md")"
 expect "run web plan ticked" 2 "$(grep -c '^- \[x\]' "$wsr/.plans/feat-r/web/plan.md")"
-expect "run logs" yes "$([ -f "$wsr/.plans/feat-r/api/log/plan.log" ] && [ -f "$wsr/.plans/feat-r/api/log/step-02.log" ] && [ -f "$wsr/.plans/feat-r/api/log/review.log" ] && [ -f "$wsr/.plans/feat-r/api/log/step-02.jsonl" ] && echo yes)"
-expect_has "run log holds the final message" "Step done." "$(cat "$wsr/.plans/feat-r/api/log/step-02.log" 2>/dev/null)"
-expect_has "run jsonl holds the transcript" '"tool_use"' "$(cat "$wsr/.plans/feat-r/api/log/step-02.jsonl" 2>/dev/null)"
+expect "run logs" yes "$([ -f "$wsr/.plans/feat-r/api/log/plan.log" ] && [ -f "$wsr/.plans/feat-r/api/log/slice-02.log" ] && [ -f "$wsr/.plans/feat-r/api/log/review.log" ] && [ -f "$wsr/.plans/feat-r/api/log/slice-02.jsonl" ] && echo yes)"
+expect_has "run log holds the final message" "Step done." "$(cat "$wsr/.plans/feat-r/api/log/slice-02.log" 2>/dev/null)"
+expect_has "run jsonl holds the transcript" '"tool_use"' "$(cat "$wsr/.plans/feat-r/api/log/slice-02.jsonl" 2>/dev/null)"
 expect "run state" 2 "$(grep -c open "$wsr/.plans/feat-r/state.md")"
-expect_has "run summary api" "api: 2/2 steps done, PR https://github.com/acme/api/pull/7" "$out"
-expect_has "run summary web" "web: 2/2 steps done, PR https://codebahn.net/acme/web/pulls/3" "$out"
+expect_has "run summary api" "api: 2/2 slices done, PR https://github.com/acme/api/pull/7" "$out"
+expect_has "run summary web" "web: 2/2 slices done, PR https://codebahn.net/acme/web/pulls/3" "$out"
 expect "run branch" feat-r "$(git -C "$wsr/.worktrees/feat-r/api" branch --show-current)"
 expect "run commits" 4 "$(git -C "$wsr/.worktrees/feat-r/api" rev-list --count origin/main..HEAD)"
 expect "run pushed the branch" "$(git -C "$wsr/.worktrees/feat-r/api" rev-parse HEAD)" "$(git -C "$TMP/origins/r-api.git" rev-parse feat-r 2>/dev/null)"
@@ -340,11 +348,11 @@ expect_has "the PR body records the e2e" 'E2E: `test -f c.go` passed' "$body"
 expect_has "the second PR links the first" "after https://github.com/acme/api/pull/7" "$(sed -n '/codebahn pr create/,$p' "$PR_LOG")"
 expect_has "progress e2e" "[ship] feat-r: e2e passed" "$out"
 log=$(cat "$wsr/.plans/feat-r/run.log" 2>/dev/null)
-expect_has "run.log has progress" "[tdd] api: step 1" "$log"
-expect_has "run.log has each session's actions" "api/step-01  Bash go test ./..." "$log"
-expect_has "progress reports each session's cost" '[tdd] api: step 1 done (4s, $0.25, 42k ctx)' "$out"
+expect_has "run.log has progress" "[tdd] api: slice 1" "$log"
+expect_has "run.log has each session's actions" "api/slice-01  Bash go test ./..." "$log"
+expect_has "progress reports each session's cost" '[tdd] api: slice 1 done (4s, $0.25, 42k ctx)' "$out"
 expect "sessions.tsv has a row per session" 8 "$(wc -l <"$wsr/.plans/feat-r/sessions.tsv" 2>/dev/null)"
-expect_has "sessions.tsv: repo, label, rc, turns, seconds, cost, context" "$(printf 'api\tstep-01\t0\t3\t4\t0.25\t42005')" "$(cat "$wsr/.plans/feat-r/sessions.tsv" 2>/dev/null)"
+expect_has "sessions.tsv: repo, label, rc, turns, seconds, cost, context" "$(printf 'api\tslice-01\t0\t3\t4\t0.25\t42005')" "$(cat "$wsr/.plans/feat-r/sessions.tsv" 2>/dev/null)"
 expect_has "a finished run notifies" "feat-r" "$(cat "$NOTIFY_LOG" 2>/dev/null)"
 
 review=$'## Findings\n- MAJOR LOGIC c.go:1: wrong on empty input\n- NIT RULES c.go:2: naming\n\n## Title\nfeat: f\n\n## Summary\n- f'
@@ -372,17 +380,7 @@ E2E='none' feature "$TMP/w" feat-w api; fakehost "$TMP/w/api" git@github.com:acm
 out=$(cd "$TMP/w" && FAKE_REVIEW=$review FAKE_FIX_BLOCK="needs a product decision" PATH=$P "$WT" run feat-w; echo "rc=$?")
 expect_has "a fix session can block" "[ship] api: BLOCKED: needs a product decision" "$out"
 
-E2E='none' feature "$TMP/k" feat-k api; fakehost "$TMP/k/api" git@github.com:acme/api.git
-mkdir -p "$TMP/k/api/.claude"
-printf '#!/usr/bin/env bash\n[ -n "${FAKE_CHECK_RED:-}" ] && { echo "FAIL TestAlways"; exit 1; }\n[ -f fixed-check ] || { echo "FAIL TestNeedsFix"; exit 1; }\n' >"$TMP/k/api/.claude/check"
-chmod +x "$TMP/k/api/.claude/check"; (cd "$TMP/k/api" && git add -A && git commit -qm check && git push -q origin main)
-out=$(cd "$TMP/k" && PATH=$P "$WT" run feat-k; echo "rc=$?")
-expect_has "a red check gets a fix session" "api main /fix check" "$(cat "$TMP/k/.plans/feat-k/prompts.log")"
-expect_has "a fixed check lets the line finish" "rc=0" "$out"
-E2E='none' feature "$TMP/k2" feat-k2 api; cp -r "$TMP/k/api/.claude" "$TMP/k2/api/"; (cd "$TMP/k2/api" && git add -A && git commit -qm check && git push -q origin main)
-out=$(cd "$TMP/k2" && FAKE_CHECK_RED=1 PATH=$P "$WT" run feat-k2; echo "rc=$?")
-expect_has "a check still red after two fixes blocks" "[ship] api: BLOCKED: check still red after 2 fix sessions" "$out"
-expect "two check fix sessions at most" 2 "$(grep -c '/fix check' "$TMP/k2/.plans/feat-k2/prompts.log")"
+# (check-during-tdd tests are above; ship still re-checks via check_green)
 
 E2E='echo e2e-broke; exit 3' feature "$TMP/e" feat-e api; fakehost "$TMP/e/api" git@github.com:acme/api.git
 out=$(cd "$TMP/e" && PATH=$P "$WT" run feat-e; echo "rc=$?")
@@ -396,7 +394,7 @@ expect_has "a hung push blocks instead of hanging" "push timed out after 1s" "$o
 
 feature "$TMP/u" feat-u api
 out=$(cd "$TMP/u" && PATH=$P "$WT" run feat-u; echo "rc=$?")
-expect_has "an unknown host gets the branch pushed" "api: 2/2 steps done, pushed feat-u (open the PR by hand)" "$out"
+expect_has "an unknown host gets the branch pushed" "api: 2/2 slices done, pushed feat-u (open the PR by hand)" "$out"
 
 feature "$TMP/m" feat-m api; fakehost "$TMP/m/api" git@github.com:acme/api.git
 (cd "$TMP/m" && PATH=$P "$WT" run feat-m plan >/dev/null; PATH=$P "$WT" run feat-m tdd >/dev/null)
@@ -411,11 +409,41 @@ out=$(cd "$TMP/c2" && PATH=$P "$WT" run feat-c2 ship; echo "rc=$?")
 expect_has "a conflicting default blocks" "[ship] api: BLOCKED: conflicts with origin/main; run /rebase in" "$out"
 expect "a conflicting rebase is aborted" "" "$(git -C "$TMP/c2/.worktrees/feat-c2/api" status --porcelain)"
 
+# --- wt check --quick runs after each ticked slice ---
+feature "$TMP/ck" feat-ck api
+mkdir -p "$TMP/ck/api/.claude"
+printf '#!/usr/bin/env bash\n[ -f fixed-check ] || { echo "FAIL TestNeedsFix"; exit 1; }\n' >"$TMP/ck/api/.claude/check"
+chmod +x "$TMP/ck/api/.claude/check"; (cd "$TMP/ck/api" && git add -A && git commit -qm check && git push -q origin main)
+out=$(cd "$TMP/ck" && PATH=$P "$WT" run feat-ck; echo "rc=$?")
+prompts=$(cat "$TMP/ck/.plans/feat-ck/prompts.log")
+expect_has "a red quick check after a slice gets a fix session" "api main /fix check" "$prompts"
+expect_has "the runner re-checks every finished slice" "[tdd] api: check red; fix session 1" "$out"
+expect_has "a fixed quick check lets the slice pass" "[tdd] api: slice 1 done" "$out"
+expect_has "a fixed quick check lets the line finish" "rc=0" "$out"
+
+# a quick check still red after two fixes blocks the slice
+# a check that always fails (the fix session can't satisfy it)
+feature "$TMP/ck2" feat-ck2 api
+mkdir -p "$TMP/ck2/api/.claude"
+printf '#!/usr/bin/env bash\necho "FAIL TestAlwaysFails"; exit 1\n' >"$TMP/ck2/api/.claude/check"
+chmod +x "$TMP/ck2/api/.claude/check"; (cd "$TMP/ck2/api" && git add -A && git commit -qm check && git push -q origin main)
+out=$(cd "$TMP/ck2" && PATH=$P "$WT" run feat-ck2; echo "rc=$?")
+expect_has "a check still red after two fixes blocks the slice" "[tdd] api: BLOCKED: check still red after 2 fix sessions" "$out"
+expect "the blocked slice is unticked" 0 "$(grep -c '^- \[x\]' "$TMP/ck2/.plans/feat-ck2/api/plan.md")"
+expect_has "the block sits under the slice" "  BLOCKED: check still red after 2 fix sessions" "$(sed -n 2p "$TMP/ck2/.plans/feat-ck2/api/plan.md")"
+expect "two check fix sessions at most during tdd" 2 "$(grep -c '/fix check' "$TMP/ck2/.plans/feat-ck2/prompts.log")"
+
+# 5. Context flag: sessions over 100k are flagged
+feature "$TMP/ctx" feat-ctx api
+out=$(cd "$TMP/ctx" && FAKE_CTX=150000 PATH=$P "$WT" run feat-ctx; echo "rc=$?")
+expect_has "a session over 100k is flagged" 'over 100k' "$out"
+expect_has "it still completes" "rc=0" "$out"
+
 wsb=$TMP/b; mkdir -p "$wsb/.plans/feat-b"; mkrepo "$wsb/api"
 printf 'Merge order: api\n' >"$wsb/.plans/feat-b/order.md"
 out=$(cd "$wsb" && FAKE_BLOCK=BLOCKME PATH=$P "$WT" run feat-b; echo "rc=$?")
 expect_has "run blocked rc" "rc=1" "$out"
-expect_has "run blocked summary" "api: 1/2 steps done, BLOCKED: what now?" "$out"
+expect_has "run blocked summary" "api: 1/2 slices done, BLOCKED: what now?" "$out"
 expect "run blocked no ship" "" "$(cat "$wsb/.plans/feat-b/state.md" 2>/dev/null)"
 expect_has "a blocked run notifies" "BLOCKED: what now?" "$(cat "$NOTIFY_LOG" 2>/dev/null)"
 
@@ -423,9 +451,9 @@ wsn=$TMP/n; mkdir -p "$wsn/.plans/feat-n"; mkrepo "$wsn/api"
 printf 'Merge order: api\n' >"$wsn/.plans/feat-n/order.md"
 out=$(cd "$wsn" && FAKE_NOOP=1 PATH=$P "$WT" run feat-n; echo "rc=$?")
 expect_has "no progress stops the run" "rc=1" "$out"
-expect "no progress runs one session, not forty" 1 "$(ls "$wsn/.plans/feat-n/api/log" | grep -c '^step-.*jsonl$')"
-expect_has "no progress blocks with the session's last words" "  BLOCKED: step not finished; the session said: Should the limit be per user or per org?" "$(cat "$wsn/.plans/feat-n/api/plan.md")"
-expect_has "no progress summary" "api: 0/2 steps done, BLOCKED: step not finished; the session said: Should the limit" "$out"
+expect "no progress runs one session, not forty" 1 "$(ls "$wsn/.plans/feat-n/api/log" | grep -c '^slice-.*jsonl$')"
+expect_has "no progress blocks with the session's last words" "  BLOCKED: slice not finished; the session said: Should the limit be per user or per org?" "$(cat "$wsn/.plans/feat-n/api/plan.md")"
+expect_has "no progress summary" "api: 0/2 slices done, BLOCKED: slice not finished; the session said: Should the limit" "$out"
 
 wsx=$TMP/x; mkdir -p "$wsx/.plans/feat-x"; mkrepo "$wsx/api"
 printf 'Merge order: api\n' >"$wsx/.plans/feat-x/order.md"
@@ -436,7 +464,7 @@ expect_has "no plan written says why" "[plan] api: FAILED: no plan written: I co
 wsp=$TMP/p; feature "$wsp" feat-p api
 out=$(cd "$wsp" && PATH=$P "$WT" run feat-p plan; echo "rc=$?")
 expect "run plan only" 0 "$(grep -c '^- \[x\]' "$wsp/.plans/feat-p/api/plan.md")"
-expect_has "run plan summary" "api: 0/2 steps done" "$out"
+expect_has "run plan summary" "api: 0/2 slices done" "$out"
 out=$(cd "$wsp" && PATH=$P "$WT" run feat-p tdd api; echo "rc=$?")
 expect "run tdd repo" 2 "$(grep -c '^- \[x\]' "$wsp/.plans/feat-p/api/plan.md")"
 expect "run tdd keeps plan" 1 "$(ls "$wsp/.plans/feat-p/api/log/plan.log" | wc -l)"
@@ -458,13 +486,13 @@ wsg=$TMP/g2; feature "$wsg" feat-g api web
 out=$(cd "$wsg" && PATH=$P "$WT" run feat-g; echo "rc=$?")
 expect_has "progress plan started" "[plan] api: started" "$out"
 expect_has "progress plan done" "[plan] api: done" "$out"
-expect_has "progress tdd starting" "[tdd] api: starting (2 steps)" "$out"
-expect_has "progress tdd step" "[tdd] api: step 1" "$out"
+expect_has "progress tdd starting" "[tdd] api: starting (2 slices)" "$out"
+expect_has "progress tdd step" "[tdd] api: slice 1" "$out"
 expect_has "progress tdd done" "[tdd] api: done (2/2)" "$out"
 expect_has "progress ship started" "[ship] api: started" "$out"
 expect_has "progress ship done" "[ship] api: done" "$out"
 expect_has "progress web plan" "[plan] web: started" "$out"
-expect_has "progress web tdd" "[tdd] web: starting (2 steps)" "$out"
+expect_has "progress web tdd" "[tdd] web: starting (2 slices)" "$out"
 expect_has "progress web ship" "[ship] web: done" "$out"
 
 # progress: plan already exists -> skip
@@ -473,7 +501,7 @@ printf 'Merge order: api\n' >"$wsg2/.plans/feat-g2/order.md"
 mkdir -p "$wsg2/.plans/feat-g2/api"
 printf -- '- [ ] one. Test: t1\n' >"$wsg2/.plans/feat-g2/api/plan.md"
 out=$(cd "$wsg2" && PATH=$P "$WT" run feat-g2 tdd; echo "rc=$?")
-expect_has "progress tdd no plan phase" "[tdd] api: starting (1 steps)" "$out"
+expect_has "progress tdd no plan phase" "[tdd] api: starting (1 slice)" "$out"
 expect_lacks "progress skip plan" "[plan]" "$out"
 
 # progress: blocked shows reason
@@ -514,7 +542,7 @@ out=$(cd "$TMP" && "$WT" status)
 expect_has "status works from anywhere" "feat-r" "$out"
 expect_has "status shows a blocked feature" "blocked" "$out"
 out=$(cd "$wsr" && "$WT" status feat-r)
-expect_has "status shows repo progress" "api: 2/2 steps done, PR https://github.com/acme/api/pull/7" "$out"
+expect_has "status shows repo progress" "api: 2/2 slices done, PR https://github.com/acme/api/pull/7" "$out"
 expect_has "status shows totals" "8 sessions" "$out"
 out=$(cd "$wsr" && timeout 5 "$WT" watch feat-r; echo "rc=$?")
 expect_has "watch prints the run log" "[ship] web: done" "$out"

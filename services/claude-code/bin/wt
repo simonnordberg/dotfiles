@@ -240,7 +240,7 @@ failures() { # failures <log>: the lines that say what failed, for a human or a 
 }
 
 cmd_check() {
-  local mode=${1:-} top bad stamp tree clean= rc log
+  local mode=${1:-} top bad stamp_full stamp_quick stamp tree clean= rc log
   case $mode in ''|--quick) ;; *) die "usage: wt check [--quick]" ;; esac
   top=$(git rev-parse --show-toplevel 2>/dev/null) || die "check: not in a git repository"
   top=$(realpath "$top")
@@ -250,11 +250,19 @@ cmd_check() {
     return 1
   fi
   [ -x "$top/.claude/check" ] || { echo "wt check: no .claude/check in $top; nothing to run"; return 0; }
-  stamp=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-check-ok)
+  stamp_full=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-check-ok)
+  stamp_quick=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-check-quick-ok)
+  stamp=$stamp_full; [ "$mode" = "--quick" ] && stamp=$stamp_quick
   tree=$(git -C "$top" rev-parse -q --verify 'HEAD^{tree}')
   [ -z "$(git -C "$top" status --porcelain)" ] && clean=1
-  if [ -z "$mode" ] && [ -n "$clean" ] && [ -n "$tree" ] && [ "$(cat "$stamp" 2>/dev/null)" = "$tree" ]; then
-    echo "wt check: already green at $(git -C "$top" rev-parse --short HEAD)"; return 0
+  # full green covers quick; quick green covers only quick
+  if [ -n "$clean" ] && [ -n "$tree" ]; then
+    if [ "$(cat "$stamp_full" 2>/dev/null)" = "$tree" ]; then
+      echo "wt check: already green at $(git -C "$top" rev-parse --short HEAD)"; return 0
+    fi
+    if [ "$mode" = "--quick" ] && [ "$(cat "$stamp_quick" 2>/dev/null)" = "$tree" ]; then
+      echo "wt check: already green at $(git -C "$top" rev-parse --short HEAD)"; return 0
+    fi
   fi
   log=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-check.log)
   (cd "$top" && timeout -k 30 "$WT_CHECK_TIMEOUT" ./.claude/check $mode) 2>&1 | tee "$log"; rc=${PIPESTATUS[0]}
@@ -264,8 +272,9 @@ cmd_check() {
     failures "$log"
     return 1
   fi
-  if [ -z "$mode" ] && [ -n "$clean" ] && [ -z "$(git -C "$top" status --porcelain)" ]; then
+  if [ -n "$clean" ] && [ -z "$(git -C "$top" status --porcelain)" ]; then
     printf '%s\n' "$tree" >"$stamp"
+    [ "$mode" = "--quick" ] || printf '%s\n' "$tree" >"$stamp_quick"
   fi
   echo "wt check: green"
 }
@@ -387,7 +396,10 @@ session_stats() { # session_stats <repo> <label> <rc> <jsonl>: a sessions.tsv ro
     | [($r.num_turns // 0), (($r.duration_ms // 0) / 1000 | floor), ($r.total_cost_usd // 0), $ctx] | @tsv')
   [ -n "$stats" ] || stats=$(printf '0\t0\t0\t0')
   printf '%(%F %T)T\t%s\t%s\t%s\t%s\n' -1 "$1" "$2" "$3" "$stats" >>"$RUN_PLANS/sessions.tsv"
-  LAST_STATS=$(awk -F'\t' '{printf "%ds, $%.2f, %dk ctx", $2, $3, ($4 + 500) / 1000}' <<<"$stats")
+  LAST_STATS=$(awk -F'\t' '{
+    printf "%ds, $%.2f, %dk ctx", $2, $3, ($4 + 500) / 1000
+    if ($4 > 100000) printf ", over 100k"
+  }' <<<"$stats")
 }
 
 run_step() { # run_step <repo> <label> <prompt> [claude args...]: one headless session
@@ -417,26 +429,32 @@ run_plan() {
   run_step "$repo" "$label" "/steps" || { fail plan "$repo" "session failed: $(last_words "$repo" "$label")"; return 1; }
   if is_blocked "$plan"; then block plan "$repo" "$(blocked_reason "$plan")"; return 1; fi
   has_unchecked "$plan" || { fail plan "$repo" "no plan written: $(last_words "$repo" "$label")"; return 1; }
-  progress plan "$repo" "done ($(count '^- \[ \]' "$plan") steps; $LAST_STATS)"
+  progress plan "$repo" "done ($(count '^- \[ \]' "$plan") slices; $LAST_STATS)"
 }
 
-run_tdd() { # one session per step; a session that ticks nothing blocks the plan with its last words
-  local repo=$1 plan=$RUN_PLANS/$1/plan.md i=0 before label
+run_tdd() { # one session per slice; check --quick after each; no-progress blocks the plan
+  local repo=$1 plan=$RUN_PLANS/$1/plan.md dir i=0 before label total n
   [ -f "$plan" ] || { fail tdd "$repo" "no plan"; return 1; }
-  progress tdd "$repo" "starting ($(count '^- \[[ x]\]' "$plan") steps)"
+  dir=$(find_or_create_wt "$RUN_SLUG" "$repo" "$(repo_dir "$RUN_WS" "$repo")" "$RUN_WS" "$RUN_PLANSROOT") || return 1
+  total=$(count '^- \[[ x]\]' "$plan")
+  n=$total; [ "$n" -eq 1 ] && n="1 slice" || n="$n slices"
+  progress tdd "$repo" "starting ($n)"
   while [ "$i" -lt "$MAX_STEPS" ] && has_unchecked "$plan" && ! is_blocked "$plan"; do
     i=$((i + 1)); before=$(count '^- \[x\]' "$plan")
-    label=$(next_label "$repo" "step-$(printf '%02d' "$(first_open "$plan")")")
-    progress tdd "$repo" "step $i"
-    run_step "$repo" "$label" "/tdd" || { fail tdd "$repo" "step $i: session failed: $(last_words "$repo" "$label")"; return 1; }
+    label=$(next_label "$repo" "slice-$(printf '%02d' "$(first_open "$plan")")")
+    progress tdd "$repo" "slice $i"
+    run_step "$repo" "$label" "/tdd" || { fail tdd "$repo" "slice $i: session failed: $(last_words "$repo" "$label")"; return 1; }
     if ! is_blocked "$plan" && [ "$(count '^- \[x\]' "$plan")" -le "$before" ]; then
-      block_step "$plan" "step not finished; the session said: $(last_words "$repo" "$label")"
+      block_step "$plan" "slice not finished; the session said: $(last_words "$repo" "$label")"
     fi
-    is_blocked "$plan" || progress tdd "$repo" "step $i done ($LAST_STATS)"
+    if ! is_blocked "$plan"; then
+      progress tdd "$repo" "slice $i done ($LAST_STATS)"
+      check_green_tdd "$repo" "$dir" "$plan" || return 1
+    fi
   done
   if is_blocked "$plan"; then block tdd "$repo" "$(blocked_reason "$plan")"; return 1; fi
-  has_unchecked "$plan" && { fail tdd "$repo" "stopped after $MAX_STEPS sessions with steps left"; return 1; }
-  progress tdd "$repo" "done ($(count '^- \[x\]' "$plan")/$(count '^- \[[ x]\]' "$plan"))"
+  has_unchecked "$plan" && { fail tdd "$repo" "stopped after $MAX_STEPS sessions with slices left"; return 1; }
+  progress tdd "$repo" "done ($(count '^- \[x\]' "$plan")/$total)"
 }
 
 # --- ship: rebase, check, review and fixes per repo; e2e once; then push and PRs in merge order
@@ -467,6 +485,36 @@ sync_default() { # sync_default <repo> <dir>: a clean tree, rebased onto fresh o
   if git -C "$2" rebase -q "origin/$def" >/dev/null 2>&1; then progress ship "$1" "rebased onto origin/$def"; return 0; fi
   git -C "$2" rebase --abort 2>/dev/null
   stop_ship "$1" "conflicts with origin/$def; run /rebase in $2"
+  return 1
+}
+
+untick_last() { # untick_last <plan>: revert the last ticked step back to unchecked
+  local last_n
+  last_n=$(awk '/^- \[x\]/ {n = NR} END {print n}' "$1")
+  [ -n "$last_n" ] && sed -i "${last_n}s/^- \[x\]/- [ ]/" "$1"
+}
+
+fix_session_tdd() { # fix_session_tdd <repo> <kind> <plan>: like fix_session but blocks via tdd progress
+  local label why
+  label=$(next_label "$1" "fix-$2")
+  run_step "$1" "$label" "/fix $2" || { fail tdd "$1" "fix session failed: $(last_words "$1" "$label")"; return 1; }
+  why=$(session_blocked "$1" "$label") && { block_step "$3" "$why"; block tdd "$1" "$why"; return 1; }
+  return 0
+}
+
+check_green_tdd() { # check_green_tdd <repo> <dir> <plan>: wt check --quick after a slice; red unticks + blocks
+  local repo=$1 dir=$2 plan=$3 try=0
+  (cd "$dir" && "$WT_SELF" check --quick) >"$RUN_PLANS/$repo/check.log" 2>&1 && return 0
+  while [ "$try" -lt 2 ]; do
+    try=$((try + 1))
+    progress tdd "$repo" "check red; fix session $try"
+    fix_session_tdd "$repo" check "$plan" || { untick_last "$plan"; return 1; }
+    (cd "$dir" && "$WT_SELF" check --quick) >"$RUN_PLANS/$repo/check.log" 2>&1 && return 0
+  done
+  # still red: untick the slice and block it
+  untick_last "$plan"
+  block_step "$plan" "check still red after 2 fix sessions (see $RUN_PLANS/$repo/check.log)"
+  block tdd "$repo" "check still red after 2 fix sessions (see $RUN_PLANS/$repo/check.log)"
   return 1
 }
 
@@ -609,7 +657,7 @@ repo_lines() { # repo_lines <plans> <repos...>: steps done, BLOCKED question, PR
   local plans=$1 repo plan blocked pr line; shift
   for repo in "$@"; do
     plan=$plans/$repo/plan.md
-    line="$repo: $(count '^- \[x\]' "$plan")/$(count '^- \[[ x]\]' "$plan") steps done"
+    line="$repo: $(count '^- \[x\]' "$plan")/$(count '^- \[[ x]\]' "$plan") slices done"
     blocked=$(blocked_reason "$plan")
     pr=$(awk -v r="$repo" '$1 == r {u = $2} END {print u}' "$plans/state.md" 2>/dev/null)
     [ -n "$blocked" ] && line="$line, BLOCKED: $blocked"
