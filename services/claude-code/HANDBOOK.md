@@ -56,7 +56,10 @@ at a time. For each repo in `order.md` it:
    drops it as a false positive) before fixing it; the reviewer then re-reviews only the fix
    commits, once. Then the spec's `E2E:` command, once. Then, in merge order, `wt` pushes each
    branch and opens its PR (`gh` or the `codebahn` CLI) with the reviewer's summary, the merge
-   order, the e2e result, and the review. Merge them in the order their bodies state.
+   order, the e2e result, and the review. After the PRs are open, `wt` polls each one's CI
+   (GitHub via `gh pr checks`, codebahn via `codebahn ci list`); a red CI run's logs go to
+   `ci.log` and one `/fix ci` session, then re-check, re-push, re-poll (up to 2 tries).
+   Merge the PRs in the order their bodies state.
 
 Useful variants: `/build <slug> plan` (stop after the plans, read them), `/build <slug> tdd
 codebahn-docs` (one phase, one repo). Every rerun resumes from the first unfinished item.
@@ -97,10 +100,11 @@ formatted by the repo's own Biome (else its Prettier) and gofmt, which is what C
   <repo>/plan.md     `- [ ] behavior. Test: ...` becomes `- [x] ... (commits: a b c)`
   <repo>/review.md   the review: Findings, Title, Summary, Resolution, re-review of the fixes
   <repo>/check.log   the last `wt check` output (what `/fix check` sees)
+  <repo>/ci.log      the last CI run's failure output (what `/fix ci` sees)
   <repo>/pr.md       the PR body wt sent
   <repo>/log/        per headless session: <label>.jsonl (full transcript, every tool call and
-                     result) and <label>.log (the final message); plan, step-01, ..., review,
-                     fix-review, rereview; a rerun adds -2, -3 instead of overwriting
+                     result) and <label>.log (the final message); plan, slice-01, ..., review,
+                     fix-review, rereview, fix-ci; a rerun adds -2, -3 instead of overwriting
 <root>/.worktrees/<slug>/<repo>/   the feature's worktrees, together
 ```
 
