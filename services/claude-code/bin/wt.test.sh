@@ -55,6 +55,9 @@ out=$(ctx "$ws/.worktrees/feat-c/api")
 expect "C slug from parent dir" feat-c "$(val slug "$out")"
 expect "C repo" api "$(val repo "$out")"
 expect "C workspace" "$ws" "$(val workspace "$out")"
+mkdir -p "$ws/.plans/api"
+expect "C a plan dir named like the repo never wins" feat-c "$(val slug "$(ctx "$ws/.worktrees/feat-c/api")")"
+rmdir "$ws/.plans/api"
 
 # --- ctx: per-repo .worktrees/<x> with branch feat/<x> ---
 mkdir -p "$ws/.plans/feat-d"; addwt "$ws/api" "$ws/api/.worktrees/feat-d" feat/feat-d
@@ -242,69 +245,112 @@ expect_has "check refuses a sibling replace rc" "rc=1" "$out"
 expect_has "check names the sibling replace" "go.mod: example.com/d => ../sibling" "$out"
 expect_has "check names the absolute replace" "go.mod: example.com/e => /abs/path" "$out"
 
-# --- run, with a fake claude on PATH ---
+# --- run, with fake claude, notify-send, systemd-run and systemctl on PATH ---
+export WT_UNDER_TEST=$WT NOTIFY_LOG=$TMP/notify.log SYSTEMD_LOG=$TMP/systemd.log XDG_STATE_HOME=$TMP/state
 mkdir -p "$TMP/bin"
 cat >"$TMP/bin/claude" <<'EOF'
 #!/usr/bin/env bash
-prompt=; add=; fmt=text
-while [ $# -gt 0 ]; do case $1 in -p) prompt=$2; shift;; --add-dir) add=$2; shift;; --output-format) fmt=$2; shift;; esac; shift; done
+prompt=; add=
+while [ $# -gt 0 ]; do case $1 in -p) prompt=$2; shift;; --add-dir) add=$2; shift;; esac; shift; done
 repo=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
 plan="$add/$repo/plan.md"
-if [ "$fmt" = stream-json ]; then
-  printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"go test"}}]}}\n'
-  printf '{"type":"result","result":"fake claude: %s in %s"}\n' "$prompt" "$PWD"
-else echo "fake claude: $prompt in $PWD"; fi
+echo "$repo ${WT_SLUG:-unset} $("$WT_UNDER_TEST" slug)" >>"$add/seen.log"
+say() { jq -cn --arg t "$1" '{type: "result", subtype: "success", result: $t, num_turns: 3, duration_ms: 4200, total_cost_usd: 0.25}'; }
+printf '%s\n' '{"type":"assistant","parent_tool_use_id":null,"message":{"usage":{"input_tokens":5,"cache_read_input_tokens":40000,"cache_creation_input_tokens":2000},"content":[{"type":"tool_use","name":"Bash","input":{"command":"go test ./..."}}]}}'
 case $prompt in
-  /steps) printf -- '- [ ] one. Test: t1\n- [ ] two%s. Test: t2\n' "$FAKE_BLOCK" >"$plan" ;;
+  /steps)
+    [ -n "${FAKE_NOPLAN:-}" ] && { say "I could not find the spec."; exit 0; }
+    printf -- '- [ ] one. Test: t1\n- [ ] two%s. Test: t2\n' "${FAKE_BLOCK:-}" >"$plan"; say "Plan written: 2 steps." ;;
   /tdd)
     line=$(grep -n '^- \[ \]' "$plan" | head -1); n=${line%%:*}; text=${line#*:}
-    if [[ $text == *BLOCKME* ]]; then sed -i "${n}a\\  BLOCKED: what now?" "$plan"; exit 0; fi
+    if [[ $text == *BLOCKME* ]]; then sed -i "${n}a\\  BLOCKED: what now?" "$plan"; say "BLOCKED: what now?"; exit 0; fi
+    [ -n "${FAKE_NOOP:-}" ] && { say "Should the limit be per user or per org?"; exit 0; }
     echo t >>"t_test.go"; git add -A; git commit -qm "test: $n"; a=$(git rev-parse --short HEAD)
     echo c >>"c.go"; git add -A; git commit -qm "feat: $n"; b=$(git rev-parse --short HEAD)
-    sed -i "${n}s/^- \[ \] \(.*\)$/- [x] \1 (commits: $a $b)/" "$plan" ;;
-  /ship) echo "$repo https://example/pr/1 open" >>"$add/state.md" ;;
+    sed -i "${n}s/^- \[ \] \(.*\)$/- [x] \1 (commits: $a $b)/" "$plan"; say "Step done." ;;
+  /ship)
+    [ -n "${FAKE_NOPR:-}" ] || echo "$repo https://example/pr/1 open" >>"$add/state.md"; say "Shipped." ;;
 esac
 EOF
-chmod +x "$TMP/bin/claude"
-wsr=$TMP/r; mkdir -p "$wsr/.plans/feat-r"; mkrepo "$wsr/api"; mkrepo "$wsr/web"
+printf '#!/usr/bin/env bash\necho "$*" >>"$NOTIFY_LOG"\n' >"$TMP/bin/notify-send"
+cat >"$TMP/bin/systemd-run" <<'EOF'
+#!/usr/bin/env bash
+echo "$*" >>"$SYSTEMD_LOG"
+while [ $# -gt 0 ] && [ "$1" != -- ]; do shift; done; shift
+"$@" >/dev/null 2>&1
+EOF
+printf '#!/usr/bin/env bash\necho "systemctl $*" >>"$SYSTEMD_LOG"\n' >"$TMP/bin/systemctl"
+chmod +x "$TMP/bin/"*
+P="$TMP/bin:$PATH"
+
+wsr=$TMP/r; mkdir -p "$wsr/.plans/feat-r" "$wsr/.plans/api"; mkrepo "$wsr/api"; mkrepo "$wsr/web"
 printf 'Merge order: api, web\n' >"$wsr/.plans/feat-r/order.md"
-out=$(cd "$wsr" && PATH="$TMP/bin:$PATH" "$WT" run feat-r; echo "rc=$?")
+out=$(cd "$wsr" && PATH=$P "$WT" run feat-r; echo "rc=$?")
 expect_has "run rc" "rc=0" "$out"
 expect "run api plan ticked" 2 "$(grep -c '^- \[x\]' "$wsr/.plans/feat-r/api/plan.md")"
 expect "run web plan ticked" 2 "$(grep -c '^- \[x\]' "$wsr/.plans/feat-r/web/plan.md")"
 expect "run logs" yes "$([ -f "$wsr/.plans/feat-r/api/log/plan.log" ] && [ -f "$wsr/.plans/feat-r/api/log/step-02.log" ] && [ -f "$wsr/.plans/feat-r/api/log/ship.log" ] && [ -f "$wsr/.plans/feat-r/api/log/step-02.jsonl" ] && echo yes)"
-expect_has "run log holds the final message" "fake claude: /tdd" "$(cat "$wsr/.plans/feat-r/api/log/step-02.log" 2>/dev/null)"
+expect_has "run log holds the final message" "Step done." "$(cat "$wsr/.plans/feat-r/api/log/step-02.log" 2>/dev/null)"
 expect_has "run jsonl holds the transcript" '"tool_use"' "$(cat "$wsr/.plans/feat-r/api/log/step-02.jsonl" 2>/dev/null)"
 expect "run state" 2 "$(grep -c open "$wsr/.plans/feat-r/state.md")"
 expect_has "run summary api" "api: 2/2 steps done, PR https://example/pr/1" "$out"
 expect_has "run summary web" "web: 2/2 steps done, PR https://example/pr/1" "$out"
 expect "run branch" feat-r "$(git -C "$wsr/.worktrees/feat-r/api" branch --show-current)"
 expect "run commits" 4 "$(git -C "$wsr/.worktrees/feat-r/api" rev-list --count origin/main..HEAD)"
+expect "run sessions know their slug, despite a plan dir named like the repo" "api feat-r feat-r" "$(grep '^api ' "$wsr/.plans/feat-r/seen.log" | sort -u)"
+log=$(cat "$wsr/.plans/feat-r/run.log" 2>/dev/null)
+expect_has "run.log has progress" "[tdd] api: step 1" "$log"
+expect_has "run.log has each session's actions" "api/step-01  Bash go test ./..." "$log"
+expect_has "progress reports each session's cost" '[tdd] api: step 1 done (4s, $0.25, 42k ctx)' "$out"
+expect "sessions.tsv has a row per session" 8 "$(wc -l <"$wsr/.plans/feat-r/sessions.tsv" 2>/dev/null)"
+expect_has "sessions.tsv: repo, label, rc, turns, seconds, cost, context" "$(printf 'api\tstep-01\t0\t3\t4\t0.25\t42005')" "$(cat "$wsr/.plans/feat-r/sessions.tsv" 2>/dev/null)"
+expect_has "a finished run notifies" "feat-r" "$(cat "$NOTIFY_LOG" 2>/dev/null)"
 
 wsb=$TMP/b; mkdir -p "$wsb/.plans/feat-b"; mkrepo "$wsb/api"
 printf 'Merge order: api\n' >"$wsb/.plans/feat-b/order.md"
-out=$(cd "$wsb" && FAKE_BLOCK=BLOCKME PATH="$TMP/bin:$PATH" "$WT" run feat-b; echo "rc=$?")
+out=$(cd "$wsb" && FAKE_BLOCK=BLOCKME PATH=$P "$WT" run feat-b; echo "rc=$?")
 expect_has "run blocked rc" "rc=1" "$out"
 expect_has "run blocked summary" "api: 1/2 steps done, BLOCKED: what now?" "$out"
 expect "run blocked no ship" "" "$(cat "$wsb/.plans/feat-b/state.md" 2>/dev/null)"
+expect_has "a blocked run notifies" "BLOCKED: what now?" "$(cat "$NOTIFY_LOG" 2>/dev/null)"
+
+wsn=$TMP/n; mkdir -p "$wsn/.plans/feat-n"; mkrepo "$wsn/api"
+printf 'Merge order: api\n' >"$wsn/.plans/feat-n/order.md"
+out=$(cd "$wsn" && FAKE_NOOP=1 PATH=$P "$WT" run feat-n; echo "rc=$?")
+expect_has "no progress stops the run" "rc=1" "$out"
+expect "no progress runs one session, not forty" 1 "$(ls "$wsn/.plans/feat-n/api/log" | grep -c '^step-.*jsonl$')"
+expect_has "no progress blocks with the session's last words" "  BLOCKED: step not finished; the session said: Should the limit be per user or per org?" "$(cat "$wsn/.plans/feat-n/api/plan.md")"
+expect_has "no progress summary" "api: 0/2 steps done, BLOCKED: step not finished; the session said: Should the limit" "$out"
+
+wsx=$TMP/x; mkdir -p "$wsx/.plans/feat-x"; mkrepo "$wsx/api"
+printf 'Merge order: api\n' >"$wsx/.plans/feat-x/order.md"
+out=$(cd "$wsx" && FAKE_NOPLAN=1 PATH=$P "$WT" run feat-x; echo "rc=$?")
+expect_has "no plan written fails" "rc=1" "$out"
+expect_has "no plan written says why" "[plan] api: FAILED: no plan written: I could not find the spec." "$out"
+
+wsq=$TMP/q; mkdir -p "$wsq/.plans/feat-q"; mkrepo "$wsq/api"
+printf 'Merge order: api\n' >"$wsq/.plans/feat-q/order.md"
+out=$(cd "$wsq" && FAKE_NOPR=1 PATH=$P "$WT" run feat-q; echo "rc=$?")
+expect_has "ship without a PR fails" "rc=1" "$out"
+expect_has "ship without a PR says why" "[ship] api: FAILED: no PR opened: Shipped." "$out"
 
 wsp=$TMP/p; mkdir -p "$wsp/.plans/feat-p"; mkrepo "$wsp/api"
 printf 'Merge order: api\n' >"$wsp/.plans/feat-p/order.md"
-out=$(cd "$wsp" && PATH="$TMP/bin:$PATH" "$WT" run feat-p plan; echo "rc=$?")
+out=$(cd "$wsp" && PATH=$P "$WT" run feat-p plan; echo "rc=$?")
 expect "run plan only" 0 "$(grep -c '^- \[x\]' "$wsp/.plans/feat-p/api/plan.md")"
 expect_has "run plan summary" "api: 0/2 steps done" "$out"
-out=$(cd "$wsp" && PATH="$TMP/bin:$PATH" "$WT" run feat-p tdd api; echo "rc=$?")
+out=$(cd "$wsp" && PATH=$P "$WT" run feat-p tdd api; echo "rc=$?")
 expect "run tdd repo" 2 "$(grep -c '^- \[x\]' "$wsp/.plans/feat-p/api/plan.md")"
 expect "run tdd keeps plan" 1 "$(ls "$wsp/.plans/feat-p/api/log/plan.log" | wc -l)"
-out=$(cd "$wsp" && PATH="$TMP/bin:$PATH" "$WT" run feat-p nope 2>&1; echo "rc=$?")
+out=$(cd "$wsp" && PATH=$P "$WT" run feat-p nope 2>&1; echo "rc=$?")
 expect_has "run bad phase" "rc=1" "$out"
-out=$(cd "$wsp" && PATH="$TMP/bin:$PATH" "$WT" run feat-none 2>&1; echo "rc=$?")
+out=$(cd "$wsp" && PATH=$P "$WT" run feat-none 2>&1; echo "rc=$?")
 expect_has "run unknown slug" "no .plans/feat-none" "$out"
 
 # single repo, repo-local plans, run from inside the repo
 wss=$TMP/s; mkrepo "$wss/solo"; mkdir -p "$wss/solo/.plans/feat-s"
 printf 'Merge order: solo\n' >"$wss/solo/.plans/feat-s/order.md"
-out=$(cd "$wss/solo" && PATH="$TMP/bin:$PATH" "$WT" run feat-s; echo "rc=$?")
+out=$(cd "$wss/solo" && PATH=$P "$WT" run feat-s; echo "rc=$?")
 expect_has "run single rc" "rc=0" "$out"
 expect "run single ticked" 2 "$(grep -c '^- \[x\]' "$wss/solo/.plans/feat-s/solo/plan.md")"
 expect "run single worktree" feat-s "$(git -C "$wss/solo/.worktrees/feat-s" branch --show-current)"
@@ -312,7 +358,7 @@ expect "run single worktree" feat-s "$(git -C "$wss/solo/.worktrees/feat-s" bran
 # --- progress output during run ---
 wsg=$TMP/g2; mkdir -p "$wsg/.plans/feat-g"; mkrepo "$wsg/api"; mkrepo "$wsg/web"
 printf 'Merge order: api, web\n' >"$wsg/.plans/feat-g/order.md"
-out=$(cd "$wsg" && PATH="$TMP/bin:$PATH" "$WT" run feat-g; echo "rc=$?")
+out=$(cd "$wsg" && PATH=$P "$WT" run feat-g; echo "rc=$?")
 expect_has "progress plan started" "[plan] api: started" "$out"
 expect_has "progress plan done" "[plan] api: done" "$out"
 expect_has "progress tdd starting" "[tdd] api: starting (2 steps)" "$out"
@@ -329,14 +375,55 @@ wsg2=$TMP/g3; mkdir -p "$wsg2/.plans/feat-g2"; mkrepo "$wsg2/api"
 printf 'Merge order: api\n' >"$wsg2/.plans/feat-g2/order.md"
 mkdir -p "$wsg2/.plans/feat-g2/api"
 printf -- '- [ ] one. Test: t1\n' >"$wsg2/.plans/feat-g2/api/plan.md"
-out=$(cd "$wsg2" && PATH="$TMP/bin:$PATH" "$WT" run feat-g2 tdd; echo "rc=$?")
+out=$(cd "$wsg2" && PATH=$P "$WT" run feat-g2 tdd; echo "rc=$?")
 expect_has "progress tdd no plan phase" "[tdd] api: starting (1 steps)" "$out"
 expect_lacks "progress skip plan" "[plan]" "$out"
 
 # progress: blocked shows reason
 wsbl=$TMP/bl; mkdir -p "$wsbl/.plans/feat-bl"; mkrepo "$wsbl/api"
 printf 'Merge order: api\n' >"$wsbl/.plans/feat-bl/order.md"
-out=$(cd "$wsbl" && FAKE_BLOCK=BLOCKME PATH="$TMP/bin:$PATH" "$WT" run feat-bl; echo "rc=$?")
+out=$(cd "$wsbl" && FAKE_BLOCK=BLOCKME PATH=$P "$WT" run feat-bl; echo "rc=$?")
 expect_has "progress blocked" "[tdd] api: BLOCKED: what now?" "$out"
+
+# --- build: detached under systemd; one run per feature at a time ---
+wsd=$TMP/d; mkdir -p "$wsd/.plans/feat-d"; mkrepo "$wsd/api"
+printf 'Merge order: api\n' >"$wsd/.plans/feat-d/order.md"
+out=$(cd "$wsd" && PATH=$P "$WT" build feat-d; echo "rc=$?")
+expect_has "build rc" "rc=0" "$out"
+expect_has "build names a unit" "--unit=wt-feat-d-" "$(cat "$SYSTEMD_LOG" 2>/dev/null)"
+expect_has "build runs from here" "--same-dir" "$(cat "$SYSTEMD_LOG" 2>/dev/null)"
+expect_has "build runs wt run" "run feat-d" "$(cat "$SYSTEMD_LOG" 2>/dev/null)"
+expect_has "build says how to follow it" "wt watch feat-d" "$out"
+expect "build ran the line" 2 "$(grep -c '^- \[x\]' "$wsd/.plans/feat-d/api/plan.md" 2>/dev/null)"
+out=$(cd "$wsd" && PATH=$P "$WT" build feat-none 2>&1; echo "rc=$?")
+expect_has "build unknown slug" "no .plans/feat-none" "$out"
+
+wsl=$TMP/l; mkdir -p "$wsl/.plans/feat-l"; mkrepo "$wsl/api"
+printf 'Merge order: api\n' >"$wsl/.plans/feat-l/order.md"; echo wt-feat-l-abcd >"$wsl/.plans/feat-l/run.unit"
+flock -n "$wsl/.plans/feat-l/.run.lock" sleep 3 & lockpid=$!; sleep 0.5
+out=$(cd "$wsl" && PATH=$P "$WT" run feat-l 2>&1; echo "rc=$?")
+expect_has "a second run is refused" "feat-l is already running" "$out"
+out=$(cd "$wsl" && PATH=$P "$WT" build feat-l 2>&1; echo "rc=$?")
+expect_has "build refuses while running" "already running" "$out"
+expect_has "status shows a running feature" "running" "$(cd "$wsl" && "$WT" status feat-l)"
+out=$(cd "$wsl" && PATH=$P "$WT" stop feat-l 2>&1; echo "rc=$?")
+expect_has "stop stops the unit" "systemctl --user stop wt-feat-l-abcd" "$(cat "$SYSTEMD_LOG")"
+wait "$lockpid"
+
+# --- status, watch, stop ---
+out=$(cd "$wsr" && "$WT" status; echo "rc=$?")
+expect_has "status lists features here" "feat-r" "$out"
+expect_has "status: a finished run is done" "done" "$out"
+out=$(cd "$TMP" && "$WT" status)
+expect_has "status works from anywhere" "feat-r" "$out"
+expect_has "status shows a blocked feature" "blocked" "$out"
+out=$(cd "$wsr" && "$WT" status feat-r)
+expect_has "status shows repo progress" "api: 2/2 steps done, PR https://example/pr/1" "$out"
+expect_has "status shows totals" "8 sessions" "$out"
+out=$(cd "$wsr" && timeout 5 "$WT" watch feat-r; echo "rc=$?")
+expect_has "watch prints the run log" "[ship] web: done" "$out"
+expect_has "watch ends when the run is not running" "rc=0" "$out"
+out=$(cd "$wsr" && PATH=$P "$WT" stop feat-r 2>&1; echo "rc=$?")
+expect_has "stop when idle says so" "not running" "$out"
 
 if [ "$fails" -eq 0 ]; then echo "all wt tests passed"; else echo "$fails failing"; exit 1; fi
