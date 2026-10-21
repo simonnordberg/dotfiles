@@ -41,9 +41,11 @@ tests for impossible inputs.
 
 ## Plan review
 
-Every spec requirement is covered by a step; no step is outside the spec; each step names the
-failing test or check that proves it; this repo's side of each seam contract has a test; the
-order respects dependencies.
+Every spec requirement is covered by a slice; no slice is outside the spec. Each slice groups
+2 to 3 related behaviors that touch the same files and names a failing test or check that
+proves all of them; there should be 5 to 8 slices, no single-behavior steps, and no
+verify-only steps. This repo's side of each seam contract has a test; the order respects
+dependencies.
 
 ## Severity
 
