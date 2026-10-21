@@ -290,12 +290,32 @@ echo "gh $*" >>"$PR_LOG"
 if [ "$1 $2" = "pr create" ]; then
   while [ $# -gt 0 ]; do [ "$1" = --body-file ] && cp "$2" "$PR_LOG.body.gh"; shift; done
   echo "https://github.com/acme/api/pull/7"
+elif [ "$1 $2" = "pr checks" ]; then
+  case ${FAKE_CI:-pass} in
+    fail_then_pass)
+      f=$PR_LOG.ci_count; n=$(cat "$f" 2>/dev/null); n=${n:-0}; echo $((n + 1)) >"$f"
+      [ "$n" -ge 1 ] && echo '[{"state":"SUCCESS"}]' || echo '[{"state":"FAILURE","name":"test"}]' ;;
+    always_fail) echo '[{"state":"FAILURE","name":"test"}]' ;;
+    *) echo '[{"state":"SUCCESS"}]' ;;
+  esac
 fi
 EOF
 cat >"$TMP/bin/codebahn" <<'EOF'
 #!/usr/bin/env bash
 echo "codebahn $*" >>"$PR_LOG"
-[ "$1 $2" = "pr create" ] && jq -cn '{html_url: "https://codebahn.net/acme/web/pulls/3", number: 3}'
+if [ "$1 $2" = "pr create" ]; then
+  jq -cn '{html_url: "https://codebahn.net/acme/web/pulls/3", number: 3}'
+elif [ "$1" = "ci" ] && [ "$2" = "list" ]; then
+  case ${FAKE_CI:-pass} in
+    fail_then_pass)
+      f=$PR_LOG.cb_ci_count; n=$(cat "$f" 2>/dev/null); n=${n:-0}; echo $((n + 1)) >"$f"
+      [ "$n" -ge 1 ] && jq -cn '{workflow_runs:[{id:1,status:"success"}]}' || jq -cn '{workflow_runs:[{id:1,status:"failure"}]}' ;;
+    always_fail) jq -cn '{workflow_runs:[{id:1,status:"failure"}]}' ;;
+    *) jq -cn '{workflow_runs:[{id:1,status:"success"}]}' ;;
+  esac
+elif [ "$1" = "ci" ] && [ "$2" = "logs" ]; then
+  echo '{"jobs":[{"name":"test","status":"failure","lines":[{"message":"FAIL TestX","step":"run"}]}]}'
+fi
 exit 0
 EOF
 printf '#!/usr/bin/env bash\necho "$*" >>"$NOTIFY_LOG"\n' >"$TMP/bin/notify-send"
@@ -308,6 +328,7 @@ EOF
 printf '#!/usr/bin/env bash\necho "systemctl $*" >>"$SYSTEMD_LOG"\n' >"$TMP/bin/systemctl"
 chmod +x "$TMP/bin/"*
 P="$TMP/bin:$PATH"
+export WT_CI_POLL=0 WT_CI_TIMEOUT=5
 fakehost() { # fakehost <repo> <url>: origin reads as <url>; fetch and push still reach the local bare origin
   local bare; bare=$(git -C "$1" config --get remote.origin.url)
   git -C "$1" remote set-url origin "$2"
@@ -509,6 +530,38 @@ wsbl=$TMP/bl; mkdir -p "$wsbl/.plans/feat-bl"; mkrepo "$wsbl/api"
 printf 'Merge order: api\n' >"$wsbl/.plans/feat-bl/order.md"
 out=$(cd "$wsbl" && FAKE_BLOCK=BLOCKME PATH=$P "$WT" run feat-bl; echo "rc=$?")
 expect_has "progress blocked" "[tdd] api: BLOCKED: what now?" "$out"
+
+# --- CI watch: after PRs are open, poll CI and fix red runs ---
+# green CI
+feature "$TMP/ci1" feat-ci1 api; fakehost "$TMP/ci1/api" git@github.com:acme/api.git
+out=$(cd "$TMP/ci1" && PATH=$P "$WT" run feat-ci1; echo "rc=$?")
+expect_has "CI poll: github green" "[ci] api: CI green" "$out"
+expect_has "CI poll rc" "rc=0" "$out"
+
+# red CI with a fix
+feature "$TMP/ci2" feat-ci2 api; fakehost "$TMP/ci2/api" git@github.com:acme/api.git
+out=$(cd "$TMP/ci2" && FAKE_CI=fail_then_pass PATH=$P "$WT" run feat-ci2; echo "rc=$?")
+expect_has "CI red gets a fix session" "[ci] api: CI red; fix session 1" "$out"
+expect_has "CI: fix and re-push lets it finish" "[ci] api: CI green" "$out"
+expect_has "CI fixed rc" "rc=0" "$out"
+expect_has "CI fix session in prompts" "api main /fix ci" "$(cat "$TMP/ci2/.plans/feat-ci2/prompts.log")"
+
+# always-red CI blocks after 2 fix sessions
+feature "$TMP/ci3" feat-ci3 api; fakehost "$TMP/ci3/api" git@github.com:acme/api.git
+out=$(cd "$TMP/ci3" && FAKE_CI=always_fail PATH=$P "$WT" run feat-ci3; echo "rc=$?")
+expect_has "CI always red blocks" "[ci] api: BLOCKED: CI still red after 2 fix sessions" "$out"
+expect_has "CI always red rc" "rc=1" "$out"
+expect "CI: two fix sessions at most" 2 "$(grep -c '/fix ci' "$TMP/ci3/.plans/feat-ci3/prompts.log")"
+
+# codebahn CI
+feature "$TMP/ci4" feat-ci4 api; fakehost "$TMP/ci4/api" git@codebahn.net:acme/api.git
+out=$(cd "$TMP/ci4" && PATH=$P "$WT" run feat-ci4; echo "rc=$?")
+expect_has "CI poll: codebahn green" "[ci] api: CI green" "$out"
+
+# unknown host: no CI poll
+feature "$TMP/ci5" feat-ci5 api
+out=$(cd "$TMP/ci5" && PATH=$P "$WT" run feat-ci5; echo "rc=$?")
+expect_lacks "no CI poll for unknown hosts" "[ci]" "$out"
 
 # --- build: detached under systemd; one run per feature at a time ---
 wsd=$TMP/d; feature "$wsd" feat-d api

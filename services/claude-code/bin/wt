@@ -646,6 +646,109 @@ publish() { # publish <index> <total> <repo>: push, open the PR, record it in st
   progress ship "$repo" done
 }
 
+# --- CI watch: poll each PR's CI, fix red runs, re-push ---
+
+WT_CI_POLL=${WT_CI_POLL:-30}       # seconds between polls
+WT_CI_TIMEOUT=${WT_CI_TIMEOUT:-900} # give up after 15 min
+
+ci_host() { # ci_host <repo>: github, codebahn, or empty (unknown)
+  local url
+  url=$(git -C "$(wt_dir "$1")" config --get remote.origin.url 2>/dev/null)
+  case $url in *github.com[:/]*) echo github ;; *codebahn.net[:/]*) echo codebahn ;; esac
+}
+
+ci_status_github() { # ci_status_github <repo> <pr_url>: success, failure, pending, or empty
+  local pr_num owner_repo checks state
+  pr_num=${2##*/}
+  owner_repo=$(echo "$2" | sed -n 's|https://github.com/\([^/]*/[^/]*\)/pull/.*|\1|p')
+  checks=$(gh pr checks "$pr_num" --repo "$owner_repo" --json state 2>/dev/null) || return 0
+  state=$(jq -r '.[0].state // empty' <<<"$checks")
+  case $state in SUCCESS) echo success ;; FAILURE) echo failure ;; PENDING|"") echo pending ;; *) echo "$state" ;; esac
+}
+
+ci_status_codebahn() { # ci_status_codebahn <repo> <pr_url>: success, failure, pending, or empty
+  local sha dir runs status
+  dir=$(wt_dir "$1")
+  sha=$(git -C "$dir" rev-parse HEAD)
+  local host path
+  local url; url=$(git -C "$dir" config --get remote.origin.url)
+  host=${url#*://}; host=${host#*@}; host=${host%%[:/]*}
+  path=${url#*"$host"}; path=${path#[:/]}; path=${path%.git}
+  runs=$(codebahn ci list --owner "${path%%/*}" --repo "${path#*/}" --head_sha "$sha" --instance "https://$host" --json 2>/dev/null) || return 0
+  status=$(jq -r '.workflow_runs[0].status // empty' <<<"$runs")
+  case $status in success) echo success ;; failure) echo failure ;; waiting|running) echo pending ;; cancelled) echo cancelled ;; *) echo "$status" ;; esac
+}
+
+ci_logs_codebahn() { # ci_logs_codebahn <repo> <pr_url>: fetch failing job logs to ci.log
+  local dir sha url host path runs run_id
+  dir=$(wt_dir "$1"); sha=$(git -C "$dir" rev-parse HEAD)
+  url=$(git -C "$dir" config --get remote.origin.url)
+  host=${url#*://}; host=${host#*@}; host=${host%%[:/]*}
+  path=${url#*"$host"}; path=${path#[:/]}; path=${path%.git}
+  runs=$(codebahn ci list --owner "${path%%/*}" --repo "${path#*/}" --head_sha "$sha" --instance "https://$host" --json 2>/dev/null)
+  run_id=$(jq -r '.workflow_runs[0].id // empty' <<<"$runs")
+  [ -n "$run_id" ] || return 0
+  codebahn ci logs --owner "${path%%/*}" --repo "${path#*/}" --run_id "$run_id" --instance "https://$host" --json 2>/dev/null |
+    jq -r '.jobs[]? | select(.status == "failure") | .lines[]?.message' >"$RUN_PLANS/$1/ci.log" 2>/dev/null
+}
+
+ci_logs_github() { # ci_logs_github <repo> <pr_url>: a summary of the failing checks
+  local pr_num owner_repo
+  pr_num=${2##*/}
+  owner_repo=$(echo "$2" | sed -n 's|https://github.com/\([^/]*/[^/]*\)/pull/.*|\1|p')
+  gh pr checks "$pr_num" --repo "$owner_repo" 2>/dev/null | grep -i fail >"$RUN_PLANS/$1/ci.log" 2>/dev/null
+}
+
+poll_ci() { # poll_ci <repo> <pr_url> <host>: wait for CI, return 0 green / 1 red / 2 timeout
+  local elapsed=0 status
+  while [ "$elapsed" -lt "$WT_CI_TIMEOUT" ]; do
+    case $3 in
+      github) status=$(ci_status_github "$1" "$2") ;;
+      codebahn) status=$(ci_status_codebahn "$1" "$2") ;;
+    esac
+    case $status in
+      success) return 0 ;;
+      failure) return 1 ;;
+      cancelled) return 1 ;;
+    esac
+    sleep "$WT_CI_POLL"; elapsed=$((elapsed + WT_CI_POLL))
+  done
+  return 2
+}
+
+watch_ci() { # watch_ci <repos...>: after PRs are open, poll CI and fix red runs
+  local repo pr_url host rc dir
+  for repo in "$@"; do
+    pr_url=$(awk -v r="$repo" '$1 == r {u = $2} END {print u}' "$RUN_PLANS/state.md" 2>/dev/null)
+    [ -n "$pr_url" ] && [ "$pr_url" != "-" ] || continue
+    host=$(ci_host "$repo")
+    [ -n "$host" ] || continue
+    progress ci "$repo" "polling CI ($host)"
+    local try=0
+    while :; do
+      poll_ci "$repo" "$pr_url" "$host"; rc=$?
+      if [ "$rc" -eq 0 ]; then progress ci "$repo" "CI green"; break; fi
+      if [ "$rc" -eq 2 ]; then progress ci "$repo" "CI timed out after ${WT_CI_TIMEOUT}s; check it by hand"; break; fi
+      # red: fetch logs and try to fix
+      try=$((try + 1))
+      case $host in
+        github) ci_logs_github "$repo" "$pr_url" ;;
+        codebahn) ci_logs_codebahn "$repo" "$pr_url" ;;
+      esac
+      if [ "$try" -gt 2 ]; then
+        block_end "$RUN_PLANS/$repo/plan.md" "CI still red after 2 fix sessions (see $RUN_PLANS/$repo/ci.log)"
+        block ci "$repo" "CI still red after 2 fix sessions (see $RUN_PLANS/$repo/ci.log)"
+        return 1
+      fi
+      progress ci "$repo" "CI red; fix session $try"
+      dir=$(wt_dir "$repo")
+      fix_session "$repo" ci || return 1
+      check_green "$repo" "$dir" || return 1
+      push_branch "$repo" "$dir" || return 1
+    done
+  done
+}
+
 run_phase_parallel() { # run_phase_parallel <fn> <repos...>
   local fn=$1 pids=() rc=0 pid; shift
   for repo in "$@"; do "$fn" "$repo" & pids+=($!); done
@@ -708,7 +811,8 @@ cmd_run() {
     if [ "$rc" -eq 0 ]; then
       local i=0
       for repo in "${repos[@]}"; do i=$((i + 1)); publish "$i" "${#repos[@]}" "$repo" || { rc=1; break; }; done
-    fi ;;
+    fi
+    [ "$rc" -eq 0 ] && { watch_ci "${repos[@]}" || rc=1; } ;;
   esac
   if [ "$rc" -eq 0 ]; then
     progress run "$slug" "finished $phase"
