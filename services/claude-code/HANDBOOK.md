@@ -19,8 +19,8 @@ agent) and `bash install.sh services/shell` (`wt` on PATH, the `work` function).
 
 Each phase's model is explicit in its skill's frontmatter (`model:` and `effort:` in
 `skills/<name>/SKILL.md`) and applies whether the skill runs headlessly or by hand; it
-overrides `--model`. Defaults: `/steps` on `claude-opus-4-6[1m]` at max effort, `/fix` on it
-at high, `/tdd` on `claude-sonnet-5` at medium. To change one, edit that frontmatter and reinstall.
+overrides `--model`. Defaults: `/steps` and `/fix` on `claude-opus-4-6[1m]` at high effort,
+`/tdd` on `claude-sonnet-5` at medium. To change one, edit that frontmatter and reinstall.
 `/spec` has none: a multi-turn interview follows the session's model, so launch it with
 `cl --model 'claude-fable-5-1[1m]'` when the feature deserves the strongest model (the
 later flag wins). Reading the codebase is delegated to Explore subagents on `sonnet` in
@@ -45,9 +45,11 @@ cd ~/code/codebahn && cl
 at a time. For each repo in `order.md` it:
 
 1. creates `.worktrees/<slug>/<repo>` on branch `<slug>` from fresh `origin/HEAD`, and runs
-   `/steps` to write `plan.md` from the spec (checked by the reviewer against the spec);
-2. runs `/tdd` once per unchecked step: failing test shown red, `test:` commit, minimal code,
-   green commit, optional `refactor:` commit, step ticked with the shas;
+   `/steps` to write `plan.md` from the spec: 5 to 8 slices of 2-3 related behaviors each,
+   checked by the reviewer against the spec;
+2. runs `/tdd` once per unchecked slice: red/green/refactor per behavior, then `wt check
+   --quick` (the repo's fast CI subset; a red check gets up to two `/fix check` sessions,
+   then unticks and blocks). Each slice is one fresh session; the plan is ticked with shas;
 3. ships. Per repo, in parallel: rebase onto fresh `origin/<default>`; `wt check` (a red
    check gets up to two `/fix check` sessions); the reviewer on the whole diff; its BLOCKER and
    MAJOR findings go to one `/fix review` session, which proves each with a failing test (or
