@@ -15,7 +15,7 @@ Include:
 - What was accomplished this session
 - Open questions and decisions pending
 - Current state of .plans/ artifacts (reference by path, don't duplicate content)
-- Suggested skills for the next session (e.g. "/tdd", "/ship", "/map <slug>")
+- Suggested skills for the next session (e.g. "/tdd", "/build <slug> ship", "/map <slug>")
 
 Do not duplicate content captured in other artifacts (specs, plans, commits, diffs).
 Reference them by path instead.

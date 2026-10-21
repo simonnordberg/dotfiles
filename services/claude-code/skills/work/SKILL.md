@@ -9,5 +9,6 @@ Worktree: !`"$HOME/.claude/bin/wt" create $ARGUMENTS 2>&1 || true`
 If the line above is an error, show it and stop. Otherwise: if this session is already inside
 a worktree, ExitWorktree (keep) first; then EnterWorktree with `path` set to the line above.
 Then tell me to run /clear (cheap context; the SessionStart hooks set WT_SLUG and ports
-there), and that /tdd and /ship work here. A BLOCKED line in plan.md is resolved by
+there), that /tdd works here, that `/build <slug> ship <repo>` reviews the branch and opens its
+PR, and that /review gives a second opinion. A BLOCKED line in plan.md is resolved by
 answering it, deleting the line, and running /tdd.

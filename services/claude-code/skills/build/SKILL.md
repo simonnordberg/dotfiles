@@ -13,4 +13,4 @@ answering the question in that repo's plan.md, deleting the BLOCKED line, and ru
 `/build <slug>` again, or `/work <slug> <repo>` to continue by hand.
 
 If it says the slug is already running or has no plans, say so and stop. Do not run /steps,
-/tdd, or /ship yourself in this session.
+/tdd, or /fix yourself in this session.

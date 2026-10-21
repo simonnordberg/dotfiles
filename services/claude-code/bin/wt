@@ -5,6 +5,7 @@ set -u
 
 MAX_STEPS=40
 WT_CHECK_TIMEOUT=${WT_CHECK_TIMEOUT:-1500}
+WT_PUSH_TIMEOUT=${WT_PUSH_TIMEOUT:-120}
 WT_SELF=$(realpath "${BASH_SOURCE[0]}")
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/wt
 
@@ -14,17 +15,18 @@ usage: wt <command> [args]
   ctx                          workspace/repo/slug/plans for the current directory
   here                         workspace root (lists repos) or repo, for /spec
   slug                         the resolved slug, or nothing
-  tdd | ship | plan-ctx        context blocks for the skills; always exit 0
-  audit                        check ticked plan steps for the red/green commit shape
+  tdd | plan-ctx | fix-ctx <check|review|ci>
+                               context blocks for the skills; always exit 0
   check [--quick]              run this repo's .claude/check (what CI runs); --quick while iterating
   create <slug> [repo]         find or create the slug's worktree; prints its path
   remove <slug>                remove the slug's worktrees and branches if clean and merged
-  run <slug> [phase] [repo]    headless plan|tdd|ship|all (default all), per repo in merge order
+  run <slug> [phase] [repo]    headless plan|tdd|ship|all (default all), per repo in merge order;
+                               ship = rebase, check, review, fixes, e2e, then push and PRs
   build <slug> [phase] [repo]  the same run, detached under systemd; notifies when it needs you
   status [slug]                every feature that has run, or one feature in detail
   watch <slug>                 follow a run live: progress plus one line per session action
   stop <slug>                  stop a detached run
-models per phase come from each skill's frontmatter (skills/steps, tdd, ship)
+models come from each skill's frontmatter (skills/steps, tdd, fix) and agents/reviewer.md
 EOF
 }
 
@@ -198,46 +200,21 @@ cmd_plan_ctx() {
     "$(show_file "$plandir/plan.md" none)"
 }
 
-cmd_ship() {
+cmd_fix_ctx() { # fix-ctx <check|review|ci>: what a /fix session fixes
+  local kind=${1:-}
   resolve || { echo "Not in a git repository: $PWD"; return 0; }
   header
-  printf 'Spec:\n%s\nMerge order:\n%s\nState:\n%s\n' \
-    "$(show_file "$plans/spec.md" "NO SPEC")" "$(show_file "$plans/order.md" "single repo")" \
-    "$(show_file "$plans/state.md" none)"
-  printf 'Unchecked steps (this repo): %s\n' "$(count '^- \[ \]' "$plandir/plan.md")"
-  grep '^ *BLOCKED:' "$plandir/plan.md" 2>/dev/null
-  cmd_audit
-  local def base
-  def=$(default_branch "$main"); [ -n "$def" ] || def=main
-  base=$(git merge-base HEAD "origin/$def" 2>/dev/null || git merge-base HEAD "$def" 2>/dev/null)
-  printf 'Base: origin/%s\nDiff:\n%s\nRemote: %s\n' "$def" \
-    "$( [ -n "$base" ] && git diff --stat "$base..HEAD" 2>/dev/null || echo "(no merge base with origin/$def)")" \
-    "$(git remote get-url origin 2>/dev/null || echo none)"
-}
-
-cmd_audit() {
-  resolve || { echo "Methodology audit: not in a git repository"; return 0; }
-  local plan=$plandir/plan.md
-  [ -f "$plan" ] || { echo "Methodology audit: no plan at $plan"; return 0; }
-  local n=0 checked=0 line shas sha first violations=
-  v() { violations="$violations$(printf '\n  step %s: %s' "$n" "$1")"; }
-  while IFS= read -r line; do
-    case $line in '- [ ]'*|'- [x]'*) n=$((n + 1)) ;; *) continue ;; esac
-    [ "${line:0:5}" = '- [x]' ] || continue
-    checked=$((checked + 1))
-    shas=$(printf '%s' "$line" | sed -n 's/.*(commits: *\([0-9a-f ]*\)).*/\1/p')
-    [ -n "$shas" ] || { v "no commits recorded"; continue; }
-    for sha in $shas; do
-      git merge-base --is-ancestor "$sha" HEAD 2>/dev/null || v "commit $sha is not on this branch"
-    done
-    case $line in *Check:*) continue ;; esac
-    [ "$(printf '%s\n' $shas | wc -l)" -ge 2 ] || { v "needs a test commit and a green commit"; continue; }
-    first=${shas%% *}
-    git log -1 --format=%s "$first" 2>/dev/null | grep -Eq '^test(\(.*\))?:' || v "first commit is not a test: commit"
-  done <"$plan"
-  if [ -z "$violations" ]; then echo "Methodology audit: OK ($checked steps)"
-  else printf 'Methodology audit: VIOLATIONS%s\n' "$violations"
-  fi
+  [ -n "$slug" ] || return 0
+  printf 'Spec: %s\n' "$plans/spec.md"
+  case $kind in
+    check) printf 'Failing check (full output: %s):\n' "$plandir/check.log"; tail -n 80 "$plandir/check.log" 2>/dev/null ;;
+    review) printf 'Review (append your Resolution section to this file): %s\n' "$plandir/review.md"
+            show_file "$plandir/review.md" "NO REVIEW FOUND" ;;
+    ci) printf 'Failing CI run (full log: %s):\n' "$plandir/ci.log"; tail -n 150 "$plandir/ci.log" 2>/dev/null ;;
+    *) echo "unknown kind '$kind' (check|review|ci)" ;;
+  esac
+  printf 'Recent commits:\n%s\nWorking tree:\n%s\n' \
+    "$(git log --oneline -8 2>/dev/null || echo none)" "$(git status --short 2>/dev/null | grep . || echo clean)"
 }
 
 # --- check -----------------------------------------------------------------------
@@ -256,8 +233,14 @@ local_replaces() { # local_replaces <toplevel>: go.mod replaces that point outsi
 
 # A repo's .claude/check runs what its CI runs; green means green on CI. A full check that
 # passes on a clean tree is remembered per tree, so pushing right after it doesn't rerun it.
+failures() { # failures <log>: the lines that say what failed, for a human or a fix session
+  local hits
+  hits=$(grep -E -A 6 -m 12 -e '^--- FAIL|^FAIL|^panic:|^ERR|[Ee]rror:|FAILED|✗|✖|×' "$1" | head -n 60)
+  [ -z "$hits" ] || printf -- '--- what failed:\n%s\n' "$hits"
+}
+
 cmd_check() {
-  local mode=${1:-} top bad stamp tree clean= rc
+  local mode=${1:-} top bad stamp tree clean= rc log
   case $mode in ''|--quick) ;; *) die "usage: wt check [--quick]" ;; esac
   top=$(git rev-parse --show-toplevel 2>/dev/null) || die "check: not in a git repository"
   top=$(realpath "$top")
@@ -273,9 +256,14 @@ cmd_check() {
   if [ -z "$mode" ] && [ -n "$clean" ] && [ -n "$tree" ] && [ "$(cat "$stamp" 2>/dev/null)" = "$tree" ]; then
     echo "wt check: already green at $(git -C "$top" rev-parse --short HEAD)"; return 0
   fi
-  (cd "$top" && timeout -k 30 "$WT_CHECK_TIMEOUT" ./.claude/check $mode); rc=$?
-  [ "$rc" -ne 124 ] || { echo "wt check: timed out after ${WT_CHECK_TIMEOUT}s" >&2; return 1; }
-  [ "$rc" -eq 0 ] || { echo "wt check: red (exit $rc)" >&2; return 1; }
+  log=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-check.log)
+  (cd "$top" && timeout -k 30 "$WT_CHECK_TIMEOUT" ./.claude/check $mode) 2>&1 | tee "$log"; rc=${PIPESTATUS[0]}
+  if [ "$rc" -ne 0 ]; then
+    if [ "$rc" -eq 124 ]; then echo "wt check: timed out after ${WT_CHECK_TIMEOUT}s; full output: $log"
+    else echo "wt check: red (exit $rc); full output: $log"; fi
+    failures "$log"
+    return 1
+  fi
   if [ -z "$mode" ] && [ -n "$clean" ] && [ -z "$(git -C "$top" status --porcelain)" ]; then
     printf '%s\n' "$tree" >"$stamp"
   fi
@@ -451,15 +439,163 @@ run_tdd() { # one session per step; a session that ticks nothing blocks the plan
   progress tdd "$repo" "done ($(count '^- \[x\]' "$plan")/$(count '^- \[[ x]\]' "$plan"))"
 }
 
-run_ship() {
-  local repo=$1 plan=$RUN_PLANS/$1/plan.md before label
+# --- ship: rebase, check, review and fixes per repo; e2e once; then push and PRs in merge order
+
+wt_dir() { find_wt "$RUN_SLUG" "$1" "$(repo_dir "$RUN_WS" "$1")" "$RUN_WS"; } # wt_dir <repo>
+block_end() { printf 'BLOCKED: %s\n' "$2" >>"$1"; } # block_end <plan> <reason>: stops reruns until cleared
+stop_ship() { block_end "$RUN_PLANS/$1/plan.md" "$2"; block ship "$1" "$2"; } # stop_ship <repo> <reason>
+session_blocked() { sed -n 's/^BLOCKED: *//p' "$RUN_PLANS/$1/log/$2.log" 2>/dev/null | head -1 | grep .; }
+serious() { count '^- \(BLOCKER\|MAJOR\) ' "$1"; } # serious <review>: blocker and major findings
+section_drop() { awk -v re="^## ($2)\$" '$0 ~ re {skip = 1; next} /^## / {skip = 0} !skip' "$1" 2>/dev/null; }
+section() { awk -v h="## $2" '$0 == h {on = 1; next} /^## / {on = 0} on' "$1" 2>/dev/null | sed '/./,$!d'; }
+
+fix_session() { # fix_session <repo> <kind>: one /fix session; a BLOCKED answer stops the repo
+  local label why
+  label=$(next_label "$1" "fix-$2")
+  run_step "$1" "$label" "/fix $2" || { fail ship "$1" "fix session failed: $(last_words "$1" "$label")"; return 1; }
+  why=$(session_blocked "$1" "$label") && { stop_ship "$1" "$why"; return 1; }
+  return 0
+}
+
+sync_default() { # sync_default <repo> <dir>: a clean tree, rebased onto fresh origin/<default>
+  local def dirty
+  dirty=$(git -C "$2" status --porcelain)
+  [ -z "$dirty" ] || { stop_ship "$1" "uncommitted or untracked files in $2: $(printf '%s' "$dirty" | head -5 | paste -sd ' ')"; return 1; }
+  def=$(default_branch "$2")
+  timeout 60 git -C "$2" fetch -q origin 2>/dev/null || progress ship "$1" "fetch failed; using the last known origin/$def"
+  git -C "$2" merge-base --is-ancestor "origin/$def" HEAD && return 0
+  if git -C "$2" rebase -q "origin/$def" >/dev/null 2>&1; then progress ship "$1" "rebased onto origin/$def"; return 0; fi
+  git -C "$2" rebase --abort 2>/dev/null
+  stop_ship "$1" "conflicts with origin/$def; run /rebase in $2"
+  return 1
+}
+
+check_green() { # check_green <repo> <dir>: wt check, with up to 2 /fix check sessions on red
+  local repo=$1 dir=$2 try=0
+  until (cd "$dir" && "$WT_SELF" check) >"$RUN_PLANS/$repo/check.log" 2>&1; do
+    try=$((try + 1))
+    [ "$try" -le 2 ] || { stop_ship "$repo" "check still red after 2 fix sessions (see $RUN_PLANS/$repo/check.log)"; return 1; }
+    progress ship "$repo" "check red; fix session $try"
+    fix_session "$repo" check || return 1
+  done
+  progress ship "$repo" "check green"
+}
+
+review_prompt() { # review_prompt <repo> <dir> <base> <earlier review>
+  printf 'Review the changes on this branch: `git diff %s..HEAD` in %s (repo %s).\n' "$3" "$2" "$1"
+  printf 'Spec: %s\n' "$( [ -f "$RUN_PLANS/spec.md" ] && echo "$RUN_PLANS/spec.md" || echo none)"
+  [ -f "$4" ] && printf 'An earlier review of this branch, with how each finding was resolved, is at %s. Do not re-raise a finding resolved there unless the code still shows it; then say why the resolution is wrong.\n' "$4"
+  printf 'Follow your code review instructions and output exactly the format they define.\n'
+}
+
+rereview_prompt() { # rereview_prompt <repo> <dir> <pre-fix sha> <review>
+  printf 'Re-review only the fix commits: `git diff %s..HEAD` in %s (repo %s).\n' "$3" "$2" "$1"
+  printf 'They address the BLOCKER and MAJOR findings in %s, resolved as its Resolution section says.\n' "$4"
+  printf 'Check that each fix is correct and complete and adds no new BLOCKER or MAJOR. Raise nothing about code outside that diff and no MINOR or NIT. Output only the Findings section of your format.\n'
+}
+
+run_review() { # run_review <repo> <dir>: review, a verified fix round, one re-review of the fixes
+  local repo=$1 dir=$2 plandir=$RUN_PLANS/$1 base label n pre
+  base=$(git -C "$dir" merge-base HEAD "origin/$(default_branch "$dir")")
+  label=$(next_label "$repo" review)
+  run_step "$repo" "$label" "$(review_prompt "$repo" "$dir" "$base" "$plandir/review.md")" --agent reviewer ||
+    { fail ship "$repo" "review session failed: $(last_words "$repo" "$label")"; return 1; }
+  cp "$plandir/log/$label.log" "$plandir/review.md"
+  n=$(serious "$plandir/review.md")
+  progress ship "$repo" "review: $n blocker/major ($LAST_STATS)"
+  [ "$n" -gt 0 ] || return 0
+  pre=$(git -C "$dir" rev-parse HEAD)
+  fix_session "$repo" review && check_green "$repo" "$dir" || return 1
+  label=$(next_label "$repo" rereview)
+  run_step "$repo" "$label" "$(rereview_prompt "$repo" "$dir" "$pre" "$plandir/review.md")" --agent reviewer ||
+    { fail ship "$repo" "re-review session failed: $(last_words "$repo" "$label")"; return 1; }
+  { printf '\n## Re-review of the fixes\n'; section_drop "$plandir/log/$label.log" 'Title|Summary' | sed 's/^## /### /'; } >>"$plandir/review.md"
+  n=$(serious "$plandir/log/$label.log")
+  [ "$n" -eq 0 ] || { stop_ship "$repo" "review: $n blocker/major left after one fix round (see $plandir/review.md)"; return 1; }
+  progress ship "$repo" "fixes re-reviewed: clean"
+}
+
+run_verify() { # run_verify <repo>: everything before the push; skipped once the repo has a PR
+  local repo=$1 plan=$RUN_PLANS/$1/plan.md dir
+  [ "$(pr_count "$RUN_PLANS" "$repo")" -eq 0 ] || { progress ship "$repo" "PR already open"; return 0; }
   if has_unchecked "$plan" || is_blocked "$plan"; then fail ship "$repo" "the plan has unfinished or blocked steps"; return 1; fi
+  dir=$(wt_dir "$repo") || { fail ship "$repo" "no worktree"; return 1; }
   progress ship "$repo" started
-  before=$(pr_count "$RUN_PLANS" "$repo")
-  label=$(next_label "$repo" ship)
-  run_step "$repo" "$label" "/ship" || { fail ship "$repo" "session failed: $(last_words "$repo" "$label")"; return 1; }
-  [ "$(pr_count "$RUN_PLANS" "$repo")" -gt "$before" ] || { fail ship "$repo" "no PR opened: $(last_words "$repo" "$label")"; return 1; }
-  progress ship "$repo" "done ($LAST_STATS)"
+  sync_default "$repo" "$dir" && check_green "$repo" "$dir" && run_review "$repo" "$dir"
+}
+
+run_e2e() { # run_e2e <repos...>: the spec's `E2E:` command, once, in the last repo's worktree
+  local cmd last dir rc reason
+  cmd=$(sed -n 's/^E2E: *//p' "$RUN_PLANS/spec.md" 2>/dev/null | head -1)
+  case $cmd in
+    '') E2E_NOTE="E2E: the spec has no E2E line"; progress ship "$RUN_SLUG" "no E2E line in the spec; skipped"; return 0 ;;
+    none*) E2E_NOTE="E2E: $cmd"; progress ship "$RUN_SLUG" "e2e: $cmd"; return 0 ;;
+  esac
+  last=${!#}; dir=$(wt_dir "$last")
+  progress ship "$RUN_SLUG" "e2e: $cmd"
+  (cd "$dir" && timeout -k 30 "$WT_CHECK_TIMEOUT" bash -c "$cmd") >"$RUN_PLANS/e2e.log" 2>&1; rc=$?
+  if [ "$rc" -ne 0 ]; then
+    reason="e2e failed (exit $rc): $(grep . "$RUN_PLANS/e2e.log" | tail -n 1)"
+    block_end "$RUN_PLANS/$last/plan.md" "$reason"; block ship "$RUN_SLUG" "$reason"
+    return 1
+  fi
+  E2E_NOTE="E2E: \`$cmd\` passed"
+  progress ship "$RUN_SLUG" "e2e passed"
+}
+
+push_branch() { # push_branch <repo> <dir>: bounded, so a locked SSH agent can't hang the run
+  local rc
+  GIT_TERMINAL_PROMPT=0 timeout "$WT_PUSH_TIMEOUT" git -C "$2" push -q -u origin "HEAD:refs/heads/$(git -C "$2" branch --show-current)" \
+    >"$RUN_PLANS/$1/push.log" 2>&1; rc=$?
+  [ "$rc" -ne 0 ] || return 0
+  if [ "$rc" -eq 124 ]; then fail ship "$1" "push timed out after ${WT_PUSH_TIMEOUT}s; is the SSH agent (1Password) unlocked? Then wt build $RUN_SLUG again"
+  else fail ship "$1" "push failed: $(grep . "$RUN_PLANS/$1/push.log" | tail -n 1)"; fi
+  return 1
+}
+
+open_pr() { # open_pr <dir> <base> <title> <body file>: prints the PR URL; nothing for an unknown host
+  local url host path branch
+  url=$(git -C "$1" config --get remote.origin.url); branch=$(git -C "$1" branch --show-current)
+  case $url in
+    *github.com[:/]*)
+      (cd "$1" && gh pr create --base "$2" --head "$branch" --title "$3" --body-file "$4") | grep -o 'https://[^ ]*' | tail -n 1 ;;
+    *codebahn.net[:/]*)
+      host=${url#*://}; host=${host#*@}; host=${host%%[:/]*}
+      path=${url#*"$host"}; path=${path#[:/]}; path=${path%.git}
+      codebahn pr create --owner "${path%%/*}" --repo "${path#*/}" --head "$branch" --base "$2" --title "$3" \
+        --body "$(cat "$4")" --instance "https://$host" --json | jq -r '.html_url // empty' ;;
+  esac
+}
+
+pr_body() { # pr_body <index> <total> <repo>: the reviewer's summary, merge order, e2e, and the review
+  local i=$1 total=$2 review=$RUN_PLANS/$3/review.md prev
+  section "$review" Summary
+  if [ "$total" -gt 1 ]; then
+    prev=$(awk -v r="$(order_repos "$RUN_PLANS" | sed -n "$((i - 1))p")" '$1 == r {u = $2} END {print u}' "$RUN_PLANS/state.md" 2>/dev/null)
+    printf '\nMerge order: %s of %s (%s)%s\n' "$i" "$total" "$(order_repos "$RUN_PLANS" | paste -sd, | sed 's/,/, /g')" \
+      "${prev:+; merge after $prev}"
+  fi
+  printf '\n%s\n\n## Review\n\n' "$E2E_NOTE"
+  section_drop "$review" 'Title|Summary' | sed 's/^## /### /'
+}
+
+publish() { # publish <index> <total> <repo>: push, open the PR, record it in state.md
+  local i=$1 total=$2 repo=$3 dir title body url
+  dir=$(wt_dir "$repo")
+  if [ "$(pr_count "$RUN_PLANS" "$repo")" -gt 0 ]; then
+    push_branch "$repo" "$dir" && progress ship "$repo" "pushed to its open PR"; return
+  fi
+  check_green "$repo" "$dir" && push_branch "$repo" "$dir" || return 1
+  title=$(section "$RUN_PLANS/$repo/review.md" Title | head -n 1)
+  [ -n "$title" ] || title=$(sed -n 's/^# *//p' "$RUN_PLANS/spec.md" 2>/dev/null | head -n 1)
+  body=$RUN_PLANS/$repo/pr.md; pr_body "$i" "$total" "$repo" >"$body"
+  url=$(open_pr "$dir" "$(default_branch "$dir")" "${title:-$RUN_SLUG}" "$body")
+  if [ -n "$url" ]; then
+    echo "$repo $url open" >>"$RUN_PLANS/state.md"; progress ship "$repo" "PR $url"
+  else
+    echo "$repo - pushed" >>"$RUN_PLANS/state.md"; progress ship "$repo" "pushed; open the PR by hand"
+  fi
+  progress ship "$repo" done
 }
 
 run_phase_parallel() { # run_phase_parallel <fn> <repos...>
@@ -477,7 +613,7 @@ repo_lines() { # repo_lines <plans> <repos...>: steps done, BLOCKED question, PR
     blocked=$(blocked_reason "$plan")
     pr=$(awk -v r="$repo" '$1 == r {u = $2} END {print u}' "$plans/state.md" 2>/dev/null)
     [ -n "$blocked" ] && line="$line, BLOCKED: $blocked"
-    [ -n "$pr" ] && line="$line, PR $pr"
+    case $pr in '') ;; -) line="$line, pushed $(basename "$plans") (open the PR by hand)" ;; *) line="$line, PR $pr" ;; esac
     echo "$line"
   done
 }
@@ -519,8 +655,11 @@ cmd_run() {
   case $phase in plan|all) run_phase_parallel run_plan "${repos[@]}" || rc=1 ;; esac
   case $phase in tdd|all) [ "$rc" -eq 0 ] && { run_phase_parallel run_tdd "${repos[@]}" || rc=1; } ;; esac
   case $phase in ship|all)
+    [ "$rc" -eq 0 ] && { run_phase_parallel run_verify "${repos[@]}" || rc=1; }
+    [ "$rc" -eq 0 ] && { run_e2e "${repos[@]}" || rc=1; }
     if [ "$rc" -eq 0 ]; then
-      for repo in "${repos[@]}"; do run_ship "$repo" || { rc=1; break; }; done
+      local i=0
+      for repo in "${repos[@]}"; do i=$((i + 1)); publish "$i" "${#repos[@]}" "$repo" || { rc=1; break; }; done
     fi ;;
   esac
   if [ "$rc" -eq 0 ]; then
@@ -624,9 +763,8 @@ case $cmd in
   here) cmd_here ;;
   slug) cmd_slug ;;
   tdd) cmd_tdd ;;
-  ship) cmd_ship ;;
   plan-ctx) cmd_plan_ctx ;;
-  audit) cmd_audit ;;
+  fix-ctx) cmd_fix_ctx "$@" ;;
   check) cmd_check "$@" ;;
   create) cmd_create "$@" ;;
   remove) cmd_remove "$@" ;;

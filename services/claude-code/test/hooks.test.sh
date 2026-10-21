@@ -67,6 +67,17 @@ expect_has "dirty push says why" "uncommitted or untracked" "$out"
 expect_has "dirty push lists the files" "new.txt" "$out"
 rm "$repo/new.txt"
 
+# --- reviewer-pin.sh: the reviewer's model is pinned; a model override is refused ---
+agent() { # agent <tool_input json>: the hook's output, then rc=<exit code>
+  jq -n --argjson i "$1" '{tool_name: "Agent", tool_input: $i}' | bash "$HOOKS/reviewer-pin.sh" 2>&1
+  echo "rc=$?"
+}
+out=$(agent '{"subagent_type": "reviewer", "model": "sonnet", "prompt": "review"}')
+expect_has "a reviewer model override is refused" "rc=2" "$out"
+expect_has "the refusal says how to call it" "without the model parameter" "$out"
+expect "a pinned reviewer call passes" "rc=0" "$(agent '{"subagent_type": "reviewer", "prompt": "review"}')"
+expect "other agents may pick a model" "rc=0" "$(agent '{"subagent_type": "Explore", "model": "sonnet", "prompt": "find"}')"
+
 # --- format.sh: the repo's own Biome, else its Prettier, else leave it ---
 export FMT_LOG=$TMP/fmt.log; : >"$FMT_LOG"
 fmt() { jq -n --arg f "$1" '{tool_input: {file_path: $f}}' | bash "$HOOKS/format.sh"; echo "rc=$?"; }

@@ -6,7 +6,7 @@ per step, driven by files on disk. Nothing depends on a conversation staying ali
 
 ```
 /spec    interview me, write spec.md + order.md          you validate this
-/build   per repo, in merge order: /steps, /tdd..., /ship  headless, parallel across repos
+/build   per repo: /steps, /tdd..., then review and PRs     headless, parallel across repos
 /work    enter a repo's worktree in this session          manual mode and unblocking
 ```
 
@@ -19,14 +19,16 @@ agent) and `bash install.sh services/shell` (`wt` on PATH, the `work` function).
 
 Each phase's model is explicit in its skill's frontmatter (`model:` and `effort:` in
 `skills/<name>/SKILL.md`) and applies whether the skill runs headlessly or by hand; it
-overrides `--model`. Defaults: `/steps` and `/ship` on `claude-opus-4-6[1m]` at max effort,
-`/tdd` on `claude-sonnet-5` at medium. To change one, edit that frontmatter and reinstall.
+overrides `--model`. Defaults: `/steps` on `claude-opus-4-6[1m]` at max effort, `/fix` on it
+at high, `/tdd` on `claude-sonnet-5` at medium. To change one, edit that frontmatter and reinstall.
 `/spec` has none: a multi-turn interview follows the session's model, so launch it with
 `cl --model 'claude-fable-5-1[1m]'` when the feature deserves the strongest model (the
 later flag wins). Reading the codebase is delegated to Explore subagents on `sonnet` in
 `/spec` and `/steps`, so the session model only ever sees a digest plus the spec. The
 reviewer (`agents/reviewer.md`) runs on `claude-fable-5-1` at high effort: its input is
-just the spec and a diff or plan, and it runs once per repo.
+just the spec and a diff or plan. In the line it is its own headless session
+(`claude -p --agent reviewer`); in `/review` and `/steps` it is a foreground subagent; the
+`reviewer-pin.sh` hook refuses any call that overrides its model.
 
 ## The flow
 
@@ -46,9 +48,13 @@ at a time. For each repo in `order.md` it:
    `/steps` to write `plan.md` from the spec (checked by the reviewer against the spec);
 2. runs `/tdd` once per unchecked step: failing test shown red, `test:` commit, minimal code,
    green commit, optional `refactor:` commit, step ticked with the shas;
-3. runs `/ship` in merge order: methodology audit, full check, the spec's end-to-end command,
-   reviewer, bounded triage, PR. Repo 2 waits for repo 1's PR to be merged (a human act);
-   rerun `/build <slug>` afterwards.
+3. ships. Per repo, in parallel: rebase onto fresh `origin/<default>`; `wt check` (a red
+   check gets up to two `/fix check` sessions); the reviewer on the whole diff; its BLOCKER and
+   MAJOR findings go to one `/fix review` session, which proves each with a failing test (or
+   drops it as a false positive) before fixing it; the reviewer then re-reviews only the fix
+   commits, once. Then the spec's `E2E:` command, once. Then, in merge order, `wt` pushes each
+   branch and opens its PR (`gh` or the `codebahn` CLI) with the reviewer's summary, the merge
+   order, the e2e result, and the review. Merge them in the order their bodies state.
 
 Useful variants: `/build <slug> plan` (stop after the plans, read them), `/build <slug> tdd
 codebahn-docs` (one phase, one repo). Every rerun resumes from the first unfinished item.
@@ -63,7 +69,9 @@ it. Each session is told its slug (`WT_SLUG`), so a stale plan directory can't c
 
 A step session that ends without ticking its step (it asked a question, or did nothing)
 blocks the plan with the session's last words. The runner never reruns a session that made no
-progress, and `/steps` or `/ship` ending without a plan or a PR fails the run the same way.
+progress, and `/steps` ending without a plan fails the run the same way. Pushes are bounded
+(`WT_PUSH_TIMEOUT`, 120s), so a locked SSH agent fails the run with a message instead of
+hanging it.
 
 ## Done means green
 
@@ -80,12 +88,17 @@ formatted by the repo's own Biome (else its Prettier) and gofmt, which is what C
 <root>/.plans/<slug>/
   spec.md            what and why; frozen acceptance criteria for the reviewer
   order.md           first line: `Merge order: repo1, repo2`; then seam notes
-  state.md           `<repo> <PR URL> open`, appended by /ship
+  state.md           `<repo> <PR URL> open`, appended when wt opens the PR
+  e2e.log            output of the spec's E2E command
   run.log            progress, plus one line per session action (`wt watch`)
   sessions.tsv       per session: time, repo, label, exit code, turns, seconds, cost, peak context
   <repo>/plan.md     `- [ ] behavior. Test: ...` becomes `- [x] ... (commits: a b c)`
-  <repo>/log/        per headless step: <step>.jsonl (full transcript, every tool call and
-                     result) and <step>.log (the final message); plan, step-01, ..., ship
+  <repo>/review.md   the review: Findings, Title, Summary, Resolution, re-review of the fixes
+  <repo>/check.log   the last `wt check` output (what `/fix check` sees)
+  <repo>/pr.md       the PR body wt sent
+  <repo>/log/        per headless session: <label>.jsonl (full transcript, every tool call and
+                     result) and <label>.log (the final message); plan, step-01, ..., review,
+                     fix-review, rereview; a rerun adds -2, -3 instead of overwriting
 <root>/.worktrees/<slug>/<repo>/   the feature's worktrees, together
 ```
 
@@ -98,24 +111,26 @@ CLAUDE.md names a spec directory; plans never do.
 ## When a step blocks
 
 A headless step that hits something the spec doesn't answer writes `  BLOCKED: <question>`
-under the step; the run stops and notifies you, and `wt status` shows the question. Either answer it in `plan.md`,
-delete the line, and `/build <slug>` again, or take over by hand:
+under the step; the run stops and notifies you, and `wt status` shows the question. The ship
+phase blocks the same way, with a line at the end of `plan.md`: a finding left after the fix
+round (decide in `review.md`'s Resolution, e.g. mark it a false positive), a check still red,
+a failed e2e, or a conflict with the default branch. Either answer it, delete the line, and
+`/build <slug>` again, or take over by hand:
 
 ```
 /work git-ratelimit codebahn-forgejo   # enters that worktree in this session
 /clear                                  # cheap context; hooks set WT_SLUG and ports
-/tdd  ...  /ship                        # same skills, same plan file, /rewind works
+/tdd  ...                               # same skills, same plan file, /rewind works
+/build git-ratelimit ship codebahn-forgejo   # then review and PR, headless
 ```
 
 `work <slug> <repo>` from a terminal does the same in a new tmux session.
 
-## Verifying the methodology
+## A second opinion
 
-`wt audit` (also the first gate in `/ship`) checks every ticked step: commits recorded, all
-on the branch, first commit is a `test:` commit followed by a green commit (a `Check:` step
-needs one commit). The `.jsonl` transcripts show the red run (`grep -c FAIL
-.plans/<slug>/<repo>/log/step-01.jsonl`). `wt ctx` shows what a directory resolves
-to; `wt tdd` and `wt ship` print exactly what the skills see.
+`/review [PR | base]` runs the same reviewer by hand, on any branch: findings, verified fixes
+for BLOCKER and MAJOR, one re-review of the fixes, MINOR and NIT listed as follow-ups. One
+pass is the design; a second pass on unchanged code should find nothing new.
 
 ## Layouts
 
@@ -136,7 +151,8 @@ worktrees are reused by `wt create`, never duplicated.
 - `NO PLAN FOUND (tried: ...)`: no `.plans/<candidate>` matched; run `/spec` first, or set
   `WT_SLUG`.
 - A skill prints a literal `` !`...` `` line: the injected command failed; run the same `wt`
-  subcommand in that directory.
+  subcommand in that directory. `wt ctx` shows what a directory resolves to; `wt tdd` and
+  `wt fix-ctx review` print exactly what the skills see.
 - `wt run` says `no repo 'x'`: `order.md` names a directory that isn't a git checkout
   directly under the workspace.
 - Frontmatter check: `claude plugin validate --strict ~/.claude/skills`.

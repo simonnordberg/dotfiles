@@ -27,9 +27,12 @@ Otherwise, follow the normal interview path:
    also ask which repos, in what merge order, and what exactly crosses each boundary. Settle
    here anything a headless step would otherwise have to guess.
 3. Write spec.md: purpose; decisions from the interview; files involved; existing code to
-   reuse with file:line (prefer reuse over new code); out of scope; one end-to-end check that
-   proves it works, with the exact command. Multi-repo: a Seams section pinning each
-   cross-repo contract verbatim.
+   reuse with file:line (prefer reuse over new code); out of scope. Multi-repo: a Seams section
+   pinning each cross-repo contract verbatim. End it with one line `E2E: <command>`: a single
+   shell command that proves the feature works end to end. The runner executes it unattended
+   from the last repo's worktree in merge order (siblings are at `../<repo>`), after every
+   repo's check and review, and treats a non-zero exit as not done. If nothing can run
+   unattended, write `E2E: none (<why>)`.
    Write order.md; its first line is exactly `Merge order: repo1, repo2` (one repo for
    single-repo work), then the seam notes.
 4. Stop. Do not implement. Tell me: `/build <slug>` plans, implements, and ships headlessly;

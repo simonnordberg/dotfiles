@@ -49,6 +49,10 @@
       {
         "matcher": "Bash",
         "hooks": [{ "type": "command", "command": "$HOME/.claude/hooks/check-push.sh", "timeout": 1800 }]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [{ "type": "command", "command": "$HOME/.claude/hooks/reviewer-pin.sh" }]
       }
     ],
     "PostToolUse": [

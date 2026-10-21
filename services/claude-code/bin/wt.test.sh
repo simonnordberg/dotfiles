@@ -155,13 +155,13 @@ rm "$ws/.worktrees/feat-y/api/dirty"; commit "$ws/.worktrees/feat-y/api" "feat: 
 out=$(cd "$ws" && "$WT" remove feat-y 2>&1; echo "rc=$?")
 expect_has "remove unmerged refuses" "unmerged" "$out"
 
-# --- tdd / ship context never fail ---
+# --- tdd / fix context never fail ---
 out=$(cd "$ws/api/.claude/worktrees/nothing" && "$WT" tdd; echo "rc=$?")
 expect_has "tdd no plan" "NO PLAN FOUND" "$out"
 expect_has "tdd rc 0" "rc=0" "$out"
-out=$(cd "$ws/api/.claude/worktrees/nothing" && "$WT" ship; echo "rc=$?")
-expect_has "ship no spec" "NO SPEC" "$out"
-expect_has "ship rc 0" "rc=0" "$out"
+out=$(cd "$ws/api/.claude/worktrees/nothing" && "$WT" fix-ctx review; echo "rc=$?")
+expect_has "fix-ctx no plan" "NO PLAN FOUND" "$out"
+expect_has "fix-ctx rc 0" "rc=0" "$out"
 out=$(cd "$TMP" && "$WT" tdd; echo "rc=$?")
 expect_has "tdd outside git rc 0" "rc=0" "$out"
 
@@ -174,28 +174,17 @@ expect_has "tdd shows slug" "Slug: feat-x" "$out"
 expect_has "tdd shows repo" "Repo: api" "$out"
 expect_has "tdd shows plan" "first thing" "$out"
 expect_has "tdd shows plan path" "$pd/plan.md" "$out"
-out=$(cd "$wt" && "$WT" ship)
-expect_has "ship shows spec" "spec body" "$out"
-expect_has "ship shows unchecked" "Unchecked steps (this repo): 2" "$out"
-expect_has "ship shows base" "origin/main" "$out"
-expect_has "ship shows remote" "origins/a-api.git" "$out"
-
-# --- audit ---
-s1=$(commit "$wt" "test: first" a_test.go); s2=$(commit "$wt" "feat: first" a.go)
-printf -- '- [x] first thing. Test: it works (commits: %s %s)\n- [ ] second thing. Test: x\n' "$s1" "$s2" >"$pd/plan.md"
-expect_has "audit ok" "Methodology audit: OK (1 steps)" "$(cd "$wt" && "$WT" audit)"
-printf -- '- [x] first thing (commits: %s %s)\n' "$s2" "$s1" >"$pd/plan.md"
-expect_has "audit first not test" "step 1: first commit is not a test: commit" "$(cd "$wt" && "$WT" audit)"
-printf -- '- [x] first thing (commits: %s)\n' "$s1" >"$pd/plan.md"
-expect_has "audit too few" "step 1: needs a test commit and a green commit" "$(cd "$wt" && "$WT" audit)"
-printf -- '- [x] first thing (commits: %s deadbeef)\n' "$s1" >"$pd/plan.md"
-expect_has "audit unknown sha" "step 1: commit deadbeef is not on this branch" "$(cd "$wt" && "$WT" audit)"
-printf -- '- [x] first thing\n' >"$pd/plan.md"
-expect_has "audit no shas" "step 1: no commits recorded" "$(cd "$wt" && "$WT" audit)"
-printf -- '- [x] theme it. Check: grep -q x file (commits: %s)\n' "$s2" >"$pd/plan.md"
-expect_has "audit check step" "Methodology audit: OK (1 steps)" "$(cd "$wt" && "$WT" audit)"
-printf -- '- [ ] first thing\n  BLOCKED: which color?\n' >"$pd/plan.md"
-expect_has "ship shows blocked" "BLOCKED: which color?" "$(cd "$wt" && "$WT" ship)"
+printf 'ok  pkg/a\n--- FAIL: TestX\nboom\nFAIL pkg/b\n' >"$pd/check.log"
+out=$(cd "$wt" && "$WT" fix-ctx check)
+expect_has "fix-ctx check shows the failure" "--- FAIL: TestX" "$out"
+expect_has "fix-ctx shows the spec path" "$ws/.plans/feat-x/spec.md" "$out"
+printf '## Findings\n- MAJOR LOGIC a.go:3: nil map write\n' >"$pd/review.md"
+out=$(cd "$wt" && "$WT" fix-ctx review)
+expect_has "fix-ctx review shows the findings" "MAJOR LOGIC a.go:3: nil map write" "$out"
+expect_has "fix-ctx review names the file to annotate" "$pd/review.md" "$out"
+printf 'Run 12 failed\nerror: lint\n' >"$pd/ci.log"
+expect_has "fix-ctx ci shows the run" "error: lint" "$(cd "$wt" && "$WT" fix-ctx ci)"
+expect_has "fix-ctx unknown kind" "unknown kind" "$(cd "$wt" && "$WT" fix-ctx bogus)"
 
 # --- check: the repo's .claude/check, run from its root; local go.mod replaces refused ---
 wsc=$TMP/c; mkrepo "$wsc/api"; mkrepo "$wsc/web"; mkdir -p "$wsc/api/.claude" "$wsc/api/sub/deep"
@@ -220,6 +209,7 @@ touch "$CHECK_FAIL"; commit "$wsc/api" "feat: change" f >/dev/null
 out=$(cd "$wsc/api" && "$WT" check 2>&1; echo "rc=$?")
 expect_has "check red rc" "rc=1" "$out"
 expect_has "check red shows the output" "check output line" "$out"
+expect_has "check red points at the full output" "full output: " "$out"
 expect "check reran after a commit" 2 "$(grep -c 'ran full' "$CHECK_LOG")"
 rm "$CHECK_FAIL"; echo x >"$wsc/api/untracked"
 (cd "$wsc/api" && "$WT" check >/dev/null; "$WT" check >/dev/null)
@@ -245,18 +235,26 @@ expect_has "check refuses a sibling replace rc" "rc=1" "$out"
 expect_has "check names the sibling replace" "go.mod: example.com/d => ../sibling" "$out"
 expect_has "check names the absolute replace" "go.mod: example.com/e => /abs/path" "$out"
 
-# --- run, with fake claude, notify-send, systemd-run and systemctl on PATH ---
-export WT_UNDER_TEST=$WT NOTIFY_LOG=$TMP/notify.log SYSTEMD_LOG=$TMP/systemd.log XDG_STATE_HOME=$TMP/state
+# --- run, with fake claude, gh, codebahn, notify-send, systemd-run and systemctl on PATH ---
+export WT_UNDER_TEST=$WT NOTIFY_LOG=$TMP/notify.log SYSTEMD_LOG=$TMP/systemd.log XDG_STATE_HOME=$TMP/state PR_LOG=$TMP/pr.log
 mkdir -p "$TMP/bin"
 cat >"$TMP/bin/claude" <<'EOF'
 #!/usr/bin/env bash
-prompt=; add=
-while [ $# -gt 0 ]; do case $1 in -p) prompt=$2; shift;; --add-dir) add=$2; shift;; esac; shift; done
+prompt=; add=; agent=main
+while [ $# -gt 0 ]; do case $1 in -p) prompt=$2; shift;; --add-dir) add=$2; shift;; --agent) agent=$2; shift;; esac; shift; done
 repo=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
 plan="$add/$repo/plan.md"
 echo "$repo ${WT_SLUG:-unset} $("$WT_UNDER_TEST" slug)" >>"$add/seen.log"
+echo "$repo $agent ${prompt%%$'\n'*}" >>"$add/prompts.log"
 say() { jq -cn --arg t "$1" '{type: "result", subtype: "success", result: $t, num_turns: 3, duration_ms: 4200, total_cost_usd: 0.25}'; }
 printf '%s\n' '{"type":"assistant","parent_tool_use_id":null,"message":{"usage":{"input_tokens":5,"cache_read_input_tokens":40000,"cache_creation_input_tokens":2000},"content":[{"type":"tool_use","name":"Bash","input":{"command":"go test ./..."}}]}}'
+if [ "$agent" = reviewer ]; then
+  case $prompt in
+    Re-review*) say "${FAKE_REREVIEW:-$'## Findings\nNone.'}" ;;
+    *) say "${FAKE_REVIEW:-$'## Findings\nNone.\n\n## Title\nfeat: the feature\n\n## Summary\n- does the thing'}" ;;
+  esac
+  exit 0
+fi
 case $prompt in
   /steps)
     [ -n "${FAKE_NOPLAN:-}" ] && { say "I could not find the spec."; exit 0; }
@@ -268,9 +266,29 @@ case $prompt in
     echo t >>"t_test.go"; git add -A; git commit -qm "test: $n"; a=$(git rev-parse --short HEAD)
     echo c >>"c.go"; git add -A; git commit -qm "feat: $n"; b=$(git rev-parse --short HEAD)
     sed -i "${n}s/^- \[ \] \(.*\)$/- [x] \1 (commits: $a $b)/" "$plan"; say "Step done." ;;
-  /ship)
-    [ -n "${FAKE_NOPR:-}" ] || echo "$repo https://example/pr/1 open" >>"$add/state.md"; say "Shipped." ;;
+  "/fix check")
+    [ -n "${FAKE_FIX_BLOCK:-}" ] && { say "BLOCKED: $FAKE_FIX_BLOCK"; exit 0; }
+    touch fixed-check; git add -A; git commit -qm "fix: make the check green"; say "Fixed: 1 fixed, 0 false positives." ;;
+  "/fix review")
+    [ -n "${FAKE_FIX_BLOCK:-}" ] && { say "BLOCKED: $FAKE_FIX_BLOCK"; exit 0; }
+    echo f >>fix.go; git add -A; git commit -qm "fix: the finding"
+    printf '\n## Resolution\n- MAJOR LOGIC c.go:1: fixed in %s\n' "$(git rev-parse --short HEAD)" >>"$add/$repo/review.md"
+    say "Fixed: 1 fixed, 0 false positives." ;;
 esac
+EOF
+cat >"$TMP/bin/gh" <<'EOF'
+#!/usr/bin/env bash
+echo "gh $*" >>"$PR_LOG"
+if [ "$1 $2" = "pr create" ]; then
+  while [ $# -gt 0 ]; do [ "$1" = --body-file ] && cp "$2" "$PR_LOG.body.gh"; shift; done
+  echo "https://github.com/acme/api/pull/7"
+fi
+EOF
+cat >"$TMP/bin/codebahn" <<'EOF'
+#!/usr/bin/env bash
+echo "codebahn $*" >>"$PR_LOG"
+[ "$1 $2" = "pr create" ] && jq -cn '{html_url: "https://codebahn.net/acme/web/pulls/3", number: 3}'
+exit 0
 EOF
 printf '#!/usr/bin/env bash\necho "$*" >>"$NOTIFY_LOG"\n' >"$TMP/bin/notify-send"
 cat >"$TMP/bin/systemd-run" <<'EOF'
@@ -282,22 +300,45 @@ EOF
 printf '#!/usr/bin/env bash\necho "systemctl $*" >>"$SYSTEMD_LOG"\n' >"$TMP/bin/systemctl"
 chmod +x "$TMP/bin/"*
 P="$TMP/bin:$PATH"
+fakehost() { # fakehost <repo> <url>: origin reads as <url>; fetch and push still reach the local bare origin
+  local bare; bare=$(git -C "$1" config --get remote.origin.url)
+  git -C "$1" remote set-url origin "$2"
+  git -C "$1" config "url.$bare.insteadOf" "$2"
+}
+feature() { # feature <ws> <slug> <repos...>: repos, merge order, and a spec with an E2E line
+  local ws=$1 slug=$2 r; shift 2
+  mkdir -p "$ws/.plans/$slug"
+  for r in "$@"; do mkrepo "$ws/$r"; done
+  printf 'Merge order: %s\n' "$(printf '%s\n' "$@" | paste -sd, | sed 's/,/, /g')" >"$ws/.plans/$slug/order.md"
+  printf '# %s\n\nE2E: %s\n' "$slug" "${E2E:-test -f c.go}" >"$ws/.plans/$slug/spec.md"
+}
 
-wsr=$TMP/r; mkdir -p "$wsr/.plans/feat-r" "$wsr/.plans/api"; mkrepo "$wsr/api"; mkrepo "$wsr/web"
-printf 'Merge order: api, web\n' >"$wsr/.plans/feat-r/order.md"
+wsr=$TMP/r; mkdir -p "$wsr/.plans/api"; feature "$wsr" feat-r api web
+fakehost "$wsr/api" git@github.com:acme/api.git; fakehost "$wsr/web" git@codebahn.net:acme/web.git
 out=$(cd "$wsr" && PATH=$P "$WT" run feat-r; echo "rc=$?")
 expect_has "run rc" "rc=0" "$out"
 expect "run api plan ticked" 2 "$(grep -c '^- \[x\]' "$wsr/.plans/feat-r/api/plan.md")"
 expect "run web plan ticked" 2 "$(grep -c '^- \[x\]' "$wsr/.plans/feat-r/web/plan.md")"
-expect "run logs" yes "$([ -f "$wsr/.plans/feat-r/api/log/plan.log" ] && [ -f "$wsr/.plans/feat-r/api/log/step-02.log" ] && [ -f "$wsr/.plans/feat-r/api/log/ship.log" ] && [ -f "$wsr/.plans/feat-r/api/log/step-02.jsonl" ] && echo yes)"
+expect "run logs" yes "$([ -f "$wsr/.plans/feat-r/api/log/plan.log" ] && [ -f "$wsr/.plans/feat-r/api/log/step-02.log" ] && [ -f "$wsr/.plans/feat-r/api/log/review.log" ] && [ -f "$wsr/.plans/feat-r/api/log/step-02.jsonl" ] && echo yes)"
 expect_has "run log holds the final message" "Step done." "$(cat "$wsr/.plans/feat-r/api/log/step-02.log" 2>/dev/null)"
 expect_has "run jsonl holds the transcript" '"tool_use"' "$(cat "$wsr/.plans/feat-r/api/log/step-02.jsonl" 2>/dev/null)"
 expect "run state" 2 "$(grep -c open "$wsr/.plans/feat-r/state.md")"
-expect_has "run summary api" "api: 2/2 steps done, PR https://example/pr/1" "$out"
-expect_has "run summary web" "web: 2/2 steps done, PR https://example/pr/1" "$out"
+expect_has "run summary api" "api: 2/2 steps done, PR https://github.com/acme/api/pull/7" "$out"
+expect_has "run summary web" "web: 2/2 steps done, PR https://codebahn.net/acme/web/pulls/3" "$out"
 expect "run branch" feat-r "$(git -C "$wsr/.worktrees/feat-r/api" branch --show-current)"
 expect "run commits" 4 "$(git -C "$wsr/.worktrees/feat-r/api" rev-list --count origin/main..HEAD)"
+expect "run pushed the branch" "$(git -C "$wsr/.worktrees/feat-r/api" rev-parse HEAD)" "$(git -C "$TMP/origins/r-api.git" rev-parse feat-r 2>/dev/null)"
 expect "run sessions know their slug, despite a plan dir named like the repo" "api feat-r feat-r" "$(grep '^api ' "$wsr/.plans/feat-r/seen.log" | sort -u)"
+expect_has "the review runs as the pinned reviewer agent" "api reviewer Review" "$(cat "$wsr/.plans/feat-r/prompts.log")"
+expect_lacks "a clean review needs no fix session" "/fix" "$(cat "$wsr/.plans/feat-r/prompts.log")"
+expect_has "github PRs via gh" "gh pr create --base main --head feat-r --title feat: the feature --body-file" "$(cat "$PR_LOG")"
+expect_has "codebahn PRs via the codebahn cli" "codebahn pr create --owner acme --repo web --head feat-r --base main --title feat: the feature" "$(cat "$PR_LOG")"
+body=$(cat "$PR_LOG.body.gh" 2>/dev/null)
+expect_has "the PR body has the reviewer's summary" "- does the thing" "$body"
+expect_has "the PR body states the merge order" "Merge order: 1 of 2 (api, web)" "$body"
+expect_has "the PR body records the e2e" 'E2E: `test -f c.go` passed' "$body"
+expect_has "the second PR links the first" "after https://github.com/acme/api/pull/7" "$(sed -n '/codebahn pr create/,$p' "$PR_LOG")"
+expect_has "progress e2e" "[ship] feat-r: e2e passed" "$out"
 log=$(cat "$wsr/.plans/feat-r/run.log" 2>/dev/null)
 expect_has "run.log has progress" "[tdd] api: step 1" "$log"
 expect_has "run.log has each session's actions" "api/step-01  Bash go test ./..." "$log"
@@ -305,6 +346,70 @@ expect_has "progress reports each session's cost" '[tdd] api: step 1 done (4s, $
 expect "sessions.tsv has a row per session" 8 "$(wc -l <"$wsr/.plans/feat-r/sessions.tsv" 2>/dev/null)"
 expect_has "sessions.tsv: repo, label, rc, turns, seconds, cost, context" "$(printf 'api\tstep-01\t0\t3\t4\t0.25\t42005')" "$(cat "$wsr/.plans/feat-r/sessions.tsv" 2>/dev/null)"
 expect_has "a finished run notifies" "feat-r" "$(cat "$NOTIFY_LOG" 2>/dev/null)"
+
+review=$'## Findings\n- MAJOR LOGIC c.go:1: wrong on empty input\n- NIT RULES c.go:2: naming\n\n## Title\nfeat: f\n\n## Summary\n- f'
+: >"$PR_LOG"; E2E='none (a library)' feature "$TMP/f" feat-f api; fakehost "$TMP/f/api" git@github.com:acme/api.git
+out=$(cd "$TMP/f" && FAKE_REVIEW=$review PATH=$P "$WT" run feat-f; echo "rc=$?")
+prompts=$(cat "$TMP/f/.plans/feat-f/prompts.log")
+expect_has "fix flow rc" "rc=0" "$out"
+expect_has "a major gets one fix session" "api main /fix review" "$prompts"
+expect "the fix is re-reviewed once" 1 "$(grep -c 'api reviewer Re-review' <<<"$prompts")"
+expect_has "progress review" "[ship] api: review: 1 blocker/major" "$out"
+body=$(cat "$PR_LOG.body.gh" 2>/dev/null)
+expect_has "the PR body carries the resolution" "fixed in" "$body"
+expect_has "the PR body lists minor and nit follow-ups" "NIT RULES c.go:2: naming" "$body"
+expect_has "an e2e of none is noted" "E2E: none (a library)" "$body"
+
+E2E='none' feature "$TMP/v" feat-v api; fakehost "$TMP/v/api" git@github.com:acme/api.git
+out=$(cd "$TMP/v" && FAKE_REVIEW=$review FAKE_REREVIEW=$'## Findings\n- BLOCKER LOGIC fix.go:1: the fix breaks x' PATH=$P "$WT" run feat-v; echo "rc=$?")
+expect_has "a blocker left after the fix round stops the line" "rc=1" "$out"
+expect_has "it blocks with the count" "[ship] api: BLOCKED: review: 1 blocker/major left after one fix round" "$out"
+expect "no PR while blocked" "" "$(cat "$TMP/v/.plans/feat-v/state.md" 2>/dev/null)"
+expect_has "the plan carries the block" "BLOCKED: review:" "$(tail -1 "$TMP/v/.plans/feat-v/api/plan.md")"
+expect_has "review.md keeps the re-review" "the fix breaks x" "$(cat "$TMP/v/.plans/feat-v/api/review.md")"
+
+E2E='none' feature "$TMP/w" feat-w api; fakehost "$TMP/w/api" git@github.com:acme/api.git
+out=$(cd "$TMP/w" && FAKE_REVIEW=$review FAKE_FIX_BLOCK="needs a product decision" PATH=$P "$WT" run feat-w; echo "rc=$?")
+expect_has "a fix session can block" "[ship] api: BLOCKED: needs a product decision" "$out"
+
+E2E='none' feature "$TMP/k" feat-k api; fakehost "$TMP/k/api" git@github.com:acme/api.git
+mkdir -p "$TMP/k/api/.claude"
+printf '#!/usr/bin/env bash\n[ -n "${FAKE_CHECK_RED:-}" ] && { echo "FAIL TestAlways"; exit 1; }\n[ -f fixed-check ] || { echo "FAIL TestNeedsFix"; exit 1; }\n' >"$TMP/k/api/.claude/check"
+chmod +x "$TMP/k/api/.claude/check"; (cd "$TMP/k/api" && git add -A && git commit -qm check && git push -q origin main)
+out=$(cd "$TMP/k" && PATH=$P "$WT" run feat-k; echo "rc=$?")
+expect_has "a red check gets a fix session" "api main /fix check" "$(cat "$TMP/k/.plans/feat-k/prompts.log")"
+expect_has "a fixed check lets the line finish" "rc=0" "$out"
+E2E='none' feature "$TMP/k2" feat-k2 api; cp -r "$TMP/k/api/.claude" "$TMP/k2/api/"; (cd "$TMP/k2/api" && git add -A && git commit -qm check && git push -q origin main)
+out=$(cd "$TMP/k2" && FAKE_CHECK_RED=1 PATH=$P "$WT" run feat-k2; echo "rc=$?")
+expect_has "a check still red after two fixes blocks" "[ship] api: BLOCKED: check still red after 2 fix sessions" "$out"
+expect "two check fix sessions at most" 2 "$(grep -c '/fix check' "$TMP/k2/.plans/feat-k2/prompts.log")"
+
+E2E='echo e2e-broke; exit 3' feature "$TMP/e" feat-e api; fakehost "$TMP/e/api" git@github.com:acme/api.git
+out=$(cd "$TMP/e" && PATH=$P "$WT" run feat-e; echo "rc=$?")
+expect_has "a red e2e blocks" "[ship] feat-e: BLOCKED: e2e failed (exit 3): e2e-broke" "$out"
+expect "no PR when the e2e is red" "" "$(cat "$TMP/e/.plans/feat-e/state.md" 2>/dev/null)"
+
+feature "$TMP/t" feat-t api; fakehost "$TMP/t/api" git@github.com:acme/api.git
+printf '#!/bin/sh\nsleep 5\n' >"$TMP/t/api/.git/hooks/pre-push"; chmod +x "$TMP/t/api/.git/hooks/pre-push"
+out=$(cd "$TMP/t" && WT_PUSH_TIMEOUT=1 PATH=$P "$WT" run feat-t; echo "rc=$?")
+expect_has "a hung push blocks instead of hanging" "push timed out after 1s" "$out"
+
+feature "$TMP/u" feat-u api
+out=$(cd "$TMP/u" && PATH=$P "$WT" run feat-u; echo "rc=$?")
+expect_has "an unknown host gets the branch pushed" "api: 2/2 steps done, pushed feat-u (open the PR by hand)" "$out"
+
+feature "$TMP/m" feat-m api; fakehost "$TMP/m/api" git@github.com:acme/api.git
+(cd "$TMP/m" && PATH=$P "$WT" run feat-m plan >/dev/null; PATH=$P "$WT" run feat-m tdd >/dev/null)
+commit "$TMP/m/api" "feat: upstream" upstream.txt >/dev/null; git -C "$TMP/m/api" push -q origin main
+out=$(cd "$TMP/m" && PATH=$P "$WT" run feat-m ship; echo "rc=$?")
+expect_has "ship after the default branch moved" "rc=0" "$out"
+expect "ship rebases onto the moved default first" "$(git -C "$TMP/m/api" rev-parse main)" "$(git -C "$TMP/m/.worktrees/feat-m/api" merge-base HEAD origin/main)"
+feature "$TMP/c2" feat-c2 api; fakehost "$TMP/c2/api" git@github.com:acme/api.git
+(cd "$TMP/c2" && PATH=$P "$WT" run feat-c2 plan >/dev/null; PATH=$P "$WT" run feat-c2 tdd >/dev/null)
+commit "$TMP/c2/api" "feat: upstream" c.go >/dev/null; git -C "$TMP/c2/api" push -q origin main
+out=$(cd "$TMP/c2" && PATH=$P "$WT" run feat-c2 ship; echo "rc=$?")
+expect_has "a conflicting default blocks" "[ship] api: BLOCKED: conflicts with origin/main; run /rebase in" "$out"
+expect "a conflicting rebase is aborted" "" "$(git -C "$TMP/c2/.worktrees/feat-c2/api" status --porcelain)"
 
 wsb=$TMP/b; mkdir -p "$wsb/.plans/feat-b"; mkrepo "$wsb/api"
 printf 'Merge order: api\n' >"$wsb/.plans/feat-b/order.md"
@@ -328,14 +433,7 @@ out=$(cd "$wsx" && FAKE_NOPLAN=1 PATH=$P "$WT" run feat-x; echo "rc=$?")
 expect_has "no plan written fails" "rc=1" "$out"
 expect_has "no plan written says why" "[plan] api: FAILED: no plan written: I could not find the spec." "$out"
 
-wsq=$TMP/q; mkdir -p "$wsq/.plans/feat-q"; mkrepo "$wsq/api"
-printf 'Merge order: api\n' >"$wsq/.plans/feat-q/order.md"
-out=$(cd "$wsq" && FAKE_NOPR=1 PATH=$P "$WT" run feat-q; echo "rc=$?")
-expect_has "ship without a PR fails" "rc=1" "$out"
-expect_has "ship without a PR says why" "[ship] api: FAILED: no PR opened: Shipped." "$out"
-
-wsp=$TMP/p; mkdir -p "$wsp/.plans/feat-p"; mkrepo "$wsp/api"
-printf 'Merge order: api\n' >"$wsp/.plans/feat-p/order.md"
+wsp=$TMP/p; feature "$wsp" feat-p api
 out=$(cd "$wsp" && PATH=$P "$WT" run feat-p plan; echo "rc=$?")
 expect "run plan only" 0 "$(grep -c '^- \[x\]' "$wsp/.plans/feat-p/api/plan.md")"
 expect_has "run plan summary" "api: 0/2 steps done" "$out"
@@ -356,8 +454,7 @@ expect "run single ticked" 2 "$(grep -c '^- \[x\]' "$wss/solo/.plans/feat-s/solo
 expect "run single worktree" feat-s "$(git -C "$wss/solo/.worktrees/feat-s" branch --show-current)"
 
 # --- progress output during run ---
-wsg=$TMP/g2; mkdir -p "$wsg/.plans/feat-g"; mkrepo "$wsg/api"; mkrepo "$wsg/web"
-printf 'Merge order: api, web\n' >"$wsg/.plans/feat-g/order.md"
+wsg=$TMP/g2; feature "$wsg" feat-g api web
 out=$(cd "$wsg" && PATH=$P "$WT" run feat-g; echo "rc=$?")
 expect_has "progress plan started" "[plan] api: started" "$out"
 expect_has "progress plan done" "[plan] api: done" "$out"
@@ -386,8 +483,7 @@ out=$(cd "$wsbl" && FAKE_BLOCK=BLOCKME PATH=$P "$WT" run feat-bl; echo "rc=$?")
 expect_has "progress blocked" "[tdd] api: BLOCKED: what now?" "$out"
 
 # --- build: detached under systemd; one run per feature at a time ---
-wsd=$TMP/d; mkdir -p "$wsd/.plans/feat-d"; mkrepo "$wsd/api"
-printf 'Merge order: api\n' >"$wsd/.plans/feat-d/order.md"
+wsd=$TMP/d; feature "$wsd" feat-d api
 out=$(cd "$wsd" && PATH=$P "$WT" build feat-d; echo "rc=$?")
 expect_has "build rc" "rc=0" "$out"
 expect_has "build names a unit" "--unit=wt-feat-d-" "$(cat "$SYSTEMD_LOG" 2>/dev/null)"
@@ -418,7 +514,7 @@ out=$(cd "$TMP" && "$WT" status)
 expect_has "status works from anywhere" "feat-r" "$out"
 expect_has "status shows a blocked feature" "blocked" "$out"
 out=$(cd "$wsr" && "$WT" status feat-r)
-expect_has "status shows repo progress" "api: 2/2 steps done, PR https://example/pr/1" "$out"
+expect_has "status shows repo progress" "api: 2/2 steps done, PR https://github.com/acme/api/pull/7" "$out"
 expect_has "status shows totals" "8 sessions" "$out"
 out=$(cd "$wsr" && timeout 5 "$WT" watch feat-r; echo "rc=$?")
 expect_has "watch prints the run log" "[ship] web: done" "$out"
