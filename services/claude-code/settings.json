@@ -11,7 +11,7 @@
       "Write",
       "WebSearch",
       "WebFetch",
-      "mcp__linear-server__*",
+      "mcp__linear__*",
       "mcp__claude_ai_Google_Drive__*"
     ],
     "ask": [
@@ -45,6 +45,12 @@
     "baseRef": "fresh"
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "$HOME/.claude/hooks/check-push.sh", "timeout": 1800 }]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",

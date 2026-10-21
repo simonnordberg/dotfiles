@@ -4,6 +4,7 @@
 set -u
 
 MAX_STEPS=40
+WT_CHECK_TIMEOUT=${WT_CHECK_TIMEOUT:-1500}
 
 usage() {
   cat <<'EOF'
@@ -13,6 +14,7 @@ usage: wt <command> [args]
   slug                         the resolved slug, or nothing
   tdd | ship | plan-ctx        context blocks for the skills; always exit 0
   audit                        check ticked plan steps for the red/green commit shape
+  check [--quick]              run this repo's .claude/check (what CI runs); --quick while iterating
   create <slug> [repo]         find or create the slug's worktree; prints its path
   remove <slug>                remove the slug's worktrees and branches if clean and merged
   run <slug> [phase] [repo]    headless plan|tdd|ship|all (default all), per repo in merge order
@@ -231,6 +233,48 @@ cmd_audit() {
   fi
 }
 
+# --- check -----------------------------------------------------------------------
+
+local_replaces() { # local_replaces <toplevel>: go.mod replaces that point outside the repo
+  local top=$1 f old new abs
+  command -v go >/dev/null || return 0
+  while IFS= read -r f; do
+    while IFS=$'\t' read -r old new; do
+      case $new in /*) abs=$new ;; *) abs=$(realpath -m "$top/$(dirname "$f")/$new") ;; esac
+      case $abs/ in "$top"/*) ;; *) printf '  %s: %s => %s\n' "$f" "$old" "$new" ;; esac
+    done < <(go mod edit -json "$top/$f" 2>/dev/null |
+      jq -r '.Replace[]? | select(.New.Version == null) | "\(.Old.Path)\t\(.New.Path)"')
+  done < <(git -C "$top" ls-files -- ':(glob)**/go.mod')
+}
+
+# A repo's .claude/check runs what its CI runs; green means green on CI. A full check that
+# passes on a clean tree is remembered per tree, so pushing right after it doesn't rerun it.
+cmd_check() {
+  local mode=${1:-} top bad stamp tree clean= rc
+  case $mode in ''|--quick) ;; *) die "usage: wt check [--quick]" ;; esac
+  top=$(git rev-parse --show-toplevel 2>/dev/null) || die "check: not in a git repository"
+  top=$(realpath "$top")
+  bad=$(local_replaces "$top")
+  if [ -n "$bad" ]; then
+    printf 'wt check: go.mod replace points outside the repo; CI has no such path:\n%s\n' "$bad" >&2
+    return 1
+  fi
+  [ -x "$top/.claude/check" ] || { echo "wt check: no .claude/check in $top; nothing to run"; return 0; }
+  stamp=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-check-ok)
+  tree=$(git -C "$top" rev-parse -q --verify 'HEAD^{tree}')
+  [ -z "$(git -C "$top" status --porcelain)" ] && clean=1
+  if [ -z "$mode" ] && [ -n "$clean" ] && [ -n "$tree" ] && [ "$(cat "$stamp" 2>/dev/null)" = "$tree" ]; then
+    echo "wt check: already green at $(git -C "$top" rev-parse --short HEAD)"; return 0
+  fi
+  (cd "$top" && timeout -k 30 "$WT_CHECK_TIMEOUT" ./.claude/check $mode); rc=$?
+  [ "$rc" -ne 124 ] || { echo "wt check: timed out after ${WT_CHECK_TIMEOUT}s" >&2; return 1; }
+  [ "$rc" -eq 0 ] || { echo "wt check: red (exit $rc)" >&2; return 1; }
+  if [ -z "$mode" ] && [ -n "$clean" ] && [ -z "$(git -C "$top" status --porcelain)" ]; then
+    printf '%s\n' "$tree" >"$stamp"
+  fi
+  echo "wt check: green"
+}
+
 # --- worktree lifecycle --------------------------------------------------------
 
 cmd_create() {
@@ -428,6 +472,7 @@ case $cmd in
   ship) cmd_ship ;;
   plan-ctx) cmd_plan_ctx ;;
   audit) cmd_audit ;;
+  check) cmd_check "$@" ;;
   create) cmd_create "$@" ;;
   remove) cmd_remove "$@" ;;
   run) cmd_run "$@" ;;
