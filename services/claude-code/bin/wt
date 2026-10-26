@@ -336,7 +336,7 @@ cmd_check() {
 # --- acceptance --------------------------------------------------------------------
 
 cmd_acceptance() {
-  local top
+  local top xml log args=() rc
   top=$(git rev-parse --show-toplevel 2>/dev/null) || die "acceptance: not in a git repository"
   top=$(realpath "$top")
   if [ ! -x "$top/.claude/acceptance" ]; then
@@ -344,6 +344,45 @@ cmd_acceptance() {
     return 3
   fi
   command -v python3 >/dev/null 2>&1 || die "wt acceptance needs python3"
+  [ "${1:-}" = "--run" ] && args=(--run "$2")
+  xml=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-acceptance.xml)
+  log=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-acceptance.log)
+  rm -f "$xml"
+  (cd "$top" && timeout -k 30 "$WT_ACCEPTANCE_TIMEOUT" ./.claude/acceptance --junit "$xml" "${args[@]}") 2>&1 | tee "$log"; rc=${PIPESTATUS[0]}
+  python3 -I - "$xml" <<'PYEOF'
+import sys
+import xml.etree.ElementTree as ET
+
+try:
+    tree = ET.parse(sys.argv[1])
+except OSError:
+    sys.exit(2)
+except ET.ParseError:
+    sys.exit(2)
+
+passed = 0
+not_passed = 0
+for tc in tree.getroot().iter("testcase"):
+    feature = tc.get("classname", "")
+    name = tc.get("name", "")
+    if tc.find("failure") is not None:
+        status = "failed"
+    elif tc.find("skipped") is not None:
+        status = "skipped"
+    elif tc.find("error") is not None:
+        status = "error"
+    else:
+        status = "passed"
+    print(f"{status}\t{feature}\t{name}")
+    if status == "passed":
+        passed += 1
+    else:
+        not_passed += 1
+
+print(f"wt acceptance: {passed} passed, {not_passed} not passed", file=sys.stderr)
+sys.exit(0 if not_passed == 0 else 1)
+PYEOF
+  return $?
 }
 
 # --- worktree lifecycle --------------------------------------------------------
