@@ -166,7 +166,10 @@ find_or_create_wt() {
   local slug=$1 repo=$2 repodir=$3 ws=$4 plansroot=$5 target def
   mkdir -p "$plansroot/$slug/$repo"
   find_wt "$slug" "$repo" "$repodir" "$ws" && return 0
-  if [ "$plansroot" = "$repodir/.plans" ]; then target=$repodir/.worktrees/$slug; else target=$ws/.worktrees/$slug/$repo; fi
+  resolve_workspace "$ws"
+  if [ "$ws_kind" = legacy ] && [ "$plansroot" = "$repodir/.plans" ]; then target=$repodir/.worktrees/$slug
+  else target=$ws/.worktrees/$slug/$repo
+  fi
   git -C "$repodir" fetch -q origin 2>/dev/null || true
   def=$(default_branch "$repodir")
   [ -n "$def" ] || die "cannot determine the default branch of $repodir"
