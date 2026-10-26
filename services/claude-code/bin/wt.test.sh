@@ -121,6 +121,22 @@ expect "here excludes sibling worktrees" "api" "$(val repos "$(cd "$ws" && "$WT"
 expect "here root at workspace" "$ws" "$(val root "$(cd "$ws" && "$WT" here)")"
 expect "here root from repo subdir" "$ws/api" "$(mkdir -p "$ws/api/sub" && cd "$ws/api/sub" && "$WT" here | sed -n 's/^root=//p')"
 
+# --- records layout: a .claude/records marker makes a repo the workspace's plans root ---
+mark() { mkdir -p "$1/.claude" && touch "$1/.claude/records"; } # mark <repodir>
+wsm=$TMP/m; mkrepo "$wsm/records"; mkrepo "$wsm/svc"; mark "$wsm/records"
+out=$(cd "$wsm" && "$WT" here)
+expect "marked here root from workspace dir" "$wsm/records" "$(val root "$out")"
+expect_has "marked here mode from workspace dir" "mode=workspace" "$out"
+out=$(cd "$wsm/svc" && "$WT" here)
+expect "marked here root from child repo" "$wsm/records" "$(val root "$out")"
+expect_has "marked here mode from child repo" "mode=workspace" "$out"
+
+wsm2=$TMP/n; mkrepo "$wsm2/r1"; mkrepo "$wsm2/r2"; mark "$wsm2/r1"; mark "$wsm2/r2"
+out=$(cd "$wsm2" && "$WT" here 2>&1; echo "rc=$?")
+expect_has "two markers die rc" "rc=1" "$out"
+expect_has "two markers name r1" "r1" "$out"
+expect_has "two markers name r2" "r2" "$out"
+
 # --- create: default is <ws>/.worktrees/<slug>/<repo>; existing worktrees are reused ---
 out=$(cd "$ws" && "$WT" create feat-y api)
 expect "create path" "$ws/.worktrees/feat-y/api" "$out"
