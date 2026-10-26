@@ -171,6 +171,16 @@ out=$(cd "$wsrm" && "$WT" create feat-cm2 records)
 expect "marked create path for the records repo itself" "$wsrm/.worktrees/feat-cm2/records" "$out"
 expect "marked create plandir for the records repo itself" yes "$([ -d "$wsrm/records/.plans/feat-cm2/records" ] && echo yes)"
 
+# --- records layout: a marker added mid-session doesn't override an explicit WORKSPACE ---
+wsam=$TMP/am; mkrepo "$wsam/records"; mkrepo "$wsam/svc"
+mkdir -p "$wsam/.plans/feat-am/svc"
+addwt "$wsam/svc" "$wsam/.worktrees/feat-am/svc" feat-am
+expect "explicit WORKSPACE before marker" "$wsam/.plans/feat-am" \
+  "$(cd "$wsam/.worktrees/feat-am/svc" && WORKSPACE=$wsam "$WT" ctx | sed -n 's/^plans=//p')"
+mark "$wsam/records"
+expect "explicit WORKSPACE still wins after marker added" "$wsam/.plans/feat-am" \
+  "$(cd "$wsam/.worktrees/feat-am/svc" && WORKSPACE=$wsam "$WT" ctx | sed -n 's/^plans=//p')"
+
 # --- create: default is <ws>/.worktrees/<slug>/<repo>; existing worktrees are reused ---
 out=$(cd "$ws" && "$WT" create feat-y api)
 expect "create path" "$ws/.worktrees/feat-y/api" "$out"
