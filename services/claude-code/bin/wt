@@ -50,9 +50,29 @@ resolve_git() {
   branch=$(git branch --show-current 2>/dev/null)
 }
 
+# resolve_workspace <ws>: sets ws_kind (explicit|marked|legacy) and ws_root (the repo that owns
+# the plans root: WORKSPACE override, the one child repo with a committed .claude/records, or
+# <ws> itself). Two marked repos in one workspace is fatal, naming both.
+resolve_workspace() {
+  local ws=$1 r marked=()
+  if [ -n "${WORKSPACE:-}" ]; then ws_kind=explicit; ws_root=$WORKSPACE; return; fi
+  while IFS= read -r r; do
+    [ -f "$ws/$r/.claude/records" ] && marked+=("$r")
+  done < <(workspace_repos "$ws")
+  if [ "${#marked[@]}" -gt 1 ]; then
+    die "two records markers in $ws: ${marked[0]} and ${marked[1]}"
+  fi
+  if [ "${#marked[@]}" -eq 1 ]; then ws_kind=marked; ws_root=$ws/${marked[0]}
+  else ws_kind=legacy; ws_root=$ws
+  fi
+}
+
 plans_roots() { # candidate .plans roots, highest priority first
-  if [ -n "${WORKSPACE:-}" ]; then printf '%s\n' "$WORKSPACE/.plans"; return; fi
-  printf '%s\n%s\n' "$main/.plans" "$workspace/.plans"
+  resolve_workspace "$workspace"
+  case $ws_kind in
+    explicit|marked) printf '%s\n' "$ws_root/.plans" ;;
+    legacy) printf '%s\n%s\n' "$main/.plans" "$workspace/.plans" ;;
+  esac
 }
 
 slug_candidates() { # keys a worktree layout could have used, most specific first; never the repo's name
@@ -176,9 +196,19 @@ cmd_ctx() {
 
 cmd_here() {
   if resolve_git; then
-    printf 'mode=repo\nroot=%s\nrepo=%s\nworkspace=%s\n' "$main" "$repo" "$workspace"
+    resolve_workspace "$workspace"
+    if [ "$ws_kind" = marked ]; then
+      printf 'mode=workspace\nroot=%s\nworkspace=%s\nrepos=%s\n' "$ws_root" "$workspace" "$(workspace_repos "$workspace" | paste -sd ' ')"
+    else
+      printf 'mode=repo\nroot=%s\nrepo=%s\nworkspace=%s\n' "$main" "$repo" "$workspace"
+    fi
   else
-    printf 'mode=workspace\nroot=%s\nworkspace=%s\nrepos=%s\n' "$PWD" "$PWD" "$(workspace_repos "$PWD" | paste -sd ' ')"
+    resolve_workspace "$PWD"
+    if [ "$ws_kind" = marked ]; then
+      printf 'mode=workspace\nroot=%s\nworkspace=%s\nrepos=%s\n' "$ws_root" "$PWD" "$(workspace_repos "$PWD" | paste -sd ' ')"
+    else
+      printf 'mode=workspace\nroot=%s\nworkspace=%s\nrepos=%s\n' "$PWD" "$PWD" "$(workspace_repos "$PWD" | paste -sd ' ')"
+    fi
   fi
 }
 
