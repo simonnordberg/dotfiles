@@ -355,9 +355,7 @@ import xml.etree.ElementTree as ET
 
 try:
     tree = ET.parse(sys.argv[1])
-except OSError:
-    sys.exit(2)
-except ET.ParseError:
+except (OSError, ET.ParseError):
     sys.exit(2)
 
 passed = 0
