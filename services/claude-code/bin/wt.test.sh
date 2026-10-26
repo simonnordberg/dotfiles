@@ -306,6 +306,24 @@ expect_has "check refuses a sibling replace rc" "rc=1" "$out"
 expect_has "check names the sibling replace" "go.mod: example.com/d => ../sibling" "$out"
 expect_has "check names the absolute replace" "go.mod: example.com/e => /abs/path" "$out"
 
+# --- acceptance: scaffold and guards ---
+wsa=$TMP/acc; mkrepo "$wsa/api"
+out=$(cd "$wsa/api" && "$WT" acceptance 2>&1; echo "rc=$?")
+expect_has "acceptance without a runner rc" "rc=3" "$out"
+expect_has "acceptance without a runner says so" "wt acceptance: no .claude/acceptance in $wsa/api" "$out"
+mkdir -p "$wsa/api/.claude"
+cat >"$wsa/api/.claude/acceptance" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$wsa/api/.claude/acceptance"
+commit "$wsa/api" "chore: acceptance runner" .claude/keep >/dev/null
+nopy=$TMP/nopy; mkdir -p "$nopy"
+for b in bash git timeout tee realpath; do ln -sf "$(command -v "$b")" "$nopy/$b"; done
+out=$(cd "$wsa/api" && PATH=$nopy "$WT" acceptance 2>&1; echo "rc=$?")
+expect_has "acceptance needs python3 rc" "rc=1" "$out"
+expect_has "acceptance needs python3 says so" "wt acceptance needs python3" "$out"
+
 # --- run, with fake claude, gh, codebahn, notify-send, systemd-run and systemctl on PATH ---
 export WT_UNDER_TEST=$WT NOTIFY_LOG=$TMP/notify.log SYSTEMD_LOG=$TMP/systemd.log XDG_STATE_HOME=$TMP/state PR_LOG=$TMP/pr.log
 mkdir -p "$TMP/bin"
