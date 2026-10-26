@@ -94,14 +94,15 @@ A repo can define its own acceptance suite as an executable `.claude/acceptance`
 
 The runner must:
 
-- Accept `--junit <path>`: write JUnit XML to that path, one `<testcase classname="<feature>"
+- Accept `--junit <path>`: run scenarios in strict mode (undefined, pending or ambiguous steps
+  fail) and write JUnit XML to that path, one `<testcase classname="<feature>"
   name="<scenario>">` per acceptance scenario; a failure gets a `<failure>` child, a skip a
   `<skipped>` child, an error an `<error>` child.
 - Accept `--run <regex>`: only run scenarios whose name matches the regex.
-- Accept `--paths`: print, one per line, the relative paths of the files that make up the
-  acceptance suite (feature files, step definitions, fixtures), instead of running anything.
-- Exit `0` if every scenario passed, `1` if any scenario failed, was skipped, or errored, `2` for
-  any other runner-side failure (crash, bad args, can't write the XML).
+- Accept `--paths`: print the repo-relative paths a build must not change (feature files, step
+  definitions, fixtures), one per line, instead of running anything.
+- Exit `0` if every scenario passed, `1` if any scenario failed, was skipped, or errored, `2` if
+  it could not run (build error, undefined step, harness crash).
 
 `wt acceptance` cross-checks the exit code against the XML: a disagreement (exit 0 with a
 failing testcase, or exit 1 with everything passing), a missing or unparsable XML file, or zero
@@ -119,14 +120,27 @@ reported a real scenario result.
 ### Example runner (Go)
 
 ```go
-package main
+package acceptance_test
 
-// go run acceptance.go --junit out.xml [--run <regex>] [--paths]
-// Discovers scenarios, runs those matching --run, and writes one JUnit <testcase> per scenario
-// to the --junit path. Exits 0 if all passed, 1 if any failed/skipped/errored, 2 on a runner
-// crash or bad args. --paths instead prints the suite's file paths, one per line, and exits 0.
-func main() {
-    // ... parse flags, run scenarios, marshal results as JUnit XML, write to --junit ...
+import (
+    "os"
+    "testing"
+
+    "github.com/cucumber/godog"
+)
+
+func TestAcceptance(t *testing.T) {
+    junitPath := os.Getenv("JUNIT_PATH")   // set by .claude/acceptance
+    suite := godog.TestSuite{
+        TestingT:            t,
+        ScenarioInitializer: InitializeScenario,
+        Options: &godog.Options{
+            Paths:  []string{"features"},
+            Strict: true,
+            Format: "pretty,junit:" + junitPath,
+        },
+    }
+    suite.Run()
 }
 ```
 
