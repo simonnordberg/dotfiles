@@ -349,10 +349,21 @@ cmd_acceptance() {
   log=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-acceptance.log)
   rm -f "$xml"
   (cd "$top" && timeout -k 30 "$WT_ACCEPTANCE_TIMEOUT" ./.claude/acceptance --junit "$xml" "${args[@]}") 2>&1 | tee "$log"; rc=${PIPESTATUS[0]}
-  if [ "$rc" -eq 2 ]; then
-    printf 'wt acceptance: runner exited 2; full output: %s\n' "$log" >&2
-    return 2
-  fi
+  case $rc in
+    124)
+      printf 'wt acceptance: timed out after %ss; full output: %s\n' "$WT_ACCEPTANCE_TIMEOUT" "$log" >&2
+      return 2
+      ;;
+    2)
+      printf 'wt acceptance: runner exited 2; full output: %s\n' "$log" >&2
+      return 2
+      ;;
+    0 | 1) ;;
+    *)
+      printf 'wt acceptance: runner exited %s; full output: %s\n' "$rc" "$log" >&2
+      return 2
+      ;;
+  esac
   python3 -I - "$xml" "$rc" <<'PYEOF'
 import sys
 import xml.etree.ElementTree as ET
