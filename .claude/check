@@ -7,5 +7,7 @@ bash services/claude-code/bin/wt.test.sh
 rc1=$?
 bash services/claude-code/test/hooks.test.sh
 rc2=$?
+bash services/claude-code/test/install.test.sh
+rc3=$?
 
-[ $rc1 -eq 0 ] && [ $rc2 -eq 0 ]
+[ $rc1 -eq 0 ] && [ $rc2 -eq 0 ] && [ $rc3 -eq 0 ]
