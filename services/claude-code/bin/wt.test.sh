@@ -356,19 +356,19 @@ expect_has "acceptance forwards --run to the runner" "--run logs.*" "$(cat "$ACC
 
 # --- acceptance: failures, skips, and runner exit 2 ---
 export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/><testcase classname="login" name="fails"><failure>boom</failure></testcase></testsuite>'
-out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=1 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
 expect "acceptance failed scenario rc" 1 "$rc"
 expect_has "acceptance prints a failed testcase" "$(printf 'failed\tlogin\tfails')" "$out"
 expect_has "acceptance failed summary" "wt acceptance: 1 passed, 1 not passed" "$(cat "$TMP/acc.err")"
 
 export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/><testcase classname="login" name="skipped"><skipped/></testcase></testsuite>'
-out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=1 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
 expect "acceptance skipped scenario rc" 1 "$rc"
 expect_has "acceptance prints a skipped testcase" "$(printf 'skipped\tlogin\tskipped')" "$out"
 expect_has "acceptance skipped summary" "wt acceptance: 1 passed, 1 not passed" "$(cat "$TMP/acc.err")"
 
 export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/><testcase classname="login" name="errored"><error>kaboom</error></testcase></testsuite>'
-out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=1 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
 expect "acceptance errored scenario rc" 1 "$rc"
 expect_has "acceptance prints an errored testcase" "$(printf 'error\tlogin\terrored')" "$out"
 
@@ -393,6 +393,74 @@ out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=2 "$WT" acceptance 2>"$TMP/acc.err"); rc=
 expect "acceptance runner exit 2 rc" 2 "$rc"
 expect_has "acceptance forwards the runner's stderr on exit 2" "runner exploded" "$out"
 expect_has "acceptance gives a reason on stderr for exit 2" "wt acceptance: runner exited 2" "$(cat "$TMP/acc.err")"
+
+# --- acceptance: exit-code/XML disagreement and bad XML ---
+cat >"$wsa/api/.claude/acceptance" <<'EOF'
+#!/usr/bin/env bash
+junit=""
+while [ $# -gt 0 ]; do
+  case $1 in
+    --junit) junit=$2; shift 2 ;;
+    *) shift ;;
+  esac
+done
+[ -n "$junit" ] && [ "${ACCEPTANCE_WRITE_JUNIT:-1}" = 1 ] && printf '%s' "$ACCEPTANCE_JUNIT" >"$junit"
+exit "${ACCEPTANCE_EXIT:-0}"
+EOF
+chmod +x "$wsa/api/.claude/acceptance"
+commit "$wsa/api" "chore: acceptance runner for disagreement cases" .claude/keep >/dev/null
+
+export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="fails"><failure>boom</failure></testcase></testsuite>'
+out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=0 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance exit 0 with a failing testcase rc" 2 "$rc"
+expect_has "acceptance exit 0 with a failing testcase gives a reason" "wt acceptance: runner exited 0 but" "$(cat "$TMP/acc.err")"
+
+export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/></testsuite>'
+out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=1 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance exit 1 with all passing rc" 2 "$rc"
+expect_has "acceptance exit 1 with all passing gives a reason" "wt acceptance: runner exited 1 but" "$(cat "$TMP/acc.err")"
+
+export ACCEPTANCE_WRITE_JUNIT=0
+out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=0 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance missing xml rc" 2 "$rc"
+expect_has "acceptance missing xml gives a reason" "wt acceptance: could not read" "$(cat "$TMP/acc.err")"
+export ACCEPTANCE_WRITE_JUNIT=1
+
+cat >"$wsa/api/.claude/acceptance" <<'EOF'
+#!/usr/bin/env bash
+junit=""
+while [ $# -gt 0 ]; do
+  case $1 in
+    --junit) junit=$2; shift 2 ;;
+    *) shift ;;
+  esac
+done
+[ -n "$junit" ] && printf 'not xml at all' >"$junit"
+exit 0
+EOF
+chmod +x "$wsa/api/.claude/acceptance"
+commit "$wsa/api" "chore: acceptance runner writes garbage xml" .claude/keep >/dev/null
+out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance unparsable xml rc" 2 "$rc"
+expect_has "acceptance unparsable xml gives a reason" "wt acceptance: could not read" "$(cat "$TMP/acc.err")"
+
+cat >"$wsa/api/.claude/acceptance" <<'EOF'
+#!/usr/bin/env bash
+junit=""
+while [ $# -gt 0 ]; do
+  case $1 in
+    --junit) junit=$2; shift 2 ;;
+    *) shift ;;
+  esac
+done
+[ -n "$junit" ] && printf '<testsuite></testsuite>' >"$junit"
+exit 0
+EOF
+chmod +x "$wsa/api/.claude/acceptance"
+commit "$wsa/api" "chore: acceptance runner writes an empty testsuite" .claude/keep >/dev/null
+out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance empty testsuite rc" 2 "$rc"
+expect_has "acceptance empty testsuite gives a reason" "wt acceptance: no testcases in" "$(cat "$TMP/acc.err")"
 
 # --- run, with fake claude, gh, codebahn, notify-send, systemd-run and systemctl on PATH ---
 export WT_UNDER_TEST=$WT NOTIFY_LOG=$TMP/notify.log SYSTEMD_LOG=$TMP/systemd.log XDG_STATE_HOME=$TMP/state PR_LOG=$TMP/pr.log
