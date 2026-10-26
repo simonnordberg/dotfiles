@@ -354,6 +354,46 @@ out=$(cd "$wsa/api" && "$WT" acceptance --run 'logs.*' 2>/dev/null); rc=$?
 expect "acceptance --run forwarding rc" 0 "$rc"
 expect_has "acceptance forwards --run to the runner" "--run logs.*" "$(cat "$ACCEPTANCE_ARGS_LOG")"
 
+# --- acceptance: failures, skips, and runner exit 2 ---
+export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/><testcase classname="login" name="fails"><failure>boom</failure></testcase></testsuite>'
+out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance failed scenario rc" 1 "$rc"
+expect_has "acceptance prints a failed testcase" "$(printf 'failed\tlogin\tfails')" "$out"
+expect_has "acceptance failed summary" "wt acceptance: 1 passed, 1 not passed" "$(cat "$TMP/acc.err")"
+
+export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/><testcase classname="login" name="skipped"><skipped/></testcase></testsuite>'
+out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance skipped scenario rc" 1 "$rc"
+expect_has "acceptance prints a skipped testcase" "$(printf 'skipped\tlogin\tskipped')" "$out"
+expect_has "acceptance skipped summary" "wt acceptance: 1 passed, 1 not passed" "$(cat "$TMP/acc.err")"
+
+export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/><testcase classname="login" name="errored"><error>kaboom</error></testcase></testsuite>'
+out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance errored scenario rc" 1 "$rc"
+expect_has "acceptance prints an errored testcase" "$(printf 'error\tlogin\terrored')" "$out"
+
+export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/></testsuite>'
+cat >"$wsa/api/.claude/acceptance" <<'EOF'
+#!/usr/bin/env bash
+echo "$*" >>"$ACCEPTANCE_ARGS_LOG"
+junit=""
+while [ $# -gt 0 ]; do
+  case $1 in
+    --junit) junit=$2; shift 2 ;;
+    *) shift ;;
+  esac
+done
+[ -n "$junit" ] && printf '%s' "$ACCEPTANCE_JUNIT" >"$junit"
+echo "runner exploded" >&2
+exit "${ACCEPTANCE_EXIT:-0}"
+EOF
+chmod +x "$wsa/api/.claude/acceptance"
+commit "$wsa/api" "chore: acceptance runner can exit 2" .claude/keep >/dev/null
+out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=2 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance runner exit 2 rc" 2 "$rc"
+expect_has "acceptance forwards the runner's stderr on exit 2" "runner exploded" "$out"
+expect_has "acceptance gives a reason on stderr for exit 2" "wt acceptance: runner exited 2" "$(cat "$TMP/acc.err")"
+
 # --- run, with fake claude, gh, codebahn, notify-send, systemd-run and systemctl on PATH ---
 export WT_UNDER_TEST=$WT NOTIFY_LOG=$TMP/notify.log SYSTEMD_LOG=$TMP/systemd.log XDG_STATE_HOME=$TMP/state PR_LOG=$TMP/pr.log
 mkdir -p "$TMP/bin"
