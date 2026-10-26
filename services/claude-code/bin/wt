@@ -166,8 +166,9 @@ find_or_create_wt() {
   local slug=$1 repo=$2 repodir=$3 ws=$4 plansroot=$5 target def
   mkdir -p "$plansroot/$slug/$repo"
   find_wt "$slug" "$repo" "$repodir" "$ws" && return 0
-  resolve_workspace "$ws"
-  if [ "$ws_kind" = legacy ] && [ "$plansroot" = "$repodir/.plans" ]; then target=$repodir/.worktrees/$slug
+  # Repo-local plans get a repo-local worktree, unless the repo is a records root
+  # (marked repos always use the workspace layout even though their plans dir matches).
+  if [ "$plansroot" = "$repodir/.plans" ] && ! [ -f "$repodir/.claude/records" ]; then target=$repodir/.worktrees/$slug
   else target=$ws/.worktrees/$slug/$repo
   fi
   git -C "$repodir" fetch -q origin 2>/dev/null || true

@@ -199,6 +199,9 @@ mkdir -p "$ws/dangling"; git -C "$ws/dangling" init -q -b main && echo x >"$ws/d
 git init -q --bare "$TMP/origins/dangling.git"; git -C "$ws/dangling" remote add origin "$TMP/origins/dangling.git"; git -C "$ws/dangling" push -q -u origin main 2>/dev/null
 expect "create with undeterminable remote HEAD falls back to main" "$ws/.worktrees/feat-v/dangling" "$(cd "$ws" && "$WT" create feat-v dangling 2>/dev/null)"
 expect "create repo-local plans -> repo-local worktree" "$ws2/solo/.worktrees/feat-h" "$(cd "$ws2/solo" && mkdir -p .plans/feat-h && "$WT" create feat-h)"
+# WORKSPACE set (as in wt run sessions) must not relocate an unmarked repo's worktree
+expect "create repo-local + WORKSPACE -> repo-local worktree" "$ws2/solo/.worktrees/feat-hw" \
+  "$(cd "$ws2/solo" && mkdir -p .plans/feat-hw && WORKSPACE=$ws2/solo "$WT" create feat-hw)"
 
 # --- remove ---
 out=$(cd "$ws" && "$WT" remove feat-w 2>&1; echo "rc=$?")
