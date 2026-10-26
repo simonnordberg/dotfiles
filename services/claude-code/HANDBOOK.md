@@ -58,7 +58,8 @@ at a time. For each repo in `order.md` it:
    branch and opens its PR (`gh` or the `codebahn` CLI) with the reviewer's summary, the merge
    order, the e2e result, and the review. After the PRs are open, `wt` polls each one's CI
    (GitHub via `gh pr checks`, codebahn via `codebahn ci list`); a red CI run's logs go to
-   `ci.log` and one `/fix ci` session, then re-check, re-push, re-poll (up to 2 tries).
+   `ci.log` and one `/fix ci` session, then re-check, re-push, re-poll (up to 2 tries). A
+   branch with no workflow files (`.github/workflows`, `.forgejo/workflows`) is not polled.
    Merge the PRs in the order their bodies state.
 
 Useful variants: `/build <slug> plan` (stop after the plans, read them), `/build <slug> tdd
