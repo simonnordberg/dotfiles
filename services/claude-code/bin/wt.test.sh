@@ -137,6 +137,35 @@ expect_has "two markers die rc" "rc=1" "$out"
 expect_has "two markers name r1" "r1" "$out"
 expect_has "two markers name r2" "r2" "$out"
 
+# --- records layout: resolve and plans_for_slug find <records>/.plans/<slug> from a child repo ---
+wsrm=$TMP/rm; mkrepo "$wsrm/records"; mkrepo "$wsrm/svc"; mark "$wsrm/records"
+mkdir -p "$wsrm/records/.plans/feat-rm/svc"
+addwt "$wsrm/svc" "$wsrm/.worktrees/feat-rm/svc" feat-rm
+out=$(ctx "$wsrm/.worktrees/feat-rm/svc")
+expect "marked resolve finds plans in the records repo" "$wsrm/records/.plans/feat-rm" "$(val plans "$out")"
+expect "marked resolve plandir is in the child repo" "$wsrm/records/.plans/feat-rm/svc" "$(val plandir "$out")"
+
+out=$(cd "$wsrm/.worktrees/feat-rm/svc" && "$WT" status feat-rm)
+expect_has "marked plans_for_slug finds the records plans dir" "$wsrm/records/.plans/feat-rm" "$out"
+
+# a slug that exists only at an old guess dies, naming where it should move
+mkdir -p "$wsrm/svc/.plans/feat-old"
+out=$(cd "$wsrm/svc" && WT_SLUG=feat-old "$WT" ctx 2>&1; echo "rc=$?")
+expect_has "legacy slug (repo-local) in a marked workspace dies rc" "rc=1" "$out"
+expect_has "legacy slug (repo-local) names the old path" "feat-old is in $wsrm/svc/.plans/feat-old" "$out"
+expect_has "legacy slug (repo-local) names the new path" "move it to $wsrm/records/.plans/feat-old" "$out"
+
+mkdir -p "$wsrm/.plans/feat-old2"
+out=$(cd "$wsrm/svc" && WT_SLUG=feat-old2 "$WT" ctx 2>&1; echo "rc=$?")
+expect_has "legacy slug (workspace-flat) in a marked workspace dies rc" "rc=1" "$out"
+expect_has "legacy slug (workspace-flat) names the old path" "feat-old2 is in $wsrm/.plans/feat-old2" "$out"
+expect_has "legacy slug (workspace-flat) names the new path" "move it to $wsrm/records/.plans/feat-old2" "$out"
+
+# locate (wt create) also puts the new slug's plans under the records repo
+out=$(cd "$wsrm" && "$WT" create feat-cm svc)
+expect "marked create path" "$wsrm/.worktrees/feat-cm/svc" "$out"
+expect "marked create plandir in the records repo" yes "$([ -d "$wsrm/records/.plans/feat-cm/svc" ] && echo yes)"
+
 # --- create: default is <ws>/.worktrees/<slug>/<repo>; existing worktrees are reused ---
 out=$(cd "$ws" && "$WT" create feat-y api)
 expect "create path" "$ws/.worktrees/feat-y/api" "$out"
@@ -433,12 +462,12 @@ feature "$TMP/u" feat-u api
 out=$(cd "$TMP/u" && PATH=$P "$WT" run feat-u; echo "rc=$?")
 expect_has "an unknown host gets the branch pushed" "api: 2/2 slices done, pushed feat-u (open the PR by hand)" "$out"
 
-feature "$TMP/m" feat-m api; fakehost "$TMP/m/api" git@github.com:acme/api.git
-(cd "$TMP/m" && PATH=$P "$WT" run feat-m plan >/dev/null; PATH=$P "$WT" run feat-m tdd >/dev/null)
-commit "$TMP/m/api" "feat: upstream" upstream.txt >/dev/null; git -C "$TMP/m/api" push -q origin main
-out=$(cd "$TMP/m" && PATH=$P "$WT" run feat-m ship; echo "rc=$?")
+feature "$TMP/m2" feat-m api; fakehost "$TMP/m2/api" git@github.com:acme/api.git
+(cd "$TMP/m2" && PATH=$P "$WT" run feat-m plan >/dev/null; PATH=$P "$WT" run feat-m tdd >/dev/null)
+commit "$TMP/m2/api" "feat: upstream" upstream.txt >/dev/null; git -C "$TMP/m2/api" push -q origin main
+out=$(cd "$TMP/m2" && PATH=$P "$WT" run feat-m ship; echo "rc=$?")
 expect_has "ship after the default branch moved" "rc=0" "$out"
-expect "ship rebases onto the moved default first" "$(git -C "$TMP/m/api" rev-parse main)" "$(git -C "$TMP/m/.worktrees/feat-m/api" merge-base HEAD origin/main)"
+expect "ship rebases onto the moved default first" "$(git -C "$TMP/m2/api" rev-parse main)" "$(git -C "$TMP/m2/.worktrees/feat-m/api" merge-base HEAD origin/main)"
 feature "$TMP/c2" feat-c2 api; fakehost "$TMP/c2/api" git@github.com:acme/api.git
 (cd "$TMP/c2" && PATH=$P "$WT" run feat-c2 plan >/dev/null; PATH=$P "$WT" run feat-c2 tdd >/dev/null)
 commit "$TMP/c2/api" "feat: upstream" c.go >/dev/null; git -C "$TMP/c2/api" push -q origin main
@@ -484,7 +513,7 @@ expect_has "run blocked summary" "api: 1/2 slices done, BLOCKED: what now?" "$ou
 expect "run blocked no ship" "" "$(cat "$wsb/.plans/feat-b/state.md" 2>/dev/null)"
 expect_has "a blocked run notifies" "BLOCKED: what now?" "$(cat "$NOTIFY_LOG" 2>/dev/null)"
 
-wsn=$TMP/n; mkdir -p "$wsn/.plans/feat-n"; mkrepo "$wsn/api"
+wsn=$TMP/n2; mkdir -p "$wsn/.plans/feat-n"; mkrepo "$wsn/api"
 printf 'Merge order: api\n' >"$wsn/.plans/feat-n/order.md"
 out=$(cd "$wsn" && FAKE_NOOP=1 PATH=$P "$WT" run feat-n; echo "rc=$?")
 expect_has "no progress stops the run" "rc=1" "$out"
