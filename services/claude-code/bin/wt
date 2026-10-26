@@ -75,6 +75,14 @@ plans_roots() { # candidate .plans roots, highest priority first
   esac
 }
 
+die_if_legacy_slug() { # die_if_legacy_slug <slug>: in a marked workspace, refuse an old .plans/<slug>
+  [ "${ws_kind:-}" = marked ] || return 0
+  local old
+  for old in "${main:-}" "${workspace:-}"; do
+    [ -n "$old" ] && [ -d "$old/.plans/$1" ] && die "$1 is in $old/.plans/$1; move it to $ws_root/.plans/$1"
+  done
+}
+
 slug_candidates() { # keys a worktree layout could have used, most specific first; never the repo's name
   { printf '%s\n' "$(basename "$toplevel")" "$(basename "$(dirname "$toplevel")")"
     if [ -n "$branch" ]; then
@@ -89,11 +97,15 @@ resolve() {
   slug= plans= plandir= tried=
   resolve_git || return 1
   local roots=() r c
+  resolve_workspace "$workspace" # sets ws_kind/ws_root in this scope; plans_roots below reruns it in a subshell
   mapfile -t roots < <(plans_roots)
   if [ -n "${WT_SLUG:-}" ]; then
     slug=$WT_SLUG
     for r in "${roots[@]}"; do [ -d "$r/$slug" ] && { plans=$r/$slug; break; }; done
-    [ -n "$plans" ] || plans=${roots[0]}/$slug
+    if [ -z "$plans" ]; then
+      die_if_legacy_slug "$slug"
+      plans=${roots[0]}/$slug
+    fi
   else
     while IFS= read -r c; do
       [ -n "$c" ] || continue
@@ -101,6 +113,7 @@ resolve() {
       for r in "${roots[@]}"; do
         [ -d "$r/$c" ] && { slug=$c; plans=$r/$c; break 2; }
       done
+      die_if_legacy_slug "$c"
     done < <(slug_candidates)
   fi
   [ -n "$plans" ] && plandir=$plans/$repo
@@ -166,14 +179,19 @@ find_or_create_wt() {
   printf '%s\n' "$target"
 }
 
-# Sets ws and plansroot from the cwd; plans are repo-local when <main>/.plans/<slug> exists.
+# Sets ws and plansroot from the cwd. In a marked workspace, plansroot is always the records
+# repo's .plans; otherwise plans are repo-local when <main>/.plans/<slug> exists.
 locate() {
-  if resolve_git; then
-    ws=$workspace
-    if [ -d "$main/.plans/${1:-}" ]; then plansroot=$main/.plans; else plansroot=$ws/.plans; fi
-  else
-    ws=$PWD; plansroot=$ws/.plans
-  fi
+  local in_git=
+  if resolve_git; then in_git=1; ws=$workspace; else ws=$PWD; fi
+  resolve_workspace "$ws"
+  case $ws_kind in
+    explicit|marked) plansroot=$ws_root/.plans ;;
+    legacy)
+      if [ -n "$in_git" ] && [ -d "$main/.plans/${1:-}" ]; then plansroot=$main/.plans
+      else plansroot=$ws/.plans
+      fi ;;
+  esac
 }
 
 # --- context blocks ----------------------------------------------------------
@@ -349,10 +367,20 @@ cmd_remove() {
 
 plans_for_slug() { # plans_for_slug <slug>: the .plans/<slug> dir for this cwd
   local c
-  for c in "$PWD/.plans/$1" "${main:+$main/.plans/$1}" "${workspace:+$workspace/.plans/$1}" "${WORKSPACE:+$WORKSPACE/.plans/$1}"; do
-    [ -n "$c" ] && [ -d "$c" ] && { printf '%s\n' "$c"; return 0; }
-  done
-  return 1
+  resolve_workspace "${workspace:-$PWD}"
+  case $ws_kind in
+    explicit|marked)
+      [ -d "$ws_root/.plans/$1" ] && { printf '%s\n' "$ws_root/.plans/$1"; return 0; }
+      die_if_legacy_slug "$1"
+      return 1
+      ;;
+    legacy)
+      for c in "$PWD/.plans/$1" "${main:+$main/.plans/$1}" "${workspace:+$workspace/.plans/$1}"; do
+        [ -n "$c" ] && [ -d "$c" ] && { printf '%s\n' "$c"; return 0; }
+      done
+      return 1
+      ;;
+  esac
 }
 
 count() { local n; n=$(grep -c -- "$1" "$2" 2>/dev/null); printf '%s\n' "${n:-0}"; } # count <regex> <file>
