@@ -343,6 +343,10 @@ cmd_acceptance() {
     printf 'wt acceptance: no .claude/acceptance in %s\n' "$top" >&2
     return 3
   fi
+  if [ "${1:-}" = "--paths" ]; then
+    cmd_acceptance_paths "$top"
+    return $?
+  fi
   command -v python3 >/dev/null 2>&1 || die "wt acceptance needs python3"
   [ "${1:-}" = "--run" ] && args=(--run "$2")
   xml=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-acceptance.xml)
@@ -415,6 +419,35 @@ print(f"wt acceptance: {passed} passed, {not_passed} not passed", file=sys.stder
 sys.exit(computed_rc)
 PYEOF
   return $?
+}
+
+cmd_acceptance_paths() { # cmd_acceptance_paths <repo top>: run `.claude/acceptance --paths` and
+  # validate each line is a relative, in-repo, existing path before printing it
+  local top=$1 out line rc
+  if ! out=$(cd "$top" && ./.claude/acceptance --paths); then
+    rc=$?
+    printf 'wt acceptance: runner exited %s for --paths\n' "$rc" >&2
+    return 2
+  fi
+  [ -n "$out" ] || return 0
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    case $line in
+      /*)
+        printf 'wt acceptance: --paths line is an absolute path: %s\n' "$line" >&2
+        return 2
+        ;;
+      ..|../*|*/../*|*/..)
+        printf 'wt acceptance: --paths line has a .. component: %s\n' "$line" >&2
+        return 2
+        ;;
+    esac
+    [ -e "$top/$line" ] || {
+      printf 'wt acceptance: --paths line does not exist: %s\n' "$line" >&2
+      return 2
+    }
+  done <<<"$out"
+  printf '%s\n' "$out"
 }
 
 # --- worktree lifecycle --------------------------------------------------------
