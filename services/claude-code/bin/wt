@@ -909,6 +909,10 @@ cmd_stop() {
 
 # --- main -------------------------------------------------------------------------
 
+no_nested_run() { # a run's sessions inherit RUN_SLUG from cmd_run; they must not start real runs
+  [ -z "${RUN_SLUG:-}" ] || die "refusing to start a run inside the run of $RUN_SLUG; builds don't start builds"
+}
+
 cmd=${1:-}; [ $# -gt 0 ] && shift
 case $cmd in
   ctx) cmd_ctx ;;
@@ -920,8 +924,8 @@ case $cmd in
   check) cmd_check "$@" ;;
   create) cmd_create "$@" ;;
   remove) cmd_remove "$@" ;;
-  run) cmd_run "$@" ;;
-  build) cmd_build "$@" ;;
+  run) no_nested_run; cmd_run "$@" ;;
+  build) no_nested_run; cmd_build "$@" ;;
   status) cmd_status "$@" ;;
   watch) cmd_watch "$@" ;;
   stop) cmd_stop "$@" ;;
