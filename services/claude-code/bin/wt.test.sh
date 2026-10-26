@@ -324,6 +324,36 @@ out=$(cd "$wsa/api" && PATH=$nopy "$WT" acceptance 2>&1; echo "rc=$?")
 expect_has "acceptance needs python3 rc" "rc=1" "$out"
 expect_has "acceptance needs python3 says so" "wt acceptance needs python3" "$out"
 
+# --- acceptance: happy path and --run forwarding ---
+cat >"$wsa/api/.claude/acceptance" <<'EOF'
+#!/usr/bin/env bash
+echo "$*" >>"$ACCEPTANCE_ARGS_LOG"
+junit=""
+while [ $# -gt 0 ]; do
+  case $1 in
+    --junit) junit=$2; shift 2 ;;
+    *) shift ;;
+  esac
+done
+[ -n "$junit" ] && printf '%s' "$ACCEPTANCE_JUNIT" >"$junit"
+exit "${ACCEPTANCE_EXIT:-0}"
+EOF
+chmod +x "$wsa/api/.claude/acceptance"
+commit "$wsa/api" "chore: real acceptance runner" .claude/keep >/dev/null
+export ACCEPTANCE_ARGS_LOG=$TMP/acc-args.log
+export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/><testcase classname="login" name="logs out"/></testsuite>'
+: >"$ACCEPTANCE_ARGS_LOG"
+out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance happy path rc" 0 "$rc"
+expect_has "acceptance prints first passed testcase" "$(printf 'passed\tlogin\tsucceeds')" "$out"
+expect_has "acceptance prints second passed testcase" "$(printf 'passed\tlogin\tlogs out')" "$out"
+expect_has "acceptance prints a passing summary" "wt acceptance: 2 passed, 0 not passed" "$(cat "$TMP/acc.err")"
+expect_has "acceptance invokes the runner with --junit" "--junit" "$(cat "$ACCEPTANCE_ARGS_LOG")"
+: >"$ACCEPTANCE_ARGS_LOG"
+out=$(cd "$wsa/api" && "$WT" acceptance --run 'logs.*' 2>/dev/null); rc=$?
+expect "acceptance --run forwarding rc" 0 "$rc"
+expect_has "acceptance forwards --run to the runner" "--run logs.*" "$(cat "$ACCEPTANCE_ARGS_LOG")"
+
 # --- run, with fake claude, gh, codebahn, notify-send, systemd-run and systemctl on PATH ---
 export WT_UNDER_TEST=$WT NOTIFY_LOG=$TMP/notify.log SYSTEMD_LOG=$TMP/systemd.log XDG_STATE_HOME=$TMP/state PR_LOG=$TMP/pr.log
 mkdir -p "$TMP/bin"
