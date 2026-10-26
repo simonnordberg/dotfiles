@@ -166,6 +166,11 @@ out=$(cd "$wsrm" && "$WT" create feat-cm svc)
 expect "marked create path" "$wsrm/.worktrees/feat-cm/svc" "$out"
 expect "marked create plandir in the records repo" yes "$([ -d "$wsrm/records/.plans/feat-cm/svc" ] && echo yes)"
 
+# the records repo itself gets a worktree at <ws>/.worktrees/<slug>/<repo> too, not <repo>/.worktrees/<slug>
+out=$(cd "$wsrm" && "$WT" create feat-cm2 records)
+expect "marked create path for the records repo itself" "$wsrm/.worktrees/feat-cm2/records" "$out"
+expect "marked create plandir for the records repo itself" yes "$([ -d "$wsrm/records/.plans/feat-cm2/records" ] && echo yes)"
+
 # --- create: default is <ws>/.worktrees/<slug>/<repo>; existing worktrees are reused ---
 out=$(cd "$ws" && "$WT" create feat-y api)
 expect "create path" "$ws/.worktrees/feat-y/api" "$out"
