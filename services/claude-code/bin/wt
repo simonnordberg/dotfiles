@@ -353,17 +353,21 @@ cmd_acceptance() {
     printf 'wt acceptance: runner exited 2; full output: %s\n' "$log" >&2
     return 2
   fi
-  python3 -I - "$xml" <<'PYEOF'
+  python3 -I - "$xml" "$rc" <<'PYEOF'
 import sys
 import xml.etree.ElementTree as ET
 
+runner_rc = int(sys.argv[2])
+
 try:
     tree = ET.parse(sys.argv[1])
-except (OSError, ET.ParseError):
+except (OSError, ET.ParseError) as e:
+    print(f"wt acceptance: could not read {sys.argv[1]}: {e}", file=sys.stderr)
     sys.exit(2)
 
 passed = 0
 not_passed = 0
+lines = []
 for tc in tree.getroot().iter("testcase"):
     feature = tc.get("classname", "")
     name = tc.get("name", "")
@@ -375,14 +379,29 @@ for tc in tree.getroot().iter("testcase"):
         status = "error"
     else:
         status = "passed"
-    print(f"{status}\t{feature}\t{name}")
+    lines.append(f"{status}\t{feature}\t{name}")
     if status == "passed":
         passed += 1
     else:
         not_passed += 1
 
+if passed + not_passed == 0:
+    print(f"wt acceptance: no testcases in {sys.argv[1]}", file=sys.stderr)
+    sys.exit(2)
+
+computed_rc = 0 if not_passed == 0 else 1
+if computed_rc != runner_rc:
+    print(
+        f"wt acceptance: runner exited {runner_rc} but {sys.argv[1]} disagrees "
+        f"({passed} passed, {not_passed} not passed)",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
+for line in lines:
+    print(line)
 print(f"wt acceptance: {passed} passed, {not_passed} not passed", file=sys.stderr)
-sys.exit(0 if not_passed == 0 else 1)
+sys.exit(computed_rc)
 PYEOF
   return $?
 }
