@@ -479,6 +479,43 @@ out=$(cd "$wsa/api" && ACCEPTANCE_SLEEP=3 WT_ACCEPTANCE_TIMEOUT=1 "$WT" acceptan
 expect "acceptance timeout rc" 2 "$rc"
 expect_has "acceptance timeout gives a reason" "timed out after" "$(cat "$TMP/acc.err")"
 
+# --- acceptance: --paths subcommand ---
+cat >"$wsa/api/.claude/acceptance" <<'EOF'
+#!/usr/bin/env bash
+if [ "${1:-}" = --paths ]; then
+  printf '%s\n' "${ACCEPTANCE_PATHS:-features/login.feature}"
+  exit "${ACCEPTANCE_PATHS_EXIT:-0}"
+fi
+exit 0
+EOF
+chmod +x "$wsa/api/.claude/acceptance"
+mkdir -p "$wsa/api/features"
+commit "$wsa/api" "chore: acceptance runner supports --paths" features/login.feature >/dev/null
+
+out=$(cd "$wsa/api" && "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+expect "acceptance --paths rc" 0 "$rc"
+expect "acceptance --paths prints the runner's lines" "features/login.feature" "$out"
+
+out=$(cd "$wsa/api" && ACCEPTANCE_PATHS=/etc/passwd "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+expect "acceptance --paths rejects absolute paths" 2 "$rc"
+expect_has "acceptance --paths absolute path reason" "absolute path" "$(cat "$TMP/acc.err")"
+
+out=$(cd "$wsa/api" && ACCEPTANCE_PATHS='../outside' "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+expect "acceptance --paths rejects .. components" 2 "$rc"
+expect_has "acceptance --paths dotdot reason" '.. component' "$(cat "$TMP/acc.err")"
+
+out=$(cd "$wsa/api" && ACCEPTANCE_PATHS='features/missing.feature' "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+expect "acceptance --paths rejects missing files" 2 "$rc"
+expect_has "acceptance --paths missing file reason" "does not exist" "$(cat "$TMP/acc.err")"
+
+out=$(cd "$wsa/api" && ACCEPTANCE_PATHS_EXIT=2 "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+expect "acceptance --paths nonzero runner exit" 2 "$rc"
+
+rm "$wsa/api/.claude/acceptance"
+commit "$wsa/api" "chore: remove acceptance runner" .claude/keep >/dev/null
+out=$(cd "$wsa/api" && "$WT" acceptance --paths 2>&1; echo "rc=$?")
+expect_has "acceptance --paths without a runner rc" "rc=3" "$out"
+
 # --- run, with fake claude, gh, codebahn, notify-send, systemd-run and systemctl on PATH ---
 export WT_UNDER_TEST=$WT NOTIFY_LOG=$TMP/notify.log SYSTEMD_LOG=$TMP/systemd.log XDG_STATE_HOME=$TMP/state PR_LOG=$TMP/pr.log
 mkdir -p "$TMP/bin"
