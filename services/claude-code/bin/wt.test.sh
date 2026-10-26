@@ -462,6 +462,23 @@ out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
 expect "acceptance empty testsuite rc" 2 "$rc"
 expect_has "acceptance empty testsuite gives a reason" "wt acceptance: no testcases in" "$(cat "$TMP/acc.err")"
 
+# --- acceptance: timeout and unexpected exit codes ---
+cat >"$wsa/api/.claude/acceptance" <<'EOF'
+#!/usr/bin/env bash
+sleep "${ACCEPTANCE_SLEEP:-0}"
+exit "${ACCEPTANCE_EXIT:-0}"
+EOF
+chmod +x "$wsa/api/.claude/acceptance"
+commit "$wsa/api" "chore: acceptance runner for timeout and odd exit codes" .claude/keep >/dev/null
+
+out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=5 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance unexpected exit code rc" 2 "$rc"
+expect_has "acceptance unexpected exit code gives a reason" "wt acceptance: runner exited 5" "$(cat "$TMP/acc.err")"
+
+out=$(cd "$wsa/api" && ACCEPTANCE_SLEEP=3 WT_ACCEPTANCE_TIMEOUT=1 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance timeout rc" 2 "$rc"
+expect_has "acceptance timeout gives a reason" "timed out after" "$(cat "$TMP/acc.err")"
+
 # --- run, with fake claude, gh, codebahn, notify-send, systemd-run and systemctl on PATH ---
 export WT_UNDER_TEST=$WT NOTIFY_LOG=$TMP/notify.log SYSTEMD_LOG=$TMP/systemd.log XDG_STATE_HOME=$TMP/state PR_LOG=$TMP/pr.log
 mkdir -p "$TMP/bin"
