@@ -4,7 +4,7 @@ set -u
 WT="$(cd "$(dirname "$0")" && pwd)/wt"
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
-unset WT_SLUG WORKSPACE
+unset WT_SLUG WORKSPACE RUN_SLUG RUN_PLANS RUN_PLANSROOT RUN_ROOT RUN_WS # a build's sessions run this suite
 TMP=$(realpath "$(mktemp -d)")
 trap 'rm -rf "$TMP"' EXIT
 fails=0
@@ -586,6 +586,15 @@ expect_has "status shows a running feature" "running" "$(cd "$wsl" && "$WT" stat
 out=$(cd "$wsl" && PATH=$P "$WT" stop feat-l 2>&1; echo "rc=$?")
 expect_has "stop stops the unit" "systemctl --user stop wt-feat-l-abcd" "$(cat "$SYSTEMD_LOG")"
 wait "$lockpid"
+
+# --- builds don't start builds: a run's sessions inherit RUN_SLUG from it ---
+n=$(wc -l <"$SYSTEMD_LOG")
+out=$(cd "$wsd" && RUN_SLUG=outer PATH=$P "$WT" run feat-d 2>&1; echo "rc=$?")
+expect_has "a run inside a run is refused" "inside the run of outer" "$out"
+expect_has "a refused run fails" "rc=1" "$out"
+out=$(cd "$wsd" && RUN_SLUG=outer PATH=$P "$WT" build feat-d 2>&1; echo "rc=$?")
+expect_has "a build inside a run is refused" "inside the run of outer" "$out"
+expect "a refused build starts no unit" "$n" "$(wc -l <"$SYSTEMD_LOG")"
 
 # --- status, watch, stop ---
 out=$(cd "$wsr" && "$WT" status; echo "rc=$?")
