@@ -304,6 +304,7 @@ repo=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-
 plan="$add/$repo/plan.md"
 echo "$repo ${WT_SLUG:-unset} $("$WT_UNDER_TEST" slug)" >>"$add/seen.log"
 echo "$repo $agent ${prompt%%$'\n'*}" >>"$add/prompts.log"
+echo "$repo ${WORKSPACE:-unset}" >>"$add/workspace.log"
 say() { jq -cn --arg t "$1" '{type: "result", subtype: "success", result: $t, num_turns: 3, duration_ms: 4200, total_cost_usd: 0.25}'; }
 printf '{"type":"assistant","parent_tool_use_id":null,"message":{"usage":{"input_tokens":5,"cache_read_input_tokens":%s,"cache_creation_input_tokens":2000},"content":[{"type":"tool_use","name":"Bash","input":{"command":"go test ./..."}}]}}\n' "${FAKE_CTX:-40000}"
 if [ "$agent" = reviewer ]; then
@@ -391,6 +392,15 @@ feature() { # feature <ws> <slug> <repos...>: repos, merge order, and a spec wit
   printf 'Merge order: %s\n' "$(printf '%s\n' "$@" | paste -sd, | sed 's/,/, /g')" >"$ws/.plans/$slug/order.md"
   printf '# %s\n\nE2E: %s\n' "$slug" "${E2E:-test -f c.go}" >"$ws/.plans/$slug/spec.md"
 }
+feature_marked() { # feature_marked <ws> <records repo> <slug> <repos...>: like feature, but a
+  # marked records repo (not <ws>) owns .plans; <records repo> is created too and may be listed among the repos
+  local ws=$1 recs=$2 slug=$3 r; shift 3
+  mkrepo "$ws/$recs"; mark "$ws/$recs"
+  mkdir -p "$ws/$recs/.plans/$slug"
+  for r in "$@"; do [ -d "$ws/$r" ] || mkrepo "$ws/$r"; done
+  printf 'Merge order: %s\n' "$(printf '%s\n' "$@" | paste -sd, | sed 's/,/, /g')" >"$ws/$recs/.plans/$slug/order.md"
+  printf '# %s\n\nE2E: %s\n' "$slug" "${E2E:-none}" >"$ws/$recs/.plans/$slug/spec.md"
+}
 
 wsr=$TMP/r; mkdir -p "$wsr/.plans/api"; feature "$wsr" feat-r api web
 fakehost "$wsr/api" git@github.com:acme/api.git; fakehost "$wsr/web" git@codebahn.net:acme/web.git
@@ -425,6 +435,14 @@ expect_has "progress reports each session's cost" '[tdd] api: slice 1 done (4s, 
 expect "sessions.tsv has a row per session" 8 "$(wc -l <"$wsr/.plans/feat-r/sessions.tsv" 2>/dev/null)"
 expect_has "sessions.tsv: repo, label, rc, turns, seconds, cost, context" "$(printf 'api\tslice-01\t0\t3\t4\t0.25\t42005')" "$(cat "$wsr/.plans/feat-r/sessions.tsv" 2>/dev/null)"
 expect_has "a finished run notifies" "feat-r" "$(cat "$NOTIFY_LOG" 2>/dev/null)"
+
+# --- run in a marked workspace: plans and run.log live under the records repo; sessions get its path as WORKSPACE ---
+wsrr=$TMP/rr; feature_marked "$wsrr" records feat-mr svc; fakehost "$wsrr/svc" git@github.com:acme/svc.git
+out=$(cd "$wsrr" && PATH=$P "$WT" run feat-mr; echo "rc=$?")
+expect_has "marked run rc" "rc=0" "$out"
+expect "marked run.log lands under the records repo's plans" yes "$([ -f "$wsrr/records/.plans/feat-mr/run.log" ] && echo yes)"
+expect "marked run worktree is under the workspace, not the records repo" "$wsrr/.worktrees/feat-mr/svc" "$(git -C "$wsrr/svc" worktree list --porcelain | awk -v b=refs/heads/feat-mr '/^worktree /{p=substr($0,10)} /^branch /{if($2==b){print p; exit}}')"
+expect_has "marked run passes the records repo as WORKSPACE" "svc $wsrr/records" "$(cat "$wsrr/records/.plans/feat-mr/workspace.log" 2>/dev/null)"
 
 review=$'## Findings\n- MAJOR LOGIC c.go:1: wrong on empty input\n- NIT RULES c.go:2: naming\n\n## Title\nfeat: f\n\n## Summary\n- f'
 : >"$PR_LOG"; E2E='none (a library)' feature "$TMP/f" feat-f api; fakehost "$TMP/f/api" git@github.com:acme/api.git
