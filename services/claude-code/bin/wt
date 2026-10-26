@@ -5,6 +5,7 @@ set -u
 
 MAX_STEPS=40
 WT_CHECK_TIMEOUT=${WT_CHECK_TIMEOUT:-1500}
+WT_ACCEPTANCE_TIMEOUT=${WT_ACCEPTANCE_TIMEOUT:-1500}
 WT_PUSH_TIMEOUT=${WT_PUSH_TIMEOUT:-120}
 WT_SELF=$(realpath "${BASH_SOURCE[0]}")
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/wt
@@ -18,6 +19,7 @@ usage: wt <command> [args]
   tdd | plan-ctx | fix-ctx <check|review|ci>
                                context blocks for the skills; always exit 0
   check [--quick]              run this repo's .claude/check (what CI runs); --quick while iterating
+  acceptance [--run|--paths]   run this repo's .claude/acceptance suite (see HANDBOOK.md)
   create <slug> [repo]         find or create the slug's worktree; prints its path
   remove <slug>                remove the slug's worktrees and branches if clean and merged
   run <slug> [phase] [repo]    headless plan|tdd|ship|all (default all), per repo in merge order;
@@ -329,6 +331,19 @@ cmd_check() {
     [ "$mode" = "--quick" ] || printf '%s\n' "$tree" >"$stamp_quick"
   fi
   echo "wt check: green"
+}
+
+# --- acceptance --------------------------------------------------------------------
+
+cmd_acceptance() {
+  local top
+  top=$(git rev-parse --show-toplevel 2>/dev/null) || die "acceptance: not in a git repository"
+  top=$(realpath "$top")
+  if [ ! -x "$top/.claude/acceptance" ]; then
+    printf 'wt acceptance: no .claude/acceptance in %s\n' "$top" >&2
+    return 3
+  fi
+  command -v python3 >/dev/null 2>&1 || die "wt acceptance needs python3"
 }
 
 # --- worktree lifecycle --------------------------------------------------------
@@ -984,6 +999,7 @@ case $cmd in
   plan-ctx) cmd_plan_ctx ;;
   fix-ctx) cmd_fix_ctx "$@" ;;
   check) cmd_check "$@" ;;
+  acceptance) cmd_acceptance "$@" ;;
   create) cmd_create "$@" ;;
   remove) cmd_remove "$@" ;;
   run) no_nested_run; cmd_run "$@" ;;

@@ -87,6 +87,53 @@ green full check per tree, so pushing right after it costs nothing. The `check-p
 blocks any `git push` from Claude unless the tree is clean and `wt check` is green. Edits are
 formatted by the repo's own Biome (else its Prettier) and gofmt, which is what CI checks.
 
+## Acceptance runner contract
+
+A repo can define its own acceptance suite as an executable `.claude/acceptance`, parallel to
+`.claude/check`. `wt acceptance` runs it and reports pass/fail per scenario.
+
+The runner must:
+
+- Accept `--junit <path>`: write JUnit XML to that path, one `<testcase classname="<feature>"
+  name="<scenario>">` per acceptance scenario; a failure gets a `<failure>` child, a skip a
+  `<skipped>` child, an error an `<error>` child.
+- Accept `--run <regex>`: only run scenarios whose name matches the regex.
+- Accept `--paths`: print, one per line, the relative paths of the files that make up the
+  acceptance suite (feature files, step definitions, fixtures), instead of running anything.
+- Exit `0` if every scenario passed, `1` if any scenario failed, was skipped, or errored, `2` for
+  any other runner-side failure (crash, bad args, can't write the XML).
+
+`wt acceptance` cross-checks the exit code against the XML: a disagreement (exit 0 with a
+failing testcase, or exit 1 with everything passing), a missing or unparsable XML file, or zero
+testcases in it all count as rc 2, since they mean the runner broke its own contract rather than
+reported a real scenario result.
+
+### `wt acceptance` exit codes
+
+- `0`: every scenario passed.
+- `1`: at least one scenario failed, was skipped, or errored (and the runner's exit code agreed).
+- `2`: the runner violated its contract: exit/XML disagreement, missing or unparsable XML, zero
+  testcases, a bad `--paths` line, an exit code outside 0-2, or a timeout.
+- `3`: no `.claude/acceptance` in the repo; nothing to run.
+
+### Example runner (Go)
+
+```go
+package main
+
+// go run acceptance.go --junit out.xml [--run <regex>] [--paths]
+// Discovers scenarios, runs those matching --run, and writes one JUnit <testcase> per scenario
+// to the --junit path. Exits 0 if all passed, 1 if any failed/skipped/errored, 2 on a runner
+// crash or bad args. --paths instead prints the suite's file paths, one per line, and exits 0.
+func main() {
+    // ... parse flags, run scenarios, marshal results as JUnit XML, write to --junit ...
+}
+```
+
+Any runner that writes JUnit XML and follows this exit-code contract works: Go with `godog`,
+Python with `behave --junit`, a hand-rolled script. `wt` only shells out to `.claude/acceptance`
+and parses the XML it writes; it has no opinion on the test framework behind it.
+
 ## Files
 
 ```
