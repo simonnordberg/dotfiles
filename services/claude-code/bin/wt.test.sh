@@ -121,6 +121,66 @@ expect "here excludes sibling worktrees" "api" "$(val repos "$(cd "$ws" && "$WT"
 expect "here root at workspace" "$ws" "$(val root "$(cd "$ws" && "$WT" here)")"
 expect "here root from repo subdir" "$ws/api" "$(mkdir -p "$ws/api/sub" && cd "$ws/api/sub" && "$WT" here | sed -n 's/^root=//p')"
 
+# --- records layout: a .claude/records marker makes a repo the workspace's plans root ---
+mark() { mkdir -p "$1/.claude" && touch "$1/.claude/records"; } # mark <repodir>
+wsm=$TMP/m; mkrepo "$wsm/records"; mkrepo "$wsm/svc"; mark "$wsm/records"
+out=$(cd "$wsm" && "$WT" here)
+expect "marked here root from workspace dir" "$wsm/records" "$(val root "$out")"
+expect_has "marked here mode from workspace dir" "mode=workspace" "$out"
+out=$(cd "$wsm/svc" && "$WT" here)
+expect "marked here root from child repo" "$wsm/records" "$(val root "$out")"
+expect_has "marked here mode from child repo" "mode=workspace" "$out"
+
+wsm2=$TMP/n; mkrepo "$wsm2/r1"; mkrepo "$wsm2/r2"; mark "$wsm2/r1"; mark "$wsm2/r2"
+out=$(cd "$wsm2" && "$WT" here 2>&1; echo "rc=$?")
+expect_has "two markers die rc" "rc=1" "$out"
+expect_has "two markers name r1" "r1" "$out"
+expect_has "two markers name r2" "r2" "$out"
+
+# --- records layout: resolve and plans_for_slug find <records>/.plans/<slug> from a child repo ---
+wsrm=$TMP/rm; mkrepo "$wsrm/records"; mkrepo "$wsrm/svc"; mark "$wsrm/records"
+mkdir -p "$wsrm/records/.plans/feat-rm/svc"
+addwt "$wsrm/svc" "$wsrm/.worktrees/feat-rm/svc" feat-rm
+out=$(ctx "$wsrm/.worktrees/feat-rm/svc")
+expect "marked resolve finds plans in the records repo" "$wsrm/records/.plans/feat-rm" "$(val plans "$out")"
+expect "marked resolve plandir is in the child repo" "$wsrm/records/.plans/feat-rm/svc" "$(val plandir "$out")"
+
+out=$(cd "$wsrm/.worktrees/feat-rm/svc" && "$WT" status feat-rm)
+expect_has "marked plans_for_slug finds the records plans dir" "$wsrm/records/.plans/feat-rm" "$out"
+
+# a slug that exists only at an old guess dies, naming where it should move
+mkdir -p "$wsrm/svc/.plans/feat-old"
+out=$(cd "$wsrm/svc" && WT_SLUG=feat-old "$WT" ctx 2>&1; echo "rc=$?")
+expect_has "legacy slug (repo-local) in a marked workspace dies rc" "rc=1" "$out"
+expect_has "legacy slug (repo-local) names the old path" "feat-old is in $wsrm/svc/.plans/feat-old" "$out"
+expect_has "legacy slug (repo-local) names the new path" "move it to $wsrm/records/.plans/feat-old" "$out"
+
+mkdir -p "$wsrm/.plans/feat-old2"
+out=$(cd "$wsrm/svc" && WT_SLUG=feat-old2 "$WT" ctx 2>&1; echo "rc=$?")
+expect_has "legacy slug (workspace-flat) in a marked workspace dies rc" "rc=1" "$out"
+expect_has "legacy slug (workspace-flat) names the old path" "feat-old2 is in $wsrm/.plans/feat-old2" "$out"
+expect_has "legacy slug (workspace-flat) names the new path" "move it to $wsrm/records/.plans/feat-old2" "$out"
+
+# locate (wt create) also puts the new slug's plans under the records repo
+out=$(cd "$wsrm" && "$WT" create feat-cm svc)
+expect "marked create path" "$wsrm/.worktrees/feat-cm/svc" "$out"
+expect "marked create plandir in the records repo" yes "$([ -d "$wsrm/records/.plans/feat-cm/svc" ] && echo yes)"
+
+# the records repo itself gets a worktree at <ws>/.worktrees/<slug>/<repo> too, not <repo>/.worktrees/<slug>
+out=$(cd "$wsrm" && "$WT" create feat-cm2 records)
+expect "marked create path for the records repo itself" "$wsrm/.worktrees/feat-cm2/records" "$out"
+expect "marked create plandir for the records repo itself" yes "$([ -d "$wsrm/records/.plans/feat-cm2/records" ] && echo yes)"
+
+# --- records layout: a marker added mid-session doesn't override an explicit WORKSPACE ---
+wsam=$TMP/am; mkrepo "$wsam/records"; mkrepo "$wsam/svc"
+mkdir -p "$wsam/.plans/feat-am/svc"
+addwt "$wsam/svc" "$wsam/.worktrees/feat-am/svc" feat-am
+expect "explicit WORKSPACE before marker" "$wsam/.plans/feat-am" \
+  "$(cd "$wsam/.worktrees/feat-am/svc" && WORKSPACE=$wsam "$WT" ctx | sed -n 's/^plans=//p')"
+mark "$wsam/records"
+expect "explicit WORKSPACE still wins after marker added" "$wsam/.plans/feat-am" \
+  "$(cd "$wsam/.worktrees/feat-am/svc" && WORKSPACE=$wsam "$WT" ctx | sed -n 's/^plans=//p')"
+
 # --- create: default is <ws>/.worktrees/<slug>/<repo>; existing worktrees are reused ---
 out=$(cd "$ws" && "$WT" create feat-y api)
 expect "create path" "$ws/.worktrees/feat-y/api" "$out"
@@ -139,6 +199,9 @@ mkdir -p "$ws/dangling"; git -C "$ws/dangling" init -q -b main && echo x >"$ws/d
 git init -q --bare "$TMP/origins/dangling.git"; git -C "$ws/dangling" remote add origin "$TMP/origins/dangling.git"; git -C "$ws/dangling" push -q -u origin main 2>/dev/null
 expect "create with undeterminable remote HEAD falls back to main" "$ws/.worktrees/feat-v/dangling" "$(cd "$ws" && "$WT" create feat-v dangling 2>/dev/null)"
 expect "create repo-local plans -> repo-local worktree" "$ws2/solo/.worktrees/feat-h" "$(cd "$ws2/solo" && mkdir -p .plans/feat-h && "$WT" create feat-h)"
+# WORKSPACE set (as in wt run sessions) must not relocate an unmarked repo's worktree
+expect "create repo-local + WORKSPACE -> repo-local worktree" "$ws2/solo/.worktrees/feat-hw" \
+  "$(cd "$ws2/solo" && mkdir -p .plans/feat-hw && WORKSPACE=$ws2/solo "$WT" create feat-hw)"
 
 # --- remove ---
 out=$(cd "$ws" && "$WT" remove feat-w 2>&1; echo "rc=$?")
@@ -254,6 +317,7 @@ repo=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-
 plan="$add/$repo/plan.md"
 echo "$repo ${WT_SLUG:-unset} $("$WT_UNDER_TEST" slug)" >>"$add/seen.log"
 echo "$repo $agent ${prompt%%$'\n'*}" >>"$add/prompts.log"
+echo "$repo ${WORKSPACE:-unset}" >>"$add/workspace.log"
 say() { jq -cn --arg t "$1" '{type: "result", subtype: "success", result: $t, num_turns: 3, duration_ms: 4200, total_cost_usd: 0.25}'; }
 printf '{"type":"assistant","parent_tool_use_id":null,"message":{"usage":{"input_tokens":5,"cache_read_input_tokens":%s,"cache_creation_input_tokens":2000},"content":[{"type":"tool_use","name":"Bash","input":{"command":"go test ./..."}}]}}\n' "${FAKE_CTX:-40000}"
 if [ "$agent" = reviewer ]; then
@@ -341,6 +405,15 @@ feature() { # feature <ws> <slug> <repos...>: repos, merge order, and a spec wit
   printf 'Merge order: %s\n' "$(printf '%s\n' "$@" | paste -sd, | sed 's/,/, /g')" >"$ws/.plans/$slug/order.md"
   printf '# %s\n\nE2E: %s\n' "$slug" "${E2E:-test -f c.go}" >"$ws/.plans/$slug/spec.md"
 }
+feature_marked() { # feature_marked <ws> <records repo> <slug> <repos...>: like feature, but a
+  # marked records repo (not <ws>) owns .plans; <records repo> is created too and may be listed among the repos
+  local ws=$1 recs=$2 slug=$3 r; shift 3
+  mkrepo "$ws/$recs"; mark "$ws/$recs"
+  mkdir -p "$ws/$recs/.plans/$slug"
+  for r in "$@"; do [ -d "$ws/$r" ] || mkrepo "$ws/$r"; done
+  printf 'Merge order: %s\n' "$(printf '%s\n' "$@" | paste -sd, | sed 's/,/, /g')" >"$ws/$recs/.plans/$slug/order.md"
+  printf '# %s\n\nE2E: %s\n' "$slug" "${E2E:-none}" >"$ws/$recs/.plans/$slug/spec.md"
+}
 
 wsr=$TMP/r; mkdir -p "$wsr/.plans/api"; feature "$wsr" feat-r api web
 fakehost "$wsr/api" git@github.com:acme/api.git; fakehost "$wsr/web" git@codebahn.net:acme/web.git
@@ -375,6 +448,14 @@ expect_has "progress reports each session's cost" '[tdd] api: slice 1 done (4s, 
 expect "sessions.tsv has a row per session" 8 "$(wc -l <"$wsr/.plans/feat-r/sessions.tsv" 2>/dev/null)"
 expect_has "sessions.tsv: repo, label, rc, turns, seconds, cost, context" "$(printf 'api\tslice-01\t0\t3\t4\t0.25\t42005')" "$(cat "$wsr/.plans/feat-r/sessions.tsv" 2>/dev/null)"
 expect_has "a finished run notifies" "feat-r" "$(cat "$NOTIFY_LOG" 2>/dev/null)"
+
+# --- run in a marked workspace: plans and run.log live under the records repo; sessions get its path as WORKSPACE ---
+wsrr=$TMP/rr; feature_marked "$wsrr" records feat-mr svc; fakehost "$wsrr/svc" git@github.com:acme/svc.git
+out=$(cd "$wsrr" && PATH=$P "$WT" run feat-mr; echo "rc=$?")
+expect_has "marked run rc" "rc=0" "$out"
+expect "marked run.log lands under the records repo's plans" yes "$([ -f "$wsrr/records/.plans/feat-mr/run.log" ] && echo yes)"
+expect "marked run worktree is under the workspace, not the records repo" "$wsrr/.worktrees/feat-mr/svc" "$(git -C "$wsrr/svc" worktree list --porcelain | awk -v b=refs/heads/feat-mr '/^worktree /{p=substr($0,10)} /^branch /{if($2==b){print p; exit}}')"
+expect_has "marked run passes the records repo as WORKSPACE" "svc $wsrr/records" "$(cat "$wsrr/records/.plans/feat-mr/workspace.log" 2>/dev/null)"
 
 review=$'## Findings\n- MAJOR LOGIC c.go:1: wrong on empty input\n- NIT RULES c.go:2: naming\n\n## Title\nfeat: f\n\n## Summary\n- f'
 : >"$PR_LOG"; E2E='none (a library)' feature "$TMP/f" feat-f api; fakehost "$TMP/f/api" git@github.com:acme/api.git
@@ -417,12 +498,12 @@ feature "$TMP/u" feat-u api
 out=$(cd "$TMP/u" && PATH=$P "$WT" run feat-u; echo "rc=$?")
 expect_has "an unknown host gets the branch pushed" "api: 2/2 slices done, pushed feat-u (open the PR by hand)" "$out"
 
-feature "$TMP/m" feat-m api; fakehost "$TMP/m/api" git@github.com:acme/api.git
-(cd "$TMP/m" && PATH=$P "$WT" run feat-m plan >/dev/null; PATH=$P "$WT" run feat-m tdd >/dev/null)
-commit "$TMP/m/api" "feat: upstream" upstream.txt >/dev/null; git -C "$TMP/m/api" push -q origin main
-out=$(cd "$TMP/m" && PATH=$P "$WT" run feat-m ship; echo "rc=$?")
+feature "$TMP/m2" feat-m api; fakehost "$TMP/m2/api" git@github.com:acme/api.git
+(cd "$TMP/m2" && PATH=$P "$WT" run feat-m plan >/dev/null; PATH=$P "$WT" run feat-m tdd >/dev/null)
+commit "$TMP/m2/api" "feat: upstream" upstream.txt >/dev/null; git -C "$TMP/m2/api" push -q origin main
+out=$(cd "$TMP/m2" && PATH=$P "$WT" run feat-m ship; echo "rc=$?")
 expect_has "ship after the default branch moved" "rc=0" "$out"
-expect "ship rebases onto the moved default first" "$(git -C "$TMP/m/api" rev-parse main)" "$(git -C "$TMP/m/.worktrees/feat-m/api" merge-base HEAD origin/main)"
+expect "ship rebases onto the moved default first" "$(git -C "$TMP/m2/api" rev-parse main)" "$(git -C "$TMP/m2/.worktrees/feat-m/api" merge-base HEAD origin/main)"
 feature "$TMP/c2" feat-c2 api; fakehost "$TMP/c2/api" git@github.com:acme/api.git
 (cd "$TMP/c2" && PATH=$P "$WT" run feat-c2 plan >/dev/null; PATH=$P "$WT" run feat-c2 tdd >/dev/null)
 commit "$TMP/c2/api" "feat: upstream" c.go >/dev/null; git -C "$TMP/c2/api" push -q origin main
@@ -468,7 +549,7 @@ expect_has "run blocked summary" "api: 1/2 slices done, BLOCKED: what now?" "$ou
 expect "run blocked no ship" "" "$(cat "$wsb/.plans/feat-b/state.md" 2>/dev/null)"
 expect_has "a blocked run notifies" "BLOCKED: what now?" "$(cat "$NOTIFY_LOG" 2>/dev/null)"
 
-wsn=$TMP/n; mkdir -p "$wsn/.plans/feat-n"; mkrepo "$wsn/api"
+wsn=$TMP/n2; mkdir -p "$wsn/.plans/feat-n"; mkrepo "$wsn/api"
 printf 'Merge order: api\n' >"$wsn/.plans/feat-n/order.md"
 out=$(cd "$wsn" && FAKE_NOOP=1 PATH=$P "$WT" run feat-n; echo "rc=$?")
 expect_has "no progress stops the run" "rc=1" "$out"

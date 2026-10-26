@@ -109,7 +109,12 @@ formatted by the repo's own Biome (else its Prettier) and gofmt, which is what C
 ```
 
 `<root>` is where you ran `/spec`: the workspace for multi-repo work, the repo for
-single-repo work (then the worktree is `<repo>/.worktrees/<slug>`). All of it is plain
+single-repo work (then the worktree is `<repo>/.worktrees/<slug>`). A workspace with a
+committed, empty `.claude/records` file in one of its repos is marked: that repo becomes
+`<root>` for every repo in the workspace, including itself, so a multi-repo project keeps one
+plans root no matter which repo you run `/spec` from. The marked repo must sit in its own
+directory (e.g. `~/code/codebahn`), never directly under a directory shared with unrelated
+repos; a marker there would pull every sibling into the project. All of it is plain
 markdown; reorder steps, untick one to redo it, edit the merge order. Keep the directory
 after shipping; it is the audit trail. Specs also get committed into the repo when its
 CLAUDE.md names a spec directory; plans never do.
@@ -145,6 +150,16 @@ pass is the design; a second pass on unchanged code should find nothing new.
 sibling worktree, the main checkout on a branch, or a bare repo with worktrees. `WT_SLUG` and
 `WORKSPACE` override the derivation when a layout is stranger than that. Non-git VCS is out
 of scope.
+
+In a marked workspace, every repo's worktrees still live at `<ws>/.worktrees/<slug>/<repo>`,
+the records repo's own included, but plans, run.log, and sessions.tsv all live under
+`<records repo>/.plans/<slug>` instead of each repo's own `.plans`. `wt here` prints
+`mode=workspace root=<records repo>` from the workspace dir or from inside any child repo.
+A slug that exists only at the old, pre-marker location (`<repo>/.plans/<slug>` or
+`<ws>/.plans/<slug>`) is an error naming where to move it; there is no silent fallback. An
+explicit `WORKSPACE` always wins over the marker, so a run already in flight keeps the root
+it started with even if a marker lands mid-run; only runs started after the marker lands use
+it. Two marked repos in one workspace is fatal, naming both.
 
 ## Cleanup
 
