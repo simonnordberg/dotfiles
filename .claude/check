@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# What CI runs. --quick runs the same fast suite (nothing slower exists yet).
+set -u
+cd "$(dirname "$0")/.."
+
+bash services/claude-code/bin/wt.test.sh
+rc1=$?
+bash services/claude-code/test/hooks.test.sh
+rc2=$?
+
+[ $rc1 -eq 0 ] && [ $rc2 -eq 0 ]
