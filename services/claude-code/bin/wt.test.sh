@@ -579,7 +579,10 @@ feature() { # feature <ws> <slug> <repos...>: repos, merge order, and a spec wit
   mkdir -p "$ws/.plans/$slug"
   for r in "$@"; do mkrepo "$ws/$r"; done
   printf 'Merge order: %s\n' "$(printf '%s\n' "$@" | paste -sd, | sed 's/,/, /g')" >"$ws/.plans/$slug/order.md"
-  printf '# %s\n\nE2E: %s\n' "$slug" "${E2E:-test -f c.go}" >"$ws/.plans/$slug/spec.md"
+  printf '# %s\n\n' "$slug" >"$ws/.plans/$slug/spec.md"
+  if [ -z "${E2E+x}" ] || [ -n "$E2E" ]; then
+    printf 'E2E: %s\n' "${E2E:-test -f c.go}" >>"$ws/.plans/$slug/spec.md"
+  fi
 }
 feature_marked() { # feature_marked <ws> <records repo> <slug> <repos...>: like feature, but a
   # marked records repo (not <ws>) owns .plans; <records repo> is created too and may be listed among the repos
@@ -664,6 +667,14 @@ E2E='echo e2e-broke; exit 3' feature "$TMP/e" feat-e api; fakehost "$TMP/e/api" 
 out=$(cd "$TMP/e" && PATH=$P "$WT" run feat-e; echo "rc=$?")
 expect_has "a red e2e blocks" "[ship] feat-e: BLOCKED: e2e failed (exit 3): e2e-broke" "$out"
 expect "no PR when the e2e is red" "" "$(cat "$TMP/e/.plans/feat-e/state.md" 2>/dev/null)"
+
+: >"$PR_LOG"; E2E='' feature "$TMP/ne" feat-ne api; fakehost "$TMP/ne/api" git@github.com:acme/api.git
+out=$(cd "$TMP/ne" && PATH=$P "$WT" run feat-ne; echo "rc=$?")
+expect_has "a spec with no E2E line still ships" "rc=0" "$out"
+expect_lacks "no e2e progress line when the spec has none" "E2E" "$out"
+body=$(cat "$PR_LOG.body.gh" 2>/dev/null)
+expect_lacks "the PR body has no E2E note when the spec has none" "E2E" "$body"
+expect_lacks "run.log has no e2e mention when the spec has none" "E2E" "$(cat "$TMP/ne/.plans/feat-ne/run.log" 2>/dev/null)"
 
 feature "$TMP/t" feat-t api; fakehost "$TMP/t/api" git@github.com:acme/api.git
 printf '#!/bin/sh\nsleep 5\n' >"$TMP/t/api/.git/hooks/pre-push"; chmod +x "$TMP/t/api/.git/hooks/pre-push"
