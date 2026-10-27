@@ -5,7 +5,7 @@ the spec interactively; everything after that runs headlessly, one fresh `claude
 per step, driven by files on disk. Nothing depends on a conversation staying alive.
 
 ```
-/spec    interview me, write spec.md + order.md          you validate this
+/spec    interview me, write spec.md, order.md, feature drafts    you validate this
 /build   per repo: /steps, /tdd..., then review and PRs     headless, parallel across repos
 /work    enter a repo's worktree in this session          manual mode and unblocking
 ```
@@ -37,7 +37,8 @@ the repo itself for single-repo work):
 
 ```
 cd ~/code/codebahn && cl
-/spec rate-limit git pushes per tenant     # max 2 rounds of questions, then spec.md + order.md
+/spec rate-limit git pushes per tenant     # max 2 rounds of questions, then spec.md, order.md,
+                                             # and feature drafts
 /build git-ratelimit                        # detached; notifies you when it needs you
 ```
 
@@ -54,11 +55,13 @@ at a time. For each repo in `order.md` it:
    check gets up to two `/fix check` sessions); the reviewer on the whole diff; its BLOCKER and
    MAJOR findings go to one `/fix review` session, which proves each with a failing test (or
    drops it as a false positive) before fixing it; the reviewer then re-reviews only the fix
-   commits, once. Then the spec's `E2E:` command, once. Then, in merge order, `wt` pushes each
-   branch and opens its PR (`gh` or the `codebahn` CLI) with the reviewer's summary, the merge
-   order, the e2e result, and the review. After the PRs are open, `wt` polls each one's CI
-   (GitHub via `gh pr checks`, codebahn via `codebahn ci list`); a red CI run's logs go to
-   `ci.log` and one `/fix ci` session, then re-check, re-push, re-poll (up to 2 tries). A
+   commits, once. Then the spec's `E2E:` command, once, if the spec has one (optional; a spec
+   with no `E2E:` line skips this and adds no note to the PR body). Then, in merge order, `wt`
+   pushes each branch and opens its PR (`gh` or the `codebahn` CLI) with the reviewer's
+   summary, the merge order, the e2e result (if any), and the review. After the PRs are open,
+   `wt` polls each one's CI (GitHub via `gh pr checks`, codebahn via `codebahn ci list`); a
+   red CI run's logs go to `ci.log` and one `/fix ci` session, then re-check, re-push,
+   re-poll (up to 2 tries). A
    branch with no workflow files (`.github/workflows`, `.forgejo/workflows`) is not polled.
    Merge the PRs in the order their bodies state.
 
@@ -182,10 +185,12 @@ jq; it has no opinion on the framework behind it.
 
 ```
 <root>/.plans/<slug>/
-  spec.md            what and why; frozen acceptance criteria for the reviewer
+  spec.md            what and why; frozen acceptance criteria for the reviewer, plus an
+                     Acceptance line per repo naming its feature drafts (or `none`, and why)
   order.md           first line: `Merge order: repo1, repo2`; then seam notes
   state.md           `<repo> <PR URL> open`, appended when wt opens the PR
-  e2e.log            output of the spec's E2E command
+  e2e.log            output of the spec's `E2E:` command, when it has one (optional; newer
+                     specs have no E2E line and no e2e.log)
   run.log            progress, plus one line per session action (`wt watch`)
   sessions.tsv       per session: time, repo, label, exit code, turns, seconds, cost, peak context
   <repo>/plan.md     `- [ ] behavior. Test: ...` becomes `- [x] ... (commits: a b c)`
@@ -196,6 +201,8 @@ jq; it has no opinion on the framework behind it.
   <repo>/log/        per headless session: <label>.jsonl (full transcript, every tool call and
                      result) and <label>.log (the final message); plan, slice-01, ..., review,
                      fix-review, rereview, fix-ci; a rerun adds -2, -3 instead of overwriting
+  features/<repo>/<path>   Gherkin drafts named by spec.md's Acceptance lines; acceptance
+                     criteria alongside the spec
 <root>/.worktrees/<slug>/<repo>/   the feature's worktrees, together
 ```
 

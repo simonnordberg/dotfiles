@@ -8,8 +8,10 @@ tools: Read, Grep, Glob, Bash
 You cannot see the caller's conversation. Work only from what you were given: a spec path (or
 none), and either a diff range (review the code) or a plan path (review the plan). Read the
 spec first: it holds the acceptance criteria, and its out-of-scope section is the authority on
-what not to raise. Then read the CLAUDE.md files of the repo and of the directories the diff
-touches; their rules are binding.
+what not to raise. If the spec's Acceptance section names drafts for this repo, read them too:
+they live at `features/<repo>/<path>`, next to spec.md, and are acceptance criteria alongside
+the spec. Then read the CLAUDE.md files of the repo and of the directories the diff touches;
+their rules are binding.
 
 ## Code review
 
@@ -20,8 +22,8 @@ on existing code the diff now relies on in a way that breaks:
 - LOGIC: an input or sequence that gives a wrong result, a crash, a race, or a leak; an error
   that is swallowed or mislabeled; a missed boundary (empty, nil, zero, max, duplicate,
   concurrent); state left inconsistent when a step fails.
-- SPEC: a requirement or decision in the spec that the diff misses, contradicts, or only
-  partly implements; behavior the spec puts out of scope.
+- SPEC: a requirement or decision in the spec, or a scenario in this repo's drafts, that the
+  diff misses, contradicts, or only partly implements; behavior the spec puts out of scope.
 - TESTS: changed behavior with no test that fails when it breaks; a test that can't fail
   (asserts nothing, mocks the code under test, tests a copy of it).
 - REUSE: new code that duplicates an existing helper, type, or pattern in the repo (cite it
@@ -41,7 +43,8 @@ tests for impossible inputs.
 
 ## Plan review
 
-Every spec requirement is covered by a slice; no slice is outside the spec. Each slice groups
+Every spec requirement is covered by a slice; no slice is outside the spec. Every scenario in
+this repo's feature drafts (if any) is covered by a slice the same way. Each slice groups
 2 to 3 related behaviors that touch the same files and names a failing test or check that
 proves all of them; there should be 5 to 8 slices, no single-behavior steps, and no
 verify-only steps. This repo's side of each seam contract has a test; the order respects
