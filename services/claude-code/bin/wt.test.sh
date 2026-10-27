@@ -613,14 +613,18 @@ out=$(cd "$wsbl" && FAKE_BLOCK=BLOCKME PATH=$P "$WT" run feat-bl; echo "rc=$?")
 expect_has "progress blocked" "[tdd] api: BLOCKED: what now?" "$out"
 
 # --- CI watch: after PRs are open, poll CI and fix red runs ---
+workflow() { # workflow <repodir> <file>: commit a CI workflow file to main and push it
+  mkdir -p "$1/${2%/*}" && echo 'on: push' >"$1/$2"
+  git -C "$1" add -A && git -C "$1" commit -qm ci && git -C "$1" push -q origin main
+}
 # green CI
-feature "$TMP/ci1" feat-ci1 api; fakehost "$TMP/ci1/api" git@github.com:acme/api.git
+feature "$TMP/ci1" feat-ci1 api; workflow "$TMP/ci1/api" .github/workflows/ci.yml; fakehost "$TMP/ci1/api" git@github.com:acme/api.git
 out=$(cd "$TMP/ci1" && PATH=$P "$WT" run feat-ci1; echo "rc=$?")
 expect_has "CI poll: github green" "[ci] api: CI green" "$out"
 expect_has "CI poll rc" "rc=0" "$out"
 
 # red CI with a fix
-feature "$TMP/ci2" feat-ci2 api; fakehost "$TMP/ci2/api" git@github.com:acme/api.git
+feature "$TMP/ci2" feat-ci2 api; workflow "$TMP/ci2/api" .github/workflows/ci.yml; fakehost "$TMP/ci2/api" git@github.com:acme/api.git
 out=$(cd "$TMP/ci2" && FAKE_CI=fail_then_pass PATH=$P "$WT" run feat-ci2; echo "rc=$?")
 expect_has "CI red gets a fix session" "[ci] api: CI red; fix session 1" "$out"
 expect_has "CI: fix and re-push lets it finish" "[ci] api: CI green" "$out"
@@ -628,16 +632,24 @@ expect_has "CI fixed rc" "rc=0" "$out"
 expect_has "CI fix session in prompts" "api main /fix ci" "$(cat "$TMP/ci2/.plans/feat-ci2/prompts.log")"
 
 # always-red CI blocks after 2 fix sessions
-feature "$TMP/ci3" feat-ci3 api; fakehost "$TMP/ci3/api" git@github.com:acme/api.git
+feature "$TMP/ci3" feat-ci3 api; workflow "$TMP/ci3/api" .github/workflows/ci.yml; fakehost "$TMP/ci3/api" git@github.com:acme/api.git
 out=$(cd "$TMP/ci3" && FAKE_CI=always_fail PATH=$P "$WT" run feat-ci3; echo "rc=$?")
 expect_has "CI always red blocks" "[ci] api: BLOCKED: CI still red after 2 fix sessions" "$out"
 expect_has "CI always red rc" "rc=1" "$out"
 expect "CI: two fix sessions at most" 2 "$(grep -c '/fix ci' "$TMP/ci3/.plans/feat-ci3/prompts.log")"
 
-# codebahn CI
-feature "$TMP/ci4" feat-ci4 api; fakehost "$TMP/ci4/api" git@codebahn.net:acme/api.git
+# codebahn CI, from .forgejo/workflows
+feature "$TMP/ci4" feat-ci4 api; workflow "$TMP/ci4/api" .forgejo/workflows/ci.yml; fakehost "$TMP/ci4/api" git@codebahn.net:acme/api.git
 out=$(cd "$TMP/ci4" && PATH=$P "$WT" run feat-ci4; echo "rc=$?")
 expect_has "CI poll: codebahn green" "[ci] api: CI green" "$out"
+
+# no workflow files: no CI run will ever report, so there is nothing to wait for
+feature "$TMP/ci6" feat-ci6 api; fakehost "$TMP/ci6/api" git@github.com:acme/api.git
+n=$(grep -c 'pr checks' "$PR_LOG")
+out=$(cd "$TMP/ci6" && PATH=$P "$WT" run feat-ci6; echo "rc=$?")
+expect_has "no workflows: no CI watch" "[ci] api: no CI workflows; nothing to watch" "$out"
+expect "no workflows: CI never polled" "$n" "$(grep -c 'pr checks' "$PR_LOG")"
+expect_has "no workflows rc" "rc=0" "$out"
 
 # unknown host: no CI poll
 feature "$TMP/ci5" feat-ci5 api

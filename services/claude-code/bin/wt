@@ -719,6 +719,12 @@ ci_host() { # ci_host <repo>: github, codebahn, or empty (unknown)
   case $url in *github.com[:/]*) echo github ;; *codebahn.net[:/]*) echo codebahn ;; esac
 }
 
+ci_workflows() { # ci_workflows <repo>: the branch's CI workflow files; empty means no run will report.
+  # Either directory counts on either host: watching a repo without CI costs the timeout, while
+  # skipping one with CI loses the fix loop
+  git -C "$(wt_dir "$1")" ls-files -- '.github/workflows/*.y*ml' '.forgejo/workflows/*.y*ml'
+}
+
 ci_status_github() { # ci_status_github <repo> <pr_url>: success, failure, pending, or empty
   local pr_num owner_repo checks state
   pr_num=${2##*/}
@@ -785,6 +791,7 @@ watch_ci() { # watch_ci <repos...>: after PRs are open, poll CI and fix red runs
     [ -n "$pr_url" ] && [ "$pr_url" != "-" ] || continue
     host=$(ci_host "$repo")
     [ -n "$host" ] || continue
+    if [ -z "$(ci_workflows "$repo")" ]; then progress ci "$repo" "no CI workflows; nothing to watch"; continue; fi
     progress ci "$repo" "polling CI ($host)"
     local try=0
     while :; do
