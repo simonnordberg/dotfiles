@@ -314,153 +314,83 @@ expect_has "acceptance without a runner says so" "wt acceptance: no .claude/acce
 mkdir -p "$wsa/api/.claude"
 cat >"$wsa/api/.claude/acceptance" <<'EOF'
 #!/usr/bin/env bash
-exit 0
+echo "$*" >>"$ACCEPTANCE_ARGS_LOG"
+echo "runner output" >&2
+while [ $# -gt 0 ]; do
+  case $1 in
+    --report) [ -z "${ACCEPTANCE_JSON:-}" ] || printf '%s' "$ACCEPTANCE_JSON" >"$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+exit "${ACCEPTANCE_EXIT:-0}"
 EOF
 chmod +x "$wsa/api/.claude/acceptance"
 commit "$wsa/api" "chore: acceptance runner" .claude/keep >/dev/null
-nopy=$TMP/nopy; mkdir -p "$nopy"
-for b in bash git timeout tee realpath; do ln -sf "$(command -v "$b")" "$nopy/$b"; done
-out=$(cd "$wsa/api" && PATH=$nopy "$WT" acceptance 2>&1; echo "rc=$?")
-expect_has "acceptance needs python3 rc" "rc=1" "$out"
-expect_has "acceptance needs python3 says so" "wt acceptance needs python3" "$out"
-
-# --- acceptance: happy path and --run forwarding ---
-cat >"$wsa/api/.claude/acceptance" <<'EOF'
-#!/usr/bin/env bash
-echo "$*" >>"$ACCEPTANCE_ARGS_LOG"
-junit=""
-while [ $# -gt 0 ]; do
-  case $1 in
-    --junit) junit=$2; shift 2 ;;
-    *) shift ;;
-  esac
-done
-[ -n "$junit" ] && printf '%s' "$ACCEPTANCE_JUNIT" >"$junit"
-exit "${ACCEPTANCE_EXIT:-0}"
-EOF
-chmod +x "$wsa/api/.claude/acceptance"
-commit "$wsa/api" "chore: real acceptance runner" .claude/keep >/dev/null
 export ACCEPTANCE_ARGS_LOG=$TMP/acc-args.log
-export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/><testcase classname="login" name="logs out"/></testsuite>'
-: >"$ACCEPTANCE_ARGS_LOG"
-out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
-expect "acceptance happy path rc" 0 "$rc"
-expect_has "acceptance prints first passed testcase" "$(printf 'passed\tlogin\tsucceeds')" "$out"
-expect_has "acceptance prints second passed testcase" "$(printf 'passed\tlogin\tlogs out')" "$out"
-expect_has "acceptance prints a passing summary" "wt acceptance: 2 passed, 0 not passed" "$(cat "$TMP/acc.err")"
-expect_has "acceptance invokes the runner with --junit" "--junit" "$(cat "$ACCEPTANCE_ARGS_LOG")"
-: >"$ACCEPTANCE_ARGS_LOG"
-out=$(cd "$wsa/api" && "$WT" acceptance --run 'logs.*' 2>/dev/null); rc=$?
-expect "acceptance --run forwarding rc" 0 "$rc"
-expect_has "acceptance forwards --run to the runner" "--run logs.*" "$(cat "$ACCEPTANCE_ARGS_LOG")"
+cuke() { # cuke <name> [step status]...: a Cucumber JSON scenario as godog writes it; no statuses, no steps
+  local name=$1 s steps=; shift
+  for s in "$@"; do steps="$steps${steps:+,}{\"keyword\":\"Then \",\"name\":\"a step\",\"result\":{\"status\":\"$s\"}}"; done
+  printf '{"type":"scenario","name":"%s"%s}' "$name" "${steps:+,\"steps\":[$steps]}"
+}
+report() { # report <scenario>...: a Cucumber JSON report of one feature file
+  local IFS=,; printf '[{"uri":"features/login.feature","name":"Login","elements":[%s]}]' "$*"
+}
+acc() { # acc <runner exit> <report, empty for none> [arg]...: wt acceptance on the fake runner; sets out, err, rc
+  out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=$1 ACCEPTANCE_JSON=$2 "$WT" acceptance "${@:3}" 2>"$TMP/acc.err"); rc=$?
+  err=$(cat "$TMP/acc.err")
+}
 
-# --- acceptance: failures, skips, and runner exit 2 ---
-export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/><testcase classname="login" name="fails"><failure>boom</failure></testcase></testsuite>'
-out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=1 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+# --- acceptance: one line per scenario from the runner's Cucumber JSON, and --run forwarding ---
+: >"$ACCEPTANCE_ARGS_LOG"
+acc 0 "$(report "$(cuke 'logs in' passed passed)" "$(cuke 'logs out' passed)")"
+expect "acceptance all passed rc" 0 "$rc"
+expect_has "acceptance prints a passed scenario" "$(printf 'passed\tfeatures/login.feature\tlogs in')" "$out"
+expect_has "acceptance prints every scenario" "$(printf 'passed\tfeatures/login.feature\tlogs out')" "$out"
+expect_has "acceptance prints a summary" "wt acceptance: 2 passed, 0 not passed" "$err"
+expect_has "acceptance asks the runner for a report" "--report $wsa/api/.git/wt-acceptance.json" "$(cat "$ACCEPTANCE_ARGS_LOG")"
+: >"$ACCEPTANCE_ARGS_LOG"
+acc 0 "$(report "$(cuke 'logs in')" "$(cuke 'logs out' passed)")" --run 'logs out'
+expect "acceptance --run rc" 0 "$rc"
+expect_has "acceptance forwards --run to the runner" "--run logs out" "$(cat "$ACCEPTANCE_ARGS_LOG")"
+expect_lacks "acceptance leaves out a scenario that did not run" "logs in" "$out"
+expect_has "acceptance counts only scenarios that ran" "wt acceptance: 1 passed, 0 not passed" "$err"
+
+# --- acceptance: a scenario passes only if every step passed ---
+acc 1 "$(report "$(cuke 'logs in' passed)" "$(cuke fails passed failed skipped)")"
 expect "acceptance failed scenario rc" 1 "$rc"
-expect_has "acceptance prints a failed testcase" "$(printf 'failed\tlogin\tfails')" "$out"
-expect_has "acceptance failed summary" "wt acceptance: 1 passed, 1 not passed" "$(cat "$TMP/acc.err")"
-
-export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/><testcase classname="login" name="skipped"><skipped/></testcase></testsuite>'
-out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=1 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
-expect "acceptance skipped scenario rc" 1 "$rc"
-expect_has "acceptance prints a skipped testcase" "$(printf 'skipped\tlogin\tskipped')" "$out"
-expect_has "acceptance skipped summary" "wt acceptance: 1 passed, 1 not passed" "$(cat "$TMP/acc.err")"
-
-export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/><testcase classname="login" name="errored"><error>kaboom</error></testcase></testsuite>'
-out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=1 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
-expect "acceptance errored scenario rc" 1 "$rc"
-expect_has "acceptance prints an errored testcase" "$(printf 'error\tlogin\terrored')" "$out"
-
-export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/></testsuite>'
-cat >"$wsa/api/.claude/acceptance" <<'EOF'
-#!/usr/bin/env bash
-echo "$*" >>"$ACCEPTANCE_ARGS_LOG"
-junit=""
-while [ $# -gt 0 ]; do
-  case $1 in
-    --junit) junit=$2; shift 2 ;;
-    *) shift ;;
-  esac
+expect_has "acceptance names the failed scenario" "$(printf 'failed\tfeatures/login.feature\tfails')" "$out"
+expect_has "acceptance failed summary" "wt acceptance: 1 passed, 1 not passed" "$err"
+for s in skipped pending undefined ambiguous; do
+  acc 1 "$(report "$(cuke 'logs in' passed)" "$(cuke odd passed "$s")")"
+  expect "acceptance $s step rc" 1 "$rc"
+  expect_has "acceptance reports a $s step" "$(printf '%s\tfeatures/login.feature\todd' "$s")" "$out"
 done
-[ -n "$junit" ] && printf '%s' "$ACCEPTANCE_JUNIT" >"$junit"
-echo "runner exploded" >&2
-exit "${ACCEPTANCE_EXIT:-0}"
-EOF
-chmod +x "$wsa/api/.claude/acceptance"
-commit "$wsa/api" "chore: acceptance runner can exit 2" .claude/keep >/dev/null
-out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=2 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+acc 0 "$(report "$(cuke skips skipped)")" # godog exits 0 when a step skips
+expect "acceptance skipped step under a runner exit 0 rc" 1 "$rc"
+acc 1 "$(report '{"type":"scenario","name":"cleans up","steps":[{"result":{"status":"passed"}}],"after":[{"result":{"status":"failed"}}]}')"
+expect_has "acceptance counts a failed hook" "$(printf 'failed\tfeatures/login.feature\tcleans up')" "$out"
+acc 1 "$(report '{"type":"scenario","name":"blank","steps":[{"result":{}}]}')"
+expect_has "acceptance never passes a step without a status" "$(printf 'unknown\tfeatures/login.feature\tblank')" "$out"
+
+# --- acceptance: a run that proves nothing is rc 2 ---
+acc 1 "$(report "$(cuke 'logs in' passed)")"
+expect "acceptance runner exit 1 with every scenario passed rc" 2 "$rc"
+expect_has "acceptance says the runner and report disagree" "wt acceptance: runner exited 1 but" "$err"
+acc 0 ""
+expect "acceptance missing report rc" 2 "$rc"
+expect_has "acceptance missing report gives a reason" "wt acceptance: could not read" "$err"
+acc 0 "not json"
+expect "acceptance unparsable report rc" 2 "$rc"
+expect_has "acceptance unparsable report gives a reason" "wt acceptance: could not read" "$err"
+acc 0 "[]"
+expect "acceptance empty report rc" 2 "$rc"
+expect_has "acceptance empty report gives a reason" "wt acceptance: no scenarios ran" "$err"
+acc 0 "$(report "$(cuke 'logs in')" "$(cuke 'logs out')")" --run nothing
+expect "acceptance --run matching nothing rc" 2 "$rc"
+acc 2 "$(report "$(cuke 'logs in' passed)")"
 expect "acceptance runner exit 2 rc" 2 "$rc"
-expect_has "acceptance forwards the runner's stderr on exit 2" "runner exploded" "$out"
-expect_has "acceptance gives a reason on stderr for exit 2" "wt acceptance: runner exited 2" "$(cat "$TMP/acc.err")"
-
-# --- acceptance: exit-code/XML disagreement and bad XML ---
-cat >"$wsa/api/.claude/acceptance" <<'EOF'
-#!/usr/bin/env bash
-junit=""
-while [ $# -gt 0 ]; do
-  case $1 in
-    --junit) junit=$2; shift 2 ;;
-    *) shift ;;
-  esac
-done
-[ -n "$junit" ] && [ "${ACCEPTANCE_WRITE_JUNIT:-1}" = 1 ] && printf '%s' "$ACCEPTANCE_JUNIT" >"$junit"
-exit "${ACCEPTANCE_EXIT:-0}"
-EOF
-chmod +x "$wsa/api/.claude/acceptance"
-commit "$wsa/api" "chore: acceptance runner for disagreement cases" .claude/keep >/dev/null
-
-export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="fails"><failure>boom</failure></testcase></testsuite>'
-out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=0 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
-expect "acceptance exit 0 with a failing testcase rc" 2 "$rc"
-expect_has "acceptance exit 0 with a failing testcase gives a reason" "wt acceptance: runner exited 0 but" "$(cat "$TMP/acc.err")"
-
-export ACCEPTANCE_JUNIT='<testsuite><testcase classname="login" name="succeeds"/></testsuite>'
-out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=1 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
-expect "acceptance exit 1 with all passing rc" 2 "$rc"
-expect_has "acceptance exit 1 with all passing gives a reason" "wt acceptance: runner exited 1 but" "$(cat "$TMP/acc.err")"
-
-export ACCEPTANCE_WRITE_JUNIT=0
-out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=0 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
-expect "acceptance missing xml rc" 2 "$rc"
-expect_has "acceptance missing xml gives a reason" "wt acceptance: could not read" "$(cat "$TMP/acc.err")"
-export ACCEPTANCE_WRITE_JUNIT=1
-
-cat >"$wsa/api/.claude/acceptance" <<'EOF'
-#!/usr/bin/env bash
-junit=""
-while [ $# -gt 0 ]; do
-  case $1 in
-    --junit) junit=$2; shift 2 ;;
-    *) shift ;;
-  esac
-done
-[ -n "$junit" ] && printf 'not xml at all' >"$junit"
-exit 0
-EOF
-chmod +x "$wsa/api/.claude/acceptance"
-commit "$wsa/api" "chore: acceptance runner writes garbage xml" .claude/keep >/dev/null
-out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
-expect "acceptance unparsable xml rc" 2 "$rc"
-expect_has "acceptance unparsable xml gives a reason" "wt acceptance: could not read" "$(cat "$TMP/acc.err")"
-
-cat >"$wsa/api/.claude/acceptance" <<'EOF'
-#!/usr/bin/env bash
-junit=""
-while [ $# -gt 0 ]; do
-  case $1 in
-    --junit) junit=$2; shift 2 ;;
-    *) shift ;;
-  esac
-done
-[ -n "$junit" ] && printf '<testsuite></testsuite>' >"$junit"
-exit 0
-EOF
-chmod +x "$wsa/api/.claude/acceptance"
-commit "$wsa/api" "chore: acceptance runner writes an empty testsuite" .claude/keep >/dev/null
-out=$(cd "$wsa/api" && "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
-expect "acceptance empty testsuite rc" 2 "$rc"
-expect_has "acceptance empty testsuite gives a reason" "wt acceptance: no testcases in" "$(cat "$TMP/acc.err")"
+expect_has "acceptance forwards the runner's output" "runner output" "$out"
+expect_has "acceptance gives a reason for runner exit 2" "wt acceptance: runner exited 2" "$err"
 
 # --- acceptance: timeout and unexpected exit codes ---
 cat >"$wsa/api/.claude/acceptance" <<'EOF'
