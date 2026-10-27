@@ -311,6 +311,15 @@ wsa=$TMP/acc; mkrepo "$wsa/api"
 out=$(cd "$wsa/api" && "$WT" acceptance 2>&1; echo "rc=$?")
 expect_has "acceptance without a runner rc" "rc=3" "$out"
 expect_has "acceptance without a runner says so" "wt acceptance: no .claude/acceptance in $wsa/api" "$out"
+# a usage error proves nothing, so it is rc 2, never the "a scenario failed" rc 1
+for a in "--run" "--bogus" "--run x extra" "--paths extra"; do
+  out=$(cd "$wsa/api" && "$WT" acceptance $a 2>&1; echo "rc=$?")
+  expect_has "acceptance $a rc" "rc=2" "$out"
+  expect_has "acceptance $a shows usage" "usage: wt acceptance [--run <regex> | --paths]" "$out"
+done
+out=$(cd "$TMP" && "$WT" acceptance 2>&1; echo "rc=$?")
+expect_has "acceptance outside git rc" "rc=2" "$out"
+expect_has "acceptance outside git says so" "wt acceptance: not in a git repository" "$out"
 mkdir -p "$wsa/api/.claude"
 cat >"$wsa/api/.claude/acceptance" <<'EOF'
 #!/usr/bin/env bash
@@ -438,8 +447,13 @@ out=$(cd "$wsa/api" && ACCEPTANCE_PATHS='features/missing.feature' "$WT" accepta
 expect "acceptance --paths rejects missing files" 2 "$rc"
 expect_has "acceptance --paths missing file reason" "does not exist" "$(cat "$TMP/acc.err")"
 
-out=$(cd "$wsa/api" && ACCEPTANCE_PATHS_EXIT=2 "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+out=$(cd "$wsa/api" && ACCEPTANCE_PATHS_EXIT=5 "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
 expect "acceptance --paths nonzero runner exit" 2 "$rc"
+expect_has "acceptance --paths names the runner's exit code" "runner exited 5 for --paths" "$(cat "$TMP/acc.err")"
+
+out=$(cd "$wsa/api" && ACCEPTANCE_PATHS=$'features/login.feature\n\n.claude/acceptance' "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+expect "acceptance --paths with a blank line rc" 0 "$rc"
+expect "acceptance --paths prints only the paths" $'features/login.feature\n.claude/acceptance' "$out"
 
 rm "$wsa/api/.claude/acceptance"
 commit "$wsa/api" "chore: remove acceptance runner" .claude/keep >/dev/null
