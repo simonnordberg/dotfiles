@@ -649,6 +649,19 @@ expect_has "the PR body carries the resolution" "fixed in" "$body"
 expect_has "the PR body lists minor and nit follow-ups" "NIT RULES c.go:2: naming" "$body"
 expect_has "an e2e of none is noted" "E2E: none (a library)" "$body"
 
+no_title_review=$'## Findings\nNone.\n\n## Summary\n- does the thing'
+: >"$PR_LOG"; E2E='none (a library)' feature "$TMP/th" feat-th api; fakehost "$TMP/th/api" git@github.com:acme/api.git
+printf '# Top-up balance\n\n## Purpose\nbody\n\nE2E: none (a library)\n' >"$TMP/th/.plans/feat-th/spec.md"
+out=$(cd "$TMP/th" && FAKE_REVIEW=$no_title_review PATH=$P "$WT" run feat-th; echo "rc=$?")
+expect_has "title fallback rc" "rc=0" "$out"
+expect_has "title fallback reads the spec's H1, not a ## heading" "--title Top-up balance --body-file" "$(cat "$PR_LOG")"
+
+: >"$PR_LOG"; E2E='none (a library)' feature "$TMP/tn" feat-tn api; fakehost "$TMP/tn/api" git@github.com:acme/api.git
+printf '## Purpose\nbody\n\nE2E: none (a library)\n' >"$TMP/tn/.plans/feat-tn/spec.md"
+out=$(cd "$TMP/tn" && FAKE_REVIEW=$no_title_review PATH=$P "$WT" run feat-tn; echo "rc=$?")
+expect_has "title fallback rc" "rc=0" "$out"
+expect_has "no H1 at all falls back to the slug" "--title feat-tn --body-file" "$(cat "$PR_LOG")"
+
 E2E='none' feature "$TMP/v" feat-v api; fakehost "$TMP/v/api" git@github.com:acme/api.git
 out=$(cd "$TMP/v" && FAKE_REVIEW=$review FAKE_REREVIEW=$'## Findings\n- BLOCKER LOGIC fix.go:1: the fix breaks x' PATH=$P "$WT" run feat-v; echo "rc=$?")
 expect_has "a blocker left after the fix round stops the line" "rc=1" "$out"
