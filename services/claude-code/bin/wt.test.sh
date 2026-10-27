@@ -249,6 +249,28 @@ printf 'Run 12 failed\nerror: lint\n' >"$pd/ci.log"
 expect_has "fix-ctx ci shows the run" "error: lint" "$(cd "$wt" && "$WT" fix-ctx ci)"
 expect_has "fix-ctx unknown kind" "unknown kind" "$(cd "$wt" && "$WT" fix-ctx bogus)"
 
+# --- plan-ctx: feature drafts ---
+out=$(cd "$wt" && "$WT" plan-ctx)
+expect_has "plan-ctx no drafts" "Feature drafts: none" "$out"
+mkdir -p "$ws/.plans/feat-x/features/web"
+printf 'wrong repo draft\n' >"$ws/.plans/feat-x/features/web/wrong.feature"
+out=$(cd "$wt" && "$WT" plan-ctx)
+expect_has "plan-ctx still none for api with only web drafts" "Feature drafts: none" "$out"
+expect_lacks "plan-ctx filters out other repo's drafts" "wrong repo draft" "$out"
+mkdir -p "$ws/.plans/feat-x/features/api/sub"
+printf 'top draft body\n' >"$ws/.plans/feat-x/features/api/top.feature"
+printf 'nested draft body\n' >"$ws/.plans/feat-x/features/api/sub/nested.feature"
+out=$(cd "$wt" && "$WT" plan-ctx)
+expect_has "plan-ctx shows top-level draft header" "Feature draft: top.feature" "$out"
+expect_has "plan-ctx shows top-level draft body" "top draft body" "$out"
+expect_has "plan-ctx shows nested draft header with subdir" "Feature draft: sub/nested.feature" "$out"
+expect_has "plan-ctx shows nested draft body" "nested draft body" "$out"
+expect_lacks "plan-ctx still filters web drafts once api drafts exist" "wrong repo draft" "$out"
+expect "plan-ctx orders top draft before nested draft" yes \
+  "$(printf '%s' "$out" | awk '/Feature draft: top\.feature/{t=NR} /Feature draft: sub\/nested\.feature/{n=NR} END{print (t && n && t<n)?"yes":"no"}')"
+expect "plan-ctx spec block precedes feature drafts" yes \
+  "$(printf '%s' "$out" | awk '/^Spec:/{s=NR} /^Feature draft/{if (s && NR>s) f=1} END{print (f?"yes":"no")}')"
+
 # --- check: the repo's .claude/check, run from its root; local go.mod replaces refused ---
 wsc=$TMP/c; mkrepo "$wsc/api"; mkrepo "$wsc/web"; mkdir -p "$wsc/api/.claude" "$wsc/api/sub/deep"
 cat >"$wsc/api/.claude/check" <<'EOF'
