@@ -306,6 +306,160 @@ expect_has "check refuses a sibling replace rc" "rc=1" "$out"
 expect_has "check names the sibling replace" "go.mod: example.com/d => ../sibling" "$out"
 expect_has "check names the absolute replace" "go.mod: example.com/e => /abs/path" "$out"
 
+# --- acceptance: scaffold and guards ---
+wsa=$TMP/acc; mkrepo "$wsa/api"
+out=$(cd "$wsa/api" && "$WT" acceptance 2>&1; echo "rc=$?")
+expect_has "acceptance without a runner rc" "rc=3" "$out"
+expect_has "acceptance without a runner says so" "wt acceptance: no .claude/acceptance in $wsa/api" "$out"
+# a usage error proves nothing, so it is rc 2, never the "a scenario failed" rc 1
+for a in "--run" "--bogus" "--run x extra" "--paths extra"; do
+  out=$(cd "$wsa/api" && "$WT" acceptance $a 2>&1; echo "rc=$?")
+  expect_has "acceptance $a rc" "rc=2" "$out"
+  expect_has "acceptance $a shows usage" "usage: wt acceptance [--run <regex> | --paths]" "$out"
+done
+out=$(cd "$TMP" && "$WT" acceptance 2>&1; echo "rc=$?")
+expect_has "acceptance outside git rc" "rc=2" "$out"
+expect_has "acceptance outside git says so" "wt acceptance: not in a git repository" "$out"
+mkdir -p "$wsa/api/.claude"
+cat >"$wsa/api/.claude/acceptance" <<'EOF'
+#!/usr/bin/env bash
+echo "$*" >>"$ACCEPTANCE_ARGS_LOG"
+echo "runner output" >&2
+while [ $# -gt 0 ]; do
+  case $1 in
+    --report) [ -z "${ACCEPTANCE_JSON:-}" ] || printf '%s' "$ACCEPTANCE_JSON" >"$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+exit "${ACCEPTANCE_EXIT:-0}"
+EOF
+chmod +x "$wsa/api/.claude/acceptance"
+commit "$wsa/api" "chore: acceptance runner" .claude/keep >/dev/null
+export ACCEPTANCE_ARGS_LOG=$TMP/acc-args.log
+cuke() { # cuke <name> [step status]...: a Cucumber JSON scenario as godog writes it; no statuses, no steps
+  local name=$1 s steps=; shift
+  for s in "$@"; do steps="$steps${steps:+,}{\"keyword\":\"Then \",\"name\":\"a step\",\"result\":{\"status\":\"$s\"}}"; done
+  printf '{"type":"scenario","name":"%s"%s}' "$name" "${steps:+,\"steps\":[$steps]}"
+}
+report() { # report <scenario>...: a Cucumber JSON report of one feature file
+  local IFS=,; printf '[{"uri":"features/login.feature","name":"Login","elements":[%s]}]' "$*"
+}
+acc() { # acc <runner exit> <report, empty for none> [arg]...: wt acceptance on the fake runner; sets out, err, rc
+  out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=$1 ACCEPTANCE_JSON=$2 "$WT" acceptance "${@:3}" 2>"$TMP/acc.err"); rc=$?
+  err=$(cat "$TMP/acc.err")
+}
+
+# --- acceptance: one line per scenario from the runner's Cucumber JSON, and --run forwarding ---
+: >"$ACCEPTANCE_ARGS_LOG"
+acc 0 "$(report "$(cuke 'logs in' passed passed)" "$(cuke 'logs out' passed)")"
+expect "acceptance all passed rc" 0 "$rc"
+expect_has "acceptance prints a passed scenario" "$(printf 'passed\tfeatures/login.feature\tlogs in')" "$out"
+expect_has "acceptance prints every scenario" "$(printf 'passed\tfeatures/login.feature\tlogs out')" "$out"
+expect_has "acceptance prints a summary" "wt acceptance: 2 passed, 0 not passed" "$err"
+expect_has "acceptance asks the runner for a report" "--report $wsa/api/.git/wt-acceptance.json" "$(cat "$ACCEPTANCE_ARGS_LOG")"
+: >"$ACCEPTANCE_ARGS_LOG"
+acc 0 "$(report "$(cuke 'logs in')" "$(cuke 'logs out' passed)")" --run 'logs out'
+expect "acceptance --run rc" 0 "$rc"
+expect_has "acceptance forwards --run to the runner" "--run logs out" "$(cat "$ACCEPTANCE_ARGS_LOG")"
+expect_lacks "acceptance leaves out a scenario that did not run" "logs in" "$out"
+expect_has "acceptance counts only scenarios that ran" "wt acceptance: 1 passed, 0 not passed" "$err"
+
+# --- acceptance: a scenario passes only if every step passed ---
+acc 1 "$(report "$(cuke 'logs in' passed)" "$(cuke fails passed failed skipped)")"
+expect "acceptance failed scenario rc" 1 "$rc"
+expect_has "acceptance names the failed scenario" "$(printf 'failed\tfeatures/login.feature\tfails')" "$out"
+expect_has "acceptance failed summary" "wt acceptance: 1 passed, 1 not passed" "$err"
+for s in skipped pending undefined ambiguous; do
+  acc 1 "$(report "$(cuke 'logs in' passed)" "$(cuke odd passed "$s")")"
+  expect "acceptance $s step rc" 1 "$rc"
+  expect_has "acceptance reports a $s step" "$(printf '%s\tfeatures/login.feature\todd' "$s")" "$out"
+done
+acc 0 "$(report "$(cuke skips skipped)")" # godog exits 0 when a step skips
+expect "acceptance skipped step under a runner exit 0 rc" 1 "$rc"
+acc 1 "$(report '{"type":"scenario","name":"cleans up","steps":[{"result":{"status":"passed"}}],"after":[{"result":{"status":"failed"}}]}')"
+expect_has "acceptance counts a failed hook" "$(printf 'failed\tfeatures/login.feature\tcleans up')" "$out"
+acc 1 "$(report '{"type":"scenario","name":"blank","steps":[{"result":{}}]}')"
+expect_has "acceptance never passes a step without a status" "$(printf 'unknown\tfeatures/login.feature\tblank')" "$out"
+
+# --- acceptance: a run that proves nothing is rc 2 ---
+acc 1 "$(report "$(cuke 'logs in' passed)")"
+expect "acceptance runner exit 1 with every scenario passed rc" 2 "$rc"
+expect_has "acceptance says the runner and report disagree" "wt acceptance: runner exited 1 but" "$err"
+acc 0 ""
+expect "acceptance missing report rc" 2 "$rc"
+expect_has "acceptance missing report gives a reason" "wt acceptance: could not read" "$err"
+acc 0 "not json"
+expect "acceptance unparsable report rc" 2 "$rc"
+expect_has "acceptance unparsable report gives a reason" "wt acceptance: could not read" "$err"
+acc 0 "[]"
+expect "acceptance empty report rc" 2 "$rc"
+expect_has "acceptance empty report gives a reason" "wt acceptance: no scenarios ran" "$err"
+acc 0 "$(report "$(cuke 'logs in')" "$(cuke 'logs out')")" --run nothing
+expect "acceptance --run matching nothing rc" 2 "$rc"
+acc 2 "$(report "$(cuke 'logs in' passed)")"
+expect "acceptance runner exit 2 rc" 2 "$rc"
+expect_has "acceptance forwards the runner's output" "runner output" "$out"
+expect_has "acceptance gives a reason for runner exit 2" "wt acceptance: runner exited 2" "$err"
+
+# --- acceptance: timeout and unexpected exit codes ---
+cat >"$wsa/api/.claude/acceptance" <<'EOF'
+#!/usr/bin/env bash
+sleep "${ACCEPTANCE_SLEEP:-0}"
+exit "${ACCEPTANCE_EXIT:-0}"
+EOF
+chmod +x "$wsa/api/.claude/acceptance"
+commit "$wsa/api" "chore: acceptance runner for timeout and odd exit codes" .claude/keep >/dev/null
+
+out=$(cd "$wsa/api" && ACCEPTANCE_EXIT=5 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance unexpected exit code rc" 2 "$rc"
+expect_has "acceptance unexpected exit code gives a reason" "wt acceptance: runner exited 5" "$(cat "$TMP/acc.err")"
+
+out=$(cd "$wsa/api" && ACCEPTANCE_SLEEP=3 WT_ACCEPTANCE_TIMEOUT=1 "$WT" acceptance 2>"$TMP/acc.err"); rc=$?
+expect "acceptance timeout rc" 2 "$rc"
+expect_has "acceptance timeout gives a reason" "timed out after" "$(cat "$TMP/acc.err")"
+
+# --- acceptance: --paths subcommand ---
+cat >"$wsa/api/.claude/acceptance" <<'EOF'
+#!/usr/bin/env bash
+if [ "${1:-}" = --paths ]; then
+  printf '%s\n' "${ACCEPTANCE_PATHS:-features/login.feature}"
+  exit "${ACCEPTANCE_PATHS_EXIT:-0}"
+fi
+exit 0
+EOF
+chmod +x "$wsa/api/.claude/acceptance"
+mkdir -p "$wsa/api/features"
+commit "$wsa/api" "chore: acceptance runner supports --paths" features/login.feature >/dev/null
+
+out=$(cd "$wsa/api" && "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+expect "acceptance --paths rc" 0 "$rc"
+expect "acceptance --paths prints the runner's lines" "features/login.feature" "$out"
+
+out=$(cd "$wsa/api" && ACCEPTANCE_PATHS=/etc/passwd "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+expect "acceptance --paths rejects absolute paths" 2 "$rc"
+expect_has "acceptance --paths absolute path reason" "absolute path" "$(cat "$TMP/acc.err")"
+
+out=$(cd "$wsa/api" && ACCEPTANCE_PATHS='../outside' "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+expect "acceptance --paths rejects .. components" 2 "$rc"
+expect_has "acceptance --paths dotdot reason" '.. component' "$(cat "$TMP/acc.err")"
+
+out=$(cd "$wsa/api" && ACCEPTANCE_PATHS='features/missing.feature' "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+expect "acceptance --paths rejects missing files" 2 "$rc"
+expect_has "acceptance --paths missing file reason" "does not exist" "$(cat "$TMP/acc.err")"
+
+out=$(cd "$wsa/api" && ACCEPTANCE_PATHS_EXIT=5 "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+expect "acceptance --paths nonzero runner exit" 2 "$rc"
+expect_has "acceptance --paths names the runner's exit code" "runner exited 5 for --paths" "$(cat "$TMP/acc.err")"
+
+out=$(cd "$wsa/api" && ACCEPTANCE_PATHS=$'features/login.feature\n\n.claude/acceptance' "$WT" acceptance --paths 2>"$TMP/acc.err"); rc=$?
+expect "acceptance --paths with a blank line rc" 0 "$rc"
+expect "acceptance --paths prints only the paths" $'features/login.feature\n.claude/acceptance' "$out"
+
+rm "$wsa/api/.claude/acceptance"
+commit "$wsa/api" "chore: remove acceptance runner" .claude/keep >/dev/null
+out=$(cd "$wsa/api" && "$WT" acceptance --paths 2>&1; echo "rc=$?")
+expect_has "acceptance --paths without a runner rc" "rc=3" "$out"
+
 # --- run, with fake claude, gh, codebahn, notify-send, systemd-run and systemctl on PATH ---
 export WT_UNDER_TEST=$WT NOTIFY_LOG=$TMP/notify.log SYSTEMD_LOG=$TMP/systemd.log XDG_STATE_HOME=$TMP/state PR_LOG=$TMP/pr.log
 mkdir -p "$TMP/bin"

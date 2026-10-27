@@ -88,6 +88,96 @@ green full check per tree, so pushing right after it costs nothing. The `check-p
 blocks any `git push` from Claude unless the tree is clean and `wt check` is green. Edits are
 formatted by the repo's own Biome (else its Prettier) and gofmt, which is what CI checks.
 
+## Acceptance runner contract
+
+A repo can define its own acceptance suite as an executable `.claude/acceptance`, parallel to
+`.claude/check`. `wt acceptance [--run <regex>]` runs it and prints one line per scenario that
+ran, `<status>\t<feature file>\t<scenario>`, plus a summary on stderr.
+
+The runner must:
+
+- Accept `--report <path>`: run the scenarios in strict mode (undefined, pending or ambiguous
+  steps fail) and write a Cucumber JSON report to that path. `wt` reads each feature's `uri`
+  (the feature file's path from the repo root) and, per scenario, its `name` and every step's
+  `result.status`.
+- Accept `--run <regex>`: only run scenarios whose name matches the regex.
+- Accept `--paths`: print the repo-relative paths a build must not change (feature files, step
+  definitions, the suite entry), one per line, instead of running anything.
+- Exit `0` if every scenario passed, `1` if any did not, `2` if it could not run (build error,
+  harness crash).
+
+A scenario passes only when every step passed (and every hook, for runners that report hooks);
+otherwise its status is the first one that didn't: failed, skipped, pending, undefined or
+ambiguous. A scenario that `--run` filtered out is still in the report, with no results; it
+didn't run and isn't counted. The stricter of exit code and report wins, so a skipped step fails
+the run even though godog exits 0 for it.
+
+### `wt acceptance` exit codes
+
+- `0`: every scenario that ran passed, and the runner exited 0.
+- `1`: at least one scenario did not pass.
+- `2`: the run proves nothing: the runner exited 2 or outside 0-2, timed out, wrote no readable
+  report, ran no scenarios (`--run` matched nothing), or exited 1 while the report says every
+  scenario passed. A usage error, a directory outside git, and a bad `--paths` line are 2 as
+  well.
+- `3`: no `.claude/acceptance` in the repo; nothing to run.
+
+### Example runner (Go)
+
+`.claude/acceptance`, for a godog suite in `acceptance/`:
+
+```bash
+#!/usr/bin/env bash
+set -u
+report= run=
+while [ $# -gt 0 ]; do
+  case $1 in
+    --paths) printf '%s\n' .claude/acceptance acceptance; exit 0 ;;
+    --report) report=$2; shift 2 ;;
+    --run) run=$2; shift 2 ;;
+    *) echo "acceptance: unknown argument $1" >&2; exit 2 ;;
+  esac
+done
+# go test names each scenario's subtest after it, spaces as underscores; -count=1 because a
+# cached pass runs nothing and writes no report
+ACCEPTANCE_REPORT=$report exec go test -count=1 -run "TestAcceptance/${run// /_}" ./acceptance
+```
+
+`acceptance/acceptance_test.go`:
+
+```go
+package acceptance_test
+
+import (
+	"os"
+	"testing"
+
+	"github.com/cucumber/godog"
+)
+
+func TestAcceptance(t *testing.T) {
+	format := "pretty"
+	if report := os.Getenv("ACCEPTANCE_REPORT"); report != "" {
+		format += ",cucumber:" + report
+	}
+	suite := godog.TestSuite{
+		ScenarioInitializer: InitializeScenario, // the step definitions
+		Options: &godog.Options{
+			FS:       os.DirFS(".."), // the repo root, so each uri is repo-relative
+			Paths:    []string{"acceptance/features"},
+			Strict:   true,
+			Format:   format,
+			TestingT: t,
+		},
+	}
+	suite.Run()
+}
+```
+
+Any runner that writes Cucumber JSON works: godog (`Format: "cucumber:<file>"`), cucumber-js
+(`--format json:<file>`). `wt` only shells out to `.claude/acceptance` and reads the report with
+jq; it has no opinion on the framework behind it.
+
 ## Files
 
 ```

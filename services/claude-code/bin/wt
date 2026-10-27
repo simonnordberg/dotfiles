@@ -5,6 +5,7 @@ set -u
 
 MAX_STEPS=40
 WT_CHECK_TIMEOUT=${WT_CHECK_TIMEOUT:-1500}
+WT_ACCEPTANCE_TIMEOUT=${WT_ACCEPTANCE_TIMEOUT:-1500}
 WT_PUSH_TIMEOUT=${WT_PUSH_TIMEOUT:-120}
 WT_SELF=$(realpath "${BASH_SOURCE[0]}")
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/wt
@@ -18,6 +19,7 @@ usage: wt <command> [args]
   tdd | plan-ctx | fix-ctx <check|review|ci>
                                context blocks for the skills; always exit 0
   check [--quick]              run this repo's .claude/check (what CI runs); --quick while iterating
+  acceptance [--run|--paths]   run this repo's .claude/acceptance suite (see HANDBOOK.md)
   create <slug> [repo]         find or create the slug's worktree; prints its path
   remove <slug>                remove the slug's worktrees and branches if clean and merged
   run <slug> [phase] [repo]    headless plan|tdd|ship|all (default all), per repo in merge order;
@@ -329,6 +331,105 @@ cmd_check() {
     [ "$mode" = "--quick" ] || printf '%s\n' "$tree" >"$stamp_quick"
   fi
   echo "wt check: green"
+}
+
+# --- acceptance --------------------------------------------------------------------
+
+# A Cucumber JSON report to one `<status>\t<feature file>\t<scenario>` line per scenario that ran.
+# Status is passed only when every step and hook passed, else the first status that didn't. A
+# scenario that --run filtered out is still in the report, with no results, and gets no line.
+ACCEPTANCE_JQ='
+.[] | .uri as $uri | .elements[]? | select(.type == "scenario")
+| [.before[]?, .steps[]?, .after[]? | .result.status // "unknown"] as $results
+| select($results | length > 0)
+| [first($results[] | select(. != "passed")) // "passed", $uri, .name] | @tsv'
+
+cmd_acceptance() {
+  local top report log args=() rc lines total passed want
+  # Errors that aren't a scenario result are rc 2: rc 1 means a scenario did not pass
+  case "$#:${1:-}" in
+    0: | 1:--paths) ;;
+    2:--run) args=(--run "$2") ;;
+    *) printf 'usage: wt acceptance [--run <regex> | --paths]\n' >&2; return 2 ;;
+  esac
+  top=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    printf 'wt acceptance: not in a git repository\n' >&2
+    return 2
+  }
+  top=$(realpath "$top")
+  if [ ! -x "$top/.claude/acceptance" ]; then
+    printf 'wt acceptance: no .claude/acceptance in %s\n' "$top" >&2
+    return 3
+  fi
+  if [ "${1:-}" = "--paths" ]; then
+    cmd_acceptance_paths "$top"
+    return $?
+  fi
+  report=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-acceptance.json)
+  log=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-acceptance.log)
+  rm -f "$report"
+  (cd "$top" && timeout -k 30 "$WT_ACCEPTANCE_TIMEOUT" ./.claude/acceptance --report "$report" "${args[@]}") 2>&1 | tee "$log"; rc=${PIPESTATUS[0]}
+  case $rc in
+    124)
+      printf 'wt acceptance: timed out after %ss; full output: %s\n' "$WT_ACCEPTANCE_TIMEOUT" "$log" >&2
+      return 2
+      ;;
+    2)
+      printf 'wt acceptance: runner exited 2; full output: %s\n' "$log" >&2
+      return 2
+      ;;
+    0 | 1) ;;
+    *)
+      printf 'wt acceptance: runner exited %s; full output: %s\n' "$rc" "$log" >&2
+      return 2
+      ;;
+  esac
+  lines=$(jq -r "$ACCEPTANCE_JQ" "$report") || {
+    printf 'wt acceptance: could not read %s; full output: %s\n' "$report" "$log" >&2
+    return 2
+  }
+  [ -n "$lines" ] || { printf 'wt acceptance: no scenarios ran in %s\n' "$report" >&2; return 2; }
+  total=$(grep -c '' <<<"$lines"); passed=$(grep -c $'^passed\t' <<<"$lines")
+  want=0; [ "$passed" -eq "$total" ] || want=1
+  # The stricter of exit code and report wins: godog exits 0 when a step skips, and exit 1 with
+  # every scenario passed means something failed that the report doesn't show
+  if [ "$rc" -eq 1 ] && [ "$want" -eq 0 ]; then
+    printf 'wt acceptance: runner exited 1 but %s says all %s scenarios passed; full output: %s\n' \
+      "$report" "$total" "$log" >&2
+    return 2
+  fi
+  printf '%s\n' "$lines"
+  printf 'wt acceptance: %s passed, %s not passed\n' "$passed" "$((total - passed))" >&2
+  return "$want"
+}
+
+cmd_acceptance_paths() { # cmd_acceptance_paths <repo top>: run `.claude/acceptance --paths` and
+  # print its paths once each is checked to be relative, in the repo, and existing; blank lines drop
+  local top=$1 out line rc paths=()
+  out=$(cd "$top" && ./.claude/acceptance --paths); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    printf 'wt acceptance: runner exited %s for --paths\n' "$rc" >&2
+    return 2
+  fi
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    case $line in
+      /*)
+        printf 'wt acceptance: --paths line is an absolute path: %s\n' "$line" >&2
+        return 2
+        ;;
+      ..|../*|*/../*|*/..)
+        printf 'wt acceptance: --paths line has a .. component: %s\n' "$line" >&2
+        return 2
+        ;;
+    esac
+    [ -e "$top/$line" ] || {
+      printf 'wt acceptance: --paths line does not exist: %s\n' "$line" >&2
+      return 2
+    }
+    paths+=("$line")
+  done <<<"$out"
+  [ ${#paths[@]} -eq 0 ] || printf '%s\n' "${paths[@]}"
 }
 
 # --- worktree lifecycle --------------------------------------------------------
@@ -991,6 +1092,7 @@ case $cmd in
   plan-ctx) cmd_plan_ctx ;;
   fix-ctx) cmd_fix_ctx "$@" ;;
   check) cmd_check "$@" ;;
+  acceptance) cmd_acceptance "$@" ;;
   create) cmd_create "$@" ;;
   remove) cmd_remove "$@" ;;
   run) no_nested_run; cmd_run "$@" ;;
