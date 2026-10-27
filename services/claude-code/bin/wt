@@ -809,7 +809,7 @@ publish() { # publish <index> <total> <repo>: push, open the PR, record it in st
   fi
   check_green "$repo" "$dir" && push_branch "$repo" "$dir" || return 1
   title=$(section "$RUN_PLANS/$repo/review.md" Title | head -n 1)
-  [ -n "$title" ] || title=$(sed -n 's/^# *//p' "$RUN_PLANS/spec.md" 2>/dev/null | head -n 1)
+  [ -n "$title" ] || title=$(sed -n 's/^# //p' "$RUN_PLANS/spec.md" 2>/dev/null | head -n 1)
   body=$RUN_PLANS/$repo/pr.md; pr_body "$i" "$total" "$repo" >"$body"
   url=$(open_pr "$dir" "$(default_branch "$dir")" "${title:-$RUN_SLUG}" "$body")
   if [ -n "$url" ]; then
