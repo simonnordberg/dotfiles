@@ -346,7 +346,16 @@ ACCEPTANCE_JQ='
 
 cmd_acceptance() {
   local top report log args=() rc lines total passed want
-  top=$(git rev-parse --show-toplevel 2>/dev/null) || die "acceptance: not in a git repository"
+  # Errors that aren't a scenario result are rc 2: rc 1 means a scenario did not pass
+  case "$#:${1:-}" in
+    0: | 1:--paths) ;;
+    2:--run) args=(--run "$2") ;;
+    *) printf 'usage: wt acceptance [--run <regex> | --paths]\n' >&2; return 2 ;;
+  esac
+  top=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    printf 'wt acceptance: not in a git repository\n' >&2
+    return 2
+  }
   top=$(realpath "$top")
   if [ ! -x "$top/.claude/acceptance" ]; then
     printf 'wt acceptance: no .claude/acceptance in %s\n' "$top" >&2
@@ -356,7 +365,6 @@ cmd_acceptance() {
     cmd_acceptance_paths "$top"
     return $?
   fi
-  [ "${1:-}" = "--run" ] && args=(--run "$2")
   report=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-acceptance.json)
   log=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-acceptance.log)
   rm -f "$report"
@@ -396,14 +404,13 @@ cmd_acceptance() {
 }
 
 cmd_acceptance_paths() { # cmd_acceptance_paths <repo top>: run `.claude/acceptance --paths` and
-  # validate each line is a relative, in-repo, existing path before printing it
-  local top=$1 out line rc
-  if ! out=$(cd "$top" && ./.claude/acceptance --paths); then
-    rc=$?
+  # print its paths once each is checked to be relative, in the repo, and existing; blank lines drop
+  local top=$1 out line rc paths=()
+  out=$(cd "$top" && ./.claude/acceptance --paths); rc=$?
+  if [ "$rc" -ne 0 ]; then
     printf 'wt acceptance: runner exited %s for --paths\n' "$rc" >&2
     return 2
   fi
-  [ -n "$out" ] || return 0
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     case $line in
@@ -420,8 +427,9 @@ cmd_acceptance_paths() { # cmd_acceptance_paths <repo top>: run `.claude/accepta
       printf 'wt acceptance: --paths line does not exist: %s\n' "$line" >&2
       return 2
     }
+    paths+=("$line")
   done <<<"$out"
-  printf '%s\n' "$out"
+  [ ${#paths[@]} -eq 0 ] || printf '%s\n' "${paths[@]}"
 }
 
 # --- worktree lifecycle --------------------------------------------------------

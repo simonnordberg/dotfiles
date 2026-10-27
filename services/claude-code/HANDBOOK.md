@@ -117,7 +117,8 @@ the run even though godog exits 0 for it.
 - `1`: at least one scenario did not pass.
 - `2`: the run proves nothing: the runner exited 2 or outside 0-2, timed out, wrote no readable
   report, ran no scenarios (`--run` matched nothing), or exited 1 while the report says every
-  scenario passed. `--paths` also gives 2 for a bad line.
+  scenario passed. A usage error, a directory outside git, and a bad `--paths` line are 2 as
+  well.
 - `3`: no `.claude/acceptance` in the repo; nothing to run.
 
 ### Example runner (Go)
