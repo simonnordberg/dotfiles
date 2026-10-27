@@ -750,7 +750,7 @@ run_e2e() { # run_e2e <repos...>: the spec's `E2E:` command, once, in the last r
   local cmd last dir rc reason
   cmd=$(sed -n 's/^E2E: *//p' "$RUN_PLANS/spec.md" 2>/dev/null | head -1)
   case $cmd in
-    '') E2E_NOTE="E2E: the spec has no E2E line"; progress ship "$RUN_SLUG" "no E2E line in the spec; skipped"; return 0 ;;
+    '') E2E_NOTE=; return 0 ;;
     none*) E2E_NOTE="E2E: $cmd"; progress ship "$RUN_SLUG" "e2e: $cmd"; return 0 ;;
   esac
   last=${!#}; dir=$(wt_dir "$last")
@@ -797,7 +797,7 @@ pr_body() { # pr_body <index> <total> <repo>: the reviewer's summary, merge orde
     printf '\nMerge order: %s of %s (%s)%s\n' "$i" "$total" "$(order_repos "$RUN_PLANS" | paste -sd, | sed 's/,/, /g')" \
       "${prev:+; merge after $prev}"
   fi
-  printf '\n%s\n\n## Review\n\n' "$E2E_NOTE"
+  if [ -n "$E2E_NOTE" ]; then printf '\n%s\n\n## Review\n\n' "$E2E_NOTE"; else printf '\n## Review\n\n'; fi
   section_drop "$review" 'Title|Summary' | sed 's/^## /### /'
 }
 
