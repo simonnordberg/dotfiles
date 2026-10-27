@@ -246,12 +246,23 @@ cmd_tdd() {
     "$(git log --oneline -5 2>/dev/null || echo none)" "$(git status --short 2>/dev/null | grep . || echo clean)"
 }
 
+feature_drafts() { # feature_drafts <plans> <repo>: feature draft files, path relative to features/<repo>/
+  local dir=$1/features/$2 f rel
+  [ -d "$dir" ] || return 0
+  while IFS= read -r f; do
+    rel=${f#"$dir"/}
+    printf 'Feature draft: %s\n%s\n' "$rel" "$(cat "$f")"
+  done < <(find "$dir" -type f | sort)
+}
+
 cmd_plan_ctx() {
   resolve || { echo "Not in a git repository: $PWD"; return 0; }
   header
   printf 'Spec:\n%s\nMerge order:\n%s\nExisting plan:\n%s\n' \
     "$(show_file "$plans/spec.md" "NO SPEC")" "$(show_file "$plans/order.md" "single repo")" \
     "$(show_file "$plandir/plan.md" none)"
+  local drafts; drafts=$(feature_drafts "$plans" "$repo")
+  if [ -n "$drafts" ]; then printf '%s\n' "$drafts"; else printf 'Feature drafts: none\n'; fi
 }
 
 cmd_fix_ctx() { # fix-ctx <check|review|ci>: what a /fix session fixes

@@ -266,8 +266,8 @@ expect_has "plan-ctx shows top-level draft body" "top draft body" "$out"
 expect_has "plan-ctx shows nested draft header with subdir" "Feature draft: sub/nested.feature" "$out"
 expect_has "plan-ctx shows nested draft body" "nested draft body" "$out"
 expect_lacks "plan-ctx still filters web drafts once api drafts exist" "wrong repo draft" "$out"
-expect "plan-ctx orders top draft before nested draft" yes \
-  "$(printf '%s' "$out" | awk '/Feature draft: top\.feature/{t=NR} /Feature draft: sub\/nested\.feature/{n=NR} END{print (t && n && t<n)?"yes":"no"}')"
+expect "plan-ctx orders drafts alphabetically by relative path" yes \
+  "$(printf '%s' "$out" | awk '/Feature draft: top\.feature/{t=NR} /Feature draft: sub\/nested\.feature/{n=NR} END{print (t && n && n<t)?"yes":"no"}')"
 expect "plan-ctx spec block precedes feature drafts" yes \
   "$(printf '%s' "$out" | awk '/^Spec:/{s=NR} /^Feature draft/{if (s && NR>s) f=1} END{print (f?"yes":"no")}')"
 
