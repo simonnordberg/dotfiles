@@ -335,8 +335,17 @@ cmd_check() {
 
 # --- acceptance --------------------------------------------------------------------
 
+# A Cucumber JSON report to one `<status>\t<feature file>\t<scenario>` line per scenario that ran.
+# Status is passed only when every step and hook passed, else the first status that didn't. A
+# scenario that --run filtered out is still in the report, with no results, and gets no line.
+ACCEPTANCE_JQ='
+.[] | .uri as $uri | .elements[]? | select(.type == "scenario")
+| [.before[]?, .steps[]?, .after[]? | .result.status // "unknown"] as $results
+| select($results | length > 0)
+| [first($results[] | select(. != "passed")) // "passed", $uri, .name] | @tsv'
+
 cmd_acceptance() {
-  local top xml log args=() rc
+  local top report log args=() rc lines total passed want
   top=$(git rev-parse --show-toplevel 2>/dev/null) || die "acceptance: not in a git repository"
   top=$(realpath "$top")
   if [ ! -x "$top/.claude/acceptance" ]; then
@@ -347,12 +356,11 @@ cmd_acceptance() {
     cmd_acceptance_paths "$top"
     return $?
   fi
-  command -v python3 >/dev/null 2>&1 || die "wt acceptance needs python3"
   [ "${1:-}" = "--run" ] && args=(--run "$2")
-  xml=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-acceptance.xml)
+  report=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-acceptance.json)
   log=$(git -C "$top" rev-parse --path-format=absolute --git-path wt-acceptance.log)
-  rm -f "$xml"
-  (cd "$top" && timeout -k 30 "$WT_ACCEPTANCE_TIMEOUT" ./.claude/acceptance --junit "$xml" "${args[@]}") 2>&1 | tee "$log"; rc=${PIPESTATUS[0]}
+  rm -f "$report"
+  (cd "$top" && timeout -k 30 "$WT_ACCEPTANCE_TIMEOUT" ./.claude/acceptance --report "$report" "${args[@]}") 2>&1 | tee "$log"; rc=${PIPESTATUS[0]}
   case $rc in
     124)
       printf 'wt acceptance: timed out after %ss; full output: %s\n' "$WT_ACCEPTANCE_TIMEOUT" "$log" >&2
@@ -368,57 +376,23 @@ cmd_acceptance() {
       return 2
       ;;
   esac
-  python3 -I - "$xml" "$rc" <<'PYEOF'
-import sys
-import xml.etree.ElementTree as ET
-
-runner_rc = int(sys.argv[2])
-
-try:
-    tree = ET.parse(sys.argv[1])
-except (OSError, ET.ParseError) as e:
-    print(f"wt acceptance: could not read {sys.argv[1]}: {e}", file=sys.stderr)
-    sys.exit(2)
-
-passed = 0
-not_passed = 0
-lines = []
-for tc in tree.getroot().iter("testcase"):
-    feature = tc.get("classname", "")
-    name = tc.get("name", "")
-    if tc.find("failure") is not None:
-        status = "failed"
-    elif tc.find("skipped") is not None:
-        status = "skipped"
-    elif tc.find("error") is not None:
-        status = "error"
-    else:
-        status = "passed"
-    lines.append(f"{status}\t{feature}\t{name}")
-    if status == "passed":
-        passed += 1
-    else:
-        not_passed += 1
-
-if passed + not_passed == 0:
-    print(f"wt acceptance: no testcases in {sys.argv[1]}", file=sys.stderr)
-    sys.exit(2)
-
-computed_rc = 0 if not_passed == 0 else 1
-if computed_rc != runner_rc:
-    print(
-        f"wt acceptance: runner exited {runner_rc} but {sys.argv[1]} disagrees "
-        f"({passed} passed, {not_passed} not passed)",
-        file=sys.stderr,
-    )
-    sys.exit(2)
-
-for line in lines:
-    print(line)
-print(f"wt acceptance: {passed} passed, {not_passed} not passed", file=sys.stderr)
-sys.exit(computed_rc)
-PYEOF
-  return $?
+  lines=$(jq -r "$ACCEPTANCE_JQ" "$report") || {
+    printf 'wt acceptance: could not read %s; full output: %s\n' "$report" "$log" >&2
+    return 2
+  }
+  [ -n "$lines" ] || { printf 'wt acceptance: no scenarios ran in %s\n' "$report" >&2; return 2; }
+  total=$(grep -c '' <<<"$lines"); passed=$(grep -c $'^passed\t' <<<"$lines")
+  want=0; [ "$passed" -eq "$total" ] || want=1
+  # The stricter of exit code and report wins: godog exits 0 when a step skips, and exit 1 with
+  # every scenario passed means something failed that the report doesn't show
+  if [ "$rc" -eq 1 ] && [ "$want" -eq 0 ]; then
+    printf 'wt acceptance: runner exited 1 but %s says all %s scenarios passed; full output: %s\n' \
+      "$report" "$total" "$log" >&2
+    return 2
+  fi
+  printf '%s\n' "$lines"
+  printf 'wt acceptance: %s passed, %s not passed\n' "$passed" "$((total - passed))" >&2
+  return "$want"
 }
 
 cmd_acceptance_paths() { # cmd_acceptance_paths <repo top>: run `.claude/acceptance --paths` and
