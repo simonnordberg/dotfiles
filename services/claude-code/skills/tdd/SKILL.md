@@ -3,7 +3,7 @@ name: tdd
 description: Implement the next unchecked plan slice, red/green/refactor
 disable-model-invocation: true
 model: claude-sonnet-5
-effort: medium
+effort: high
 ---
 !`"$HOME/.claude/bin/wt" tdd`
 
@@ -26,6 +26,10 @@ After all behaviors are done:
 
 If the slice needs a decision the spec doesn't cover, don't guess: add a line
 `  BLOCKED: <question>` right under the slice, commit nothing, and stop.
+
+If you make a decision during implementation that the spec didn't explicitly cover (e.g. a
+data format, a default value, an ordering choice), add a line `  DECIDED: <what>, because
+<why>` right under the slice and continue. These are collected in the PR body.
 
 End with exactly one of:
 - "Slice done. Next: <text of the next unchecked slice>."
