@@ -2,15 +2,7 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 sudo npm install -g @anthropic-ai/claude-code
 
-# Clone or update the private agent-config repo
-AGENT_CONFIG_REPO=git@codebahn.net:simon/agent-config.git
-AGENT_CONFIG_DIR=$HOME/.local/share/agent-config
-
-if [ -d "$AGENT_CONFIG_DIR" ]; then
-  git -C "$AGENT_CONFIG_DIR" pull -q origin main
-else
-  git clone -q "$AGENT_CONFIG_REPO" "$AGENT_CONFIG_DIR"
-fi
+AGENT_CONFIG_DIR=$HOME/code/agent-config
 
 mkdir -p $HOME/.claude/hooks $HOME/.claude/agents $HOME/.claude/bin
 
