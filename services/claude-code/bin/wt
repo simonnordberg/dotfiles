@@ -726,13 +726,33 @@ run_review() { # run_review <repo> <dir>: review, a verified fix round, one re-r
   progress ship "$repo" "fixes re-reviewed: clean"
 }
 
+run_holdout() { # run_holdout <repo> <dir>: validate holdout scenarios against the built code
+  local repo=$1 dir=$2 label n
+  [ -f "$RUN_PLANS/holdout.md" ] || return 0
+  progress ship "$repo" "holdout validation"
+  label=$(next_label "$repo" holdout)
+  run_step "$repo" "$label" \
+    "Read $RUN_PLANS/holdout.md. For each scenario, execute it against the code in this worktree and report pass/fail. For each failure, append a line to $RUN_PLANS/$repo/review.md under a new '## Holdout' section: '- BLOCKER SPEC <file>:<line>: holdout <name> failed: <actual> vs <expected>'. End with 'Holdout: N/M passed.'" ||
+    { fail ship "$repo" "holdout session failed: $(last_words "$repo" "$label")"; return 1; }
+  n=$(grep -c '^- BLOCKER' "$RUN_PLANS/$repo/review.md" 2>/dev/null || echo 0)
+  if grep -q '## Holdout' "$RUN_PLANS/$repo/review.md" 2>/dev/null; then
+    local holdout_blockers
+    holdout_blockers=$(awk '/^## Holdout/{on=1;next}/^## /{on=0}on && /^- BLOCKER/' "$RUN_PLANS/$repo/review.md" | wc -l)
+    if [ "$holdout_blockers" -gt 0 ]; then
+      progress ship "$repo" "holdout: $holdout_blockers failures; running fix"
+      fix_session "$repo" review && check_green "$repo" "$dir" || return 1
+    fi
+  fi
+  progress ship "$repo" "holdout done"
+}
+
 run_verify() { # run_verify <repo>: everything before the push; skipped once the repo has a PR
   local repo=$1 plan=$RUN_PLANS/$1/plan.md dir
   [ "$(pr_count "$RUN_PLANS" "$repo")" -eq 0 ] || { progress ship "$repo" "PR already open"; return 0; }
   if has_unchecked "$plan" || is_blocked "$plan"; then fail ship "$repo" "the plan has unfinished or blocked steps"; return 1; fi
   dir=$(wt_dir "$repo") || { fail ship "$repo" "no worktree"; return 1; }
   progress ship "$repo" started
-  sync_default "$repo" "$dir" && check_green "$repo" "$dir" && run_review "$repo" "$dir"
+  sync_default "$repo" "$dir" && check_green "$repo" "$dir" && run_review "$repo" "$dir" && run_holdout "$repo" "$dir"
 }
 
 run_e2e() { # run_e2e <repos...>: the spec's `E2E:` command, once, in the last repo's worktree
@@ -778,16 +798,32 @@ open_pr() { # open_pr <dir> <base> <title> <body file>: prints the PR URL; nothi
   esac
 }
 
-pr_body() { # pr_body <index> <total> <repo>: the reviewer's summary, merge order, e2e, and the review
-  local i=$1 total=$2 review=$RUN_PLANS/$3/review.md prev
+pr_body() { # pr_body <index> <total> <repo>: spec, decisions, review, and coverage
+  local i=$1 total=$2 repo=$3 review=$RUN_PLANS/$repo/review.md plan=$RUN_PLANS/$repo/plan.md prev
+  local reqs decs oos decided stuck
   section "$review" Summary
   if [ "$total" -gt 1 ]; then
     prev=$(awk -v r="$(order_repos "$RUN_PLANS" | sed -n "$((i - 1))p")" '$1 == r {u = $2} END {print u}' "$RUN_PLANS/state.md" 2>/dev/null)
     printf '\nMerge order: %s of %s (%s)%s\n' "$i" "$total" "$(order_repos "$RUN_PLANS" | paste -sd, | sed 's/,/, /g')" \
       "${prev:+; merge after $prev}"
   fi
+  # Spec traceability
+  if [ -f "$RUN_PLANS/spec.md" ]; then
+    reqs=$(section "$RUN_PLANS/spec.md" Requirements)
+    decs=$(section "$RUN_PLANS/spec.md" Decisions)
+    oos=$(section "$RUN_PLANS/spec.md" "Out of scope")
+    [ -z "$reqs" ] || printf '\n## Requirements\n\n%s\n' "$reqs"
+    [ -z "$decs" ] || printf '\n## Decisions\n\n%s\n' "$decs"
+    [ -z "$oos" ] || printf '\n## Out of scope\n\n%s\n' "$oos"
+  fi
+  # Decisions made during build
+  decided=$(grep -h '^ *DECIDED:' "$plan" 2>/dev/null || true)
+  [ -z "$decided" ] || printf '\n## Decided during build\n\n%s\n' "$decided"
   printf '\n%s\n\n## Review\n\n' "$E2E_NOTE"
   section_drop "$review" 'Title|Summary' | sed 's/^## /### /'
+  # STUCK findings
+  stuck=$(grep 'STUCK' "$review" 2>/dev/null || true)
+  [ -z "$stuck" ] || printf '\n## Stuck (needs human attention)\n\n%s\n' "$stuck"
 }
 
 publish() { # publish <index> <total> <repo>: push, open the PR, record it in state.md
