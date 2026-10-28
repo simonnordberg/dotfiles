@@ -43,9 +43,9 @@ helpers it uses, and its tests. Review through three lenses:
 
 Each finding needs evidence: the file:line, plus the concrete input, sequence, rule, or
 existing code that shows it. Before you report, re-read the code for every finding and drop
-the ones it already handles; if you can't show it, drop it. Zero findings is a valid result.
-Don't pad, and don't hold back a finding you can show: one thorough pass beats several.
-When declining to raise something, cite the X-id if it's out of scope.
+the ones it already handles. Report what you find; the fix round proves or discards each one,
+so don't pre-filter for certainty. When declining to raise something, cite the X-id if it's
+out of scope.
 
 Never raise: formatting or lint (tools own it); equivalent alternative structure; renames for
 taste; speculative refactors or new abstractions; defensive code for states that can't occur;

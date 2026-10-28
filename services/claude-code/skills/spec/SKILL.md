@@ -50,7 +50,8 @@ Otherwise, follow the normal interview path:
 5. Create a Linear issue under the Codebahn team for this feature. If a Linear project was
    named or is obvious from context, create the issue under that project; otherwise it goes to
    the team backlog. Title: the feature name (not the slug). Description: the Purpose from
-   spec.md, plus a link to `.plans/<slug>/spec.md`. Status: Backlog.
+   spec.md, then a line `Slug: <slug>`, then a link to `.plans/<slug>/spec.md`. Status:
+   Backlog.
 6. Stop. Do not implement. Tell me: `/build <slug>` plans, implements, and ships headlessly;
    `/build <slug> plan` stops after the plans so I can read them; `/work <slug> <repo>`
    drives a repo by hand.

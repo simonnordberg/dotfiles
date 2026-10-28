@@ -21,7 +21,7 @@
 - If you've tried 3 approaches without progress, stop and say what you tried and your best hypothesis.
 - Distinguish between "I'm stuck" and "I need a decision".
 - Prefer editing existing files over creating new ones.
-- When requirements are ambiguous, make a reasonable decision and move on. Only ask if the decision is contested or has significant trade-offs.
+- When requirements are ambiguous: interactive sessions decide and say so; headless sessions write `DECIDED: <what>, because <why>` or `BLOCKED: <question>`, never silent. Only ask interactively if the decision is contested or has significant trade-offs.
 - One feature = one worktree = one branch = one PR.
 - Reuse before writing: search for an existing function, helper, or pattern first. Use or extend it rather than duplicating.
 - For non-trivial tasks, enter plan mode first. Break work into independent subtasks that can run in parallel.

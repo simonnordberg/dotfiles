@@ -19,10 +19,8 @@ Target: $ARGUMENTS
    asking for a code review. Never pass `model`: it's pinned, and a hook refuses overrides.
 4. Show its findings verbatim and save them as `review.md` in the plandir from `wt ctx` (the
    scratchpad when there is none).
-5. Fix each BLOCKER and MAJOR the way `/fix review` does: prove it with a failing test (or by
-   confirming the cited helper or rule), fix minimally, `wt check --quick`, commit it alone.
-   For a false positive, say why and change nothing. Each finding tracks attempts; after 3
-   failed attempts on the same finding, mark it STUCK and move on.
+5. Fix each BLOCKER and MAJOR the way `/fix review` does (including its retry cap: 3 attempts
+   per finding, then STUCK). For a false positive, say why and change nothing.
 6. Run `wt check`. Then run the reviewer once more on the fix commits only
    (`<sha before the fixes>..HEAD`), saying they address the earlier findings. Report what's
    left; don't start another round.

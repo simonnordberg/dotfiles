@@ -23,14 +23,15 @@ and answer BLOCKED.
 2. Fix it minimally, show the test green, and run `wt check --quick`.
 3. Commit it on its own, following this repo's commit rules.
 
-Each finding tracks an attempt count. If a finding has already been attempted (check for
-`attempts: N` in the review file), increment it. After 3 failed attempts on the same finding,
-mark it `STUCK` instead of retrying: the finding is real but this agent can't fix it.
+Each finding tracks an attempt count in the review file. On a failed attempt, write
+`- <the finding>: attempt <N>, failed: <what went wrong>` in the Resolution section. On the
+next invocation, check the Resolution section for prior attempts on each finding. After 3
+failed attempts on the same finding, mark it `STUCK` instead of retrying.
 
 Then append or update a `## Resolution` section in the review file, one line per BLOCKER and
 MAJOR: `- <the finding>: fixed in <sha>`, `: false positive: <why>`, `: out of scope: <X-id>`,
-or `: STUCK after <N> attempts`. Leave MINOR and NIT findings alone; they go to the PR
-description.
+`: attempt <N>, failed: <what went wrong>`, or `: STUCK after <N> attempts`. Leave MINOR and
+NIT findings alone; they go to the PR description.
 
 Never weaken, skip, or delete a test to get green, and never touch unrelated code. Commit
 everything you change; leave the tree clean.
