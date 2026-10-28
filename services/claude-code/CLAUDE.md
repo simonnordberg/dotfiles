@@ -100,12 +100,14 @@
 - MCP servers are registered via `claude mcp add --scope user` in install.sh, not by file copy. Never edit `~/.claude.json` directly.
 - This rule also applies to other dotfiles (shell, git, etc.): the source is always `~/code/dotfiles/services/<name>/`.
 
-## Cross-Project Knowledge
+## Agent Shared Memory
 
-- `~/code/knowledge/` is a git repo of reusable knowledge (TILs, decisions, bookmarks).
-- When you learn something reusable, make a non-obvious decision, or find a useful reference, add a markdown file there following its CLAUDE.md conventions.
+- `~/code/knowledge/` is a git repo of shared memory for agents across all projects.
+- Two kinds of content: entries (write-once: TILs, decisions, bookmarks) and checklists (living documents: review ratchet).
+- When you learn something reusable, make a non-obvious decision, or find a useful reference, add an entry following its CLAUDE.md conventions.
+- The review checklist (`review/checklist.md`) is read by the reviewer agent on every run. Append misses with `/miss`.
 - When looking for past decisions, patterns, or learnings, check there first.
-- Don't duplicate what's already in a project's own CLAUDE.md; knowledge/ is for cross-cutting things.
+- Don't duplicate what's already in a project's own CLAUDE.md.
 
 ## Learning
 
