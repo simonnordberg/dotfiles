@@ -12,6 +12,7 @@ claude mcp get playwright >/dev/null 2>&1 || claude mcp add --scope user playwri
 claude mcp get linear >/dev/null 2>&1 || claude mcp add --scope user --transport http linear https://mcp.linear.app/mcp
 claude mcp get codebahn >/dev/null 2>&1 || claude mcp add --scope user --transport http codebahn https://codebahn.net/mcp
 claude mcp get codebahn-staging >/dev/null 2>&1 || claude mcp add --scope user --transport http codebahn-staging https://staging.codebahn.net/mcp
+claude mcp get accounted >/dev/null 2>&1 || claude mcp add --scope user --transport http accounted "https://app.accounted.se/api/extensions/ext/mcp-server/mcp?tool_namespace=accounted"
 
 cp $SCRIPT_DIR/hooks/*.sh $HOME/.claude/hooks/
 chmod +x $HOME/.claude/hooks/*.sh
