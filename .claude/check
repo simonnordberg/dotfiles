@@ -3,9 +3,14 @@
 set -u
 cd "$(dirname "$0")/.."
 
-bash services/claude-code/bin/wt.test.sh
-rc1=$?
-bash services/claude-code/test/hooks.test.sh
-rc2=$?
+AGENT_CONFIG=${AGENT_CONFIG:-$HOME/code/agent-config}
 
-[ $rc1 -eq 0 ] && [ $rc2 -eq 0 ]
+if [ -d "$AGENT_CONFIG" ]; then
+  bash "$AGENT_CONFIG/bin/wt.test.sh"
+  rc1=$?
+  bash "$AGENT_CONFIG/test/hooks.test.sh"
+  rc2=$?
+  [ $rc1 -eq 0 ] && [ $rc2 -eq 0 ]
+else
+  echo "agent-config not found at $AGENT_CONFIG; skipping tests"
+fi
