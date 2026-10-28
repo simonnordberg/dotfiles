@@ -2,10 +2,21 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 sudo npm install -g @anthropic-ai/claude-code
 
+# Clone or update the private agent-config repo
+AGENT_CONFIG_REPO=git@codebahn.net:simon/agent-config.git
+AGENT_CONFIG_DIR=$HOME/.local/share/agent-config
+
+if [ -d "$AGENT_CONFIG_DIR" ]; then
+  git -C "$AGENT_CONFIG_DIR" pull -q origin main
+else
+  git clone -q "$AGENT_CONFIG_REPO" "$AGENT_CONFIG_DIR"
+fi
+
 mkdir -p $HOME/.claude/hooks $HOME/.claude/agents $HOME/.claude/bin
 
-cp $SCRIPT_DIR/settings.json $HOME/.claude/settings.json
-cp $SCRIPT_DIR/CLAUDE.md $HOME/.claude/CLAUDE.md
+cp $AGENT_CONFIG_DIR/settings.json $HOME/.claude/settings.json
+cp $AGENT_CONFIG_DIR/CLAUDE.md $HOME/.claude/CLAUDE.md
+
 # MCP servers (user scope, available in all projects)
 rm -f "$HOME/.claude/.mcp.json"
 claude mcp get playwright >/dev/null 2>&1 || claude mcp add --scope user playwright -- npx -y @playwright/mcp@latest
@@ -13,16 +24,16 @@ claude mcp get linear >/dev/null 2>&1 || claude mcp add --scope user --transport
 claude mcp get codebahn >/dev/null 2>&1 || claude mcp add --scope user --transport http codebahn https://codebahn.net/mcp
 claude mcp get codebahn-staging >/dev/null 2>&1 || claude mcp add --scope user --transport http codebahn-staging https://staging.codebahn.net/mcp
 
-cp $SCRIPT_DIR/hooks/*.sh $HOME/.claude/hooks/
+cp $AGENT_CONFIG_DIR/hooks/*.sh $HOME/.claude/hooks/
 chmod +x $HOME/.claude/hooks/*.sh
 
-cp $SCRIPT_DIR/bin/wt $HOME/.claude/bin/wt
+cp $AGENT_CONFIG_DIR/bin/wt $HOME/.claude/bin/wt
 chmod +x $HOME/.claude/bin/wt
 
-cp $SCRIPT_DIR/agents/*.md $HOME/.claude/agents/
+cp $AGENT_CONFIG_DIR/agents/*.md $HOME/.claude/agents/
 
 rm -rf "$HOME/.claude/skills"
-cp -r "$SCRIPT_DIR/skills" "$HOME/.claude/skills"
+cp -r "$AGENT_CONFIG_DIR/skills" "$HOME/.claude/skills"
 
 # Global gitignore patterns
 for pattern in '.claude/worktrees/' '.claude/.env-ready' '.plans/' '.worktrees/'; do
