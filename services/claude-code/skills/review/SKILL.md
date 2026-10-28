@@ -21,8 +21,13 @@ Target: $ARGUMENTS
    scratchpad when there is none).
 5. Fix each BLOCKER and MAJOR the way `/fix review` does: prove it with a failing test (or by
    confirming the cited helper or rule), fix minimally, `wt check --quick`, commit it alone.
-   For a false positive, say why and change nothing.
+   For a false positive, say why and change nothing. Each finding tracks attempts; after 3
+   failed attempts on the same finding, mark it STUCK and move on.
 6. Run `wt check`. Then run the reviewer once more on the fix commits only
    (`<sha before the fixes>..HEAD`), saying they address the earlier findings. Report what's
    left; don't start another round.
-7. List MINOR and NIT findings as follow-ups, unfixed. Push only if I ask.
+7. If holdout.md exists in the plandir, run each scenario against the built code. Holdout
+   failures become new findings in review.md (severity BLOCKER, category SPEC). These enter
+   the fix loop with the same retry cap.
+8. List MINOR and NIT findings as follow-ups, unfixed. List STUCK findings separately: these
+   need human attention. Push only if I ask.

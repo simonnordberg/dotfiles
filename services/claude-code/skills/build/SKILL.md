@@ -14,3 +14,7 @@ answering the question in that repo's plan.md, deleting the BLOCKED line, and ru
 
 If it says the slug is already running or has no plans, say so and stop. Do not run /steps,
 /tdd, or /fix yourself in this session.
+
+After relaying, update the Linear issue for this slug (search by title or slug in the
+description) to "In Progress". If the build finished or failed, update to "Done" or "Cancelled"
+and attach the PR URL(s) to the issue.
