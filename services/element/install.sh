@@ -1,1 +1,1 @@
-flatpak install -y flathub im.riot.Riot
+flatpak install -y --user flathub im.riot.Riot

@@ -1,2 +1,2 @@
-flatpak install -y flathub me.proton.Mail
-flatpak install -y flathub ch.protonmail.protonmail-bridge
+flatpak install -y --user flathub me.proton.Mail
+flatpak install -y --user flathub ch.protonmail.protonmail-bridge
