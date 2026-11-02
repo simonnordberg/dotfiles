@@ -1,1 +1,1 @@
-flatpak install -y flathub com.slack.Slack
+flatpak install -y --user flathub com.slack.Slack

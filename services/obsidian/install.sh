@@ -1,1 +1,1 @@
-flatpak install -y flathub md.obsidian.Obsidian
+flatpak install -y --user flathub md.obsidian.Obsidian
