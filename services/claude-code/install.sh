@@ -43,6 +43,9 @@ fi
 
 cp "$AGENT_CONFIG_DIR"/hooks/*.sh "$CLAUDE_DIR/hooks/"
 chmod +x "$CLAUDE_DIR"/hooks/*.sh
+# The ensure-env hook was retired. Installs only copy, so drop its stale copy; no generic pruning
+# because ~/.claude/hooks may hold hooks that do not come from agent-config.
+rm -f "$CLAUDE_DIR/hooks/ensure-env.sh"
 
 cp "$AGENT_CONFIG_DIR/bin/wt" "$CLAUDE_DIR/bin/wt"
 chmod +x "$CLAUDE_DIR/bin/wt"
@@ -67,7 +70,7 @@ for dst in "$CLAUDE_DIR"/skills/*/; do
 done
 
 # Global gitignore patterns
-for pattern in '.claude/worktrees/' '.claude/.env-ready' '.plans/' '.worktrees/'; do
+for pattern in '.claude/worktrees/' '.plans/' '.worktrees/'; do
   grep -qxF "$pattern" "$GITIGNORE_FILE" 2>/dev/null || echo "$pattern" >>"$GITIGNORE_FILE"
 done
 [ "$INSTALL_SKIP_EXTERNAL" = 1 ] || git config --global core.excludesfile "$GITIGNORE_FILE"
