@@ -91,8 +91,11 @@ expect_file "knowledge clone has content" "$TMP/knowledge-clone/CLAUDE.md"
 
 # --- 3. happy path: skills replaced one by one, stale ones removed, synced kept ---
 C=$TMP/claude3; fresh_claude_dir "$C"
+mkdir -p "$C/hooks"; echo 'stale' >"$C/hooks/ensure-env.sh"; echo 'mine' >"$C/hooks/custom.sh"
 out=$(run_install "$C" "$SRC" "unused" "$KSRC")
 expect_has "happy path succeeds" "rc=0" "$out"
+expect_no_file "retired ensure-env hook removed" "$C/hooks/ensure-env.sh"
+expect_file "unrelated hooks are not pruned" "$C/hooks/custom.sh"
 expect_file "skill x installed" "$C/skills/x/SKILL.md"
 expect_file "skill y installed" "$C/skills/y/SKILL.md"
 expect_no_file "stale skill removed" "$C/skills/old"
@@ -109,7 +112,8 @@ expect_has "summary counts skills" "2 skills installed, 2 removed" "$out"
 out=$(run_install "$C" "$SRC" "unused" "$KSRC")
 expect_has "second run succeeds" "rc=0" "$out"
 expect "gitignore patterns appended once" 1 "$(grep -c '^\.plans/$' "$TMP/home/.gitignore")"
-expect "all gitignore patterns present" 4 "$(grep -c . "$TMP/home/.gitignore")"
+expect "all gitignore patterns present" 3 "$(grep -c . "$TMP/home/.gitignore")"
+expect "retired .env-ready pattern not added" 0 "$(grep -c 'env-ready' "$TMP/home/.gitignore")"
 
 # --- 4. INSTALL_SKIP_EXTERNAL=1 calls no external tool ---
 expect "no external tool called" "" "$(cat "$TOOL_LOG")"
