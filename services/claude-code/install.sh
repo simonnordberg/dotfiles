@@ -13,7 +13,7 @@ GITIGNORE_FILE=${GITIGNORE_FILE:-$HOME/.gitignore}
 INSTALL_SKIP_EXTERNAL=${INSTALL_SKIP_EXTERNAL:-0} # 1 skips npm, claude mcp and git config --global (tests)
 
 ensure_repo() { # ensure_repo <dir> <url>: clone when missing, fail loudly when that is impossible
-  [ -d "$1/.git" ] && return
+  [ -e "$1/.git" ] && return  # a worktree checkout has a .git file
   if ! git clone -q "$2" "$1"; then
     echo "install: cannot clone $2 into $1; clone it manually and re-run" >&2
     exit 1

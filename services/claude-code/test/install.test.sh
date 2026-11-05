@@ -114,4 +114,11 @@ expect "all gitignore patterns present" 4 "$(grep -c . "$TMP/home/.gitignore")"
 # --- 4. INSTALL_SKIP_EXTERNAL=1 calls no external tool ---
 expect "no external tool called" "" "$(cat "$TOOL_LOG")"
 
+# --- 5. a git worktree checkout of agent-config is a valid source (its .git is a file) ---
+git -C "$SRC" worktree add -q "$TMP/agent-config-wt" -b wt
+C=$TMP/claude5; fresh_claude_dir "$C"
+out=$(run_install "$C" "$TMP/agent-config-wt" "unused" "$KSRC")
+expect_has "worktree source accepted" "rc=0" "$out"
+expect_file "worktree source installs skills" "$C/skills/x/SKILL.md"
+
 [ "$fails" -eq 0 ] && echo "all install tests passed" || { echo "$fails failure(s)"; exit 1; }
