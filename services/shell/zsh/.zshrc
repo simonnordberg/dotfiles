@@ -79,13 +79,12 @@ alias open='xdg-open'
 
 # Claude Code: auto-launch in tmux session
 cl() {
-  local model='claude-opus-4-6[1m]'
   local effort='max'
   if [[ -n "$TMUX" ]]; then
-    command claude --model "${model}" --effort "${effort}" "$@"
+    command claude --effort "${effort}" "$@"
   else
     local session="claude-$$"
-    tmux new-session -s "$session" -d "claude --model '${model}' --effort '${effort}' $*; zsh" 2>/dev/null
+    tmux new-session -s "$session" -d "claude --effort '${effort}' $*; zsh" 2>/dev/null
     tmux attach-session -t "$session"
   fi
 }
