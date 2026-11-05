@@ -6,8 +6,8 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 AGENT_CONFIG_DIR=${AGENT_CONFIG_DIR:-$HOME/code/agent-config}
 AGENT_CONFIG_URL=${AGENT_CONFIG_URL:-git@codebahn.net:simon/agent-config.git}
-KNOWLEDGE_DIR=${KNOWLEDGE_DIR:-$HOME/code/knowledge}
-KNOWLEDGE_URL=${KNOWLEDGE_URL:-git@codebahn.net:simon/knowledge.git}
+KNOWLEDGE_DIR=${KNOWLEDGE_DIR:-$HOME/code/agent-knowledge}
+KNOWLEDGE_URL=${KNOWLEDGE_URL:-git@codebahn.net:simon/agent-knowledge.git}
 CLAUDE_DIR=${CLAUDE_DIR:-$HOME/.claude}
 GITIGNORE_FILE=${GITIGNORE_FILE:-$HOME/.gitignore}
 INSTALL_SKIP_EXTERNAL=${INSTALL_SKIP_EXTERNAL:-0} # 1 skips npm, claude mcp and git config --global (tests)
