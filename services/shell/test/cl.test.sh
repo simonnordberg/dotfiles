@@ -11,9 +11,6 @@ expect_has() { # expect_has <name> <needle> <haystack>
   case "$3" in *"$2"*) return ;; esac
   fails=$((fails + 1)); printf 'FAIL %s\n  want substring: %s\n  got: %s\n' "$1" "$2" "$3"
 }
-expect_lacks() { # expect_lacks <name> <needle> <haystack>
-  case "$3" in *"$2"*) fails=$((fails + 1)); printf 'FAIL %s\n  unwanted substring: %s\n  got: %s\n' "$1" "$2" "$3" ;; esac
-}
 
 mkdir -p "$TMP/bin"
 for tool in claude tmux; do
@@ -30,16 +27,25 @@ run_cl() { # run_cl <TMUX value> [args]: the stubbed calls cl made
   cat "$TMP/calls.log"
 }
 
-in_tmux=$(run_cl /tmp/tmux-1/default,1,0 --resume)
-expect_has "in tmux: claude gets the effort flag" "--effort max" "$in_tmux"
-expect_has "in tmux: caller args are passed" "--resume" "$in_tmux"
-expect_lacks "in tmux: cl passes no model" "--model" "$in_tmux"
+last_model() { # last_model <calls>: the value of the last --model argument, quotes stripped
+  grep -o -- "--model [^ ]*" <<<"$1" | tail -1 | sed "s/^--model //; s/'//g"
+}
+expect() { # expect <name> <want> <got>
+  [ "$2" = "$3" ] && return
+  fails=$((fails + 1)); printf 'FAIL %s\n  want: %s\n  got:  %s\n' "$1" "$2" "$3"
+}
+DEFAULT_MODEL='claude-opus-4-6[1m]'
+TMUX_ON=/tmp/tmux-1/default,1,0
 
-out_tmux=$(run_cl "" --resume)
-expect_has "outside tmux: the session command has the effort flag" "--effort 'max'" "$out_tmux"
-expect_lacks "outside tmux: cl passes no model" "--model" "$out_tmux"
-
-user_model=$(run_cl /tmp/tmux-1/default,1,0 --model opus)
-expect_has "a caller's own --model still goes through" "--model opus" "$user_model"
+for mode in "in tmux:$TMUX_ON" "outside tmux:"; do
+  label=${mode%%:*}; tmux_env=${mode#*:}
+  calls=$(run_cl "$tmux_env" --resume); calls=${calls//\'/}
+  expect "$label: default model" "$DEFAULT_MODEL" "$(last_model "$calls")"
+  expect_has "$label: effort flag" "--effort max" "$calls"
+  expect_has "$label: caller args are passed" "--resume" "$calls"
+  calls=$(run_cl "$tmux_env" --model 'claude-fable-5-1[1m]' --resume)
+  expect "$label: the caller's model is the last --model" "claude-fable-5-1[1m]" "$(last_model "$calls")"
+  expect_has "$label: caller args still pass with an override" "--resume" "$calls"
+done
 
 [ "$fails" -eq 0 ] && echo "all cl tests passed" || { echo "$fails failure(s)"; exit 1; }
