@@ -89,7 +89,7 @@ cl() {
     tmux attach-session -t "$session"
   fi
 }
-# Spec chain: open the slug's worktree for a repo in Claude (see services/claude-code/HANDBOOK.md)
+# Spec chain: open the slug's worktree for a repo in Claude (see ~/code/agent-config/HANDBOOK.md)
 work() {  # work <slug> [repo]
   local dir plans
   dir=$(wt create "$@") || return 1
