@@ -1,0 +1,21 @@
+[Unit]
+Description=Forgejo Actions self-hosted runner
+Documentation=https://forgejo.org/docs/latest/admin/actions/
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=forgejo-runner
+Group=forgejo-runner
+WorkingDirectory=/srv/apps/forgejo-runner
+ExecStart=/srv/apps/forgejo-runner/forgejo-runner daemon -c config.yml
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=10
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
