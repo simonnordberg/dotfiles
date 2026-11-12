@@ -79,8 +79,8 @@ alias open='xdg-open'
 
 # Claude Code: auto-launch in tmux session
 cl() {
-  local model='claude-opus-4-6[1m]'
-  local effort='max'
+  local model='claude-opus-5-5'
+  local effort='medium'
   if [[ -n "$TMUX" ]]; then
     command claude --model "${model}" --effort "${effort}" "$@"
   else
@@ -90,7 +90,7 @@ cl() {
   fi
 }
 # Spec chain: open the slug's worktree for a repo in Claude (see ~/code/agent-config/HANDBOOK.md)
-work() {  # work <slug> [repo]
+work() { # work <slug> [repo]
   local dir plans
   dir=$(wt create "$@") || return 1
   plans=$(cd "$dir" && wt ctx | sed -n 's/^plans=//p')
