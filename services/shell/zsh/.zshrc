@@ -70,7 +70,7 @@ fi
 
 # --- fnm ---
 if command -v fnm &>/dev/null; then
-  eval "$(fnm env --use-on-cd --corepack-enabled)"
+  eval "$(fnm env --use-on-cd)"
 fi
 
 # --- Aliases ---
