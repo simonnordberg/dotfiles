@@ -5,6 +5,7 @@ set -e
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 SERVICES_DIR="$SCRIPT_DIR/services"
 BASE_SERVICES="base shell flatpak"
+MANUAL_SERVICES="aider ollama"
 
 if [ "$EUID" -eq 0 ]; then
   echo "Do not run as root"
@@ -38,7 +39,7 @@ main() {
     echo "Installing other services..."
     for service_dir in "$SERVICES_DIR"/*/; do
       service=$(basename "$service_dir")
-      case " $BASE_SERVICES " in
+      case " $BASE_SERVICES $MANUAL_SERVICES " in
         *" $service "*) continue ;;
       esac
       install_service "$service_dir"
