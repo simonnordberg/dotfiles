@@ -10,9 +10,9 @@ Dotfiles repo managed by a simple bash-based installer. Each service is a self-c
 
 ## Services
 
-Base (installed first): `base`, `shell`
+Base (installed first): `base`, `shell`, `flatpak`
 
-Default: `1password`, `chromium`, `claude-code`, `discord`, `dms`, `docker`, `fingerprint`, `flatpak`, `gdm`, `ghostty`, `git`, `hibernate`, `neovim`, `niri`, `node`, `obsidian`, `proton-mail`, `signal`, `slack`, `spotify`, `ssh`, `steam`, `syncthing`, `tailscale`
+Default: `1password`, `chromium`, `claude-code`, `discord`, `dms`, `docker`, `fingerprint`, `gdm`, `ghostty`, `git`, `hibernate`, `neovim`, `niri`, `node`, `obsidian`, `proton-mail`, `signal`, `slack`, `spotify`, `ssh`, `steam`, `syncthing`, `tailscale`
 
 Optional: `audio`, `calibre`, `codebahn-runner`, `flatseal`, `fonts`, `github`, `golang`, `himalaya`, `lazygit`, `printing`, `pyenv`, `rust`, `scaleway`, `scripts`, `terraform`, `tmux`, `tracker`, `vscode`, `yazi`, `zathura`
 

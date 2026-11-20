@@ -4,7 +4,7 @@ set -e
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 SERVICES_DIR="$SCRIPT_DIR/services"
-BASE_SERVICES="base shell"
+BASE_SERVICES="base shell flatpak"
 
 if [ "$EUID" -eq 0 ]; then
   echo "Do not run as root"
